@@ -22,6 +22,7 @@ struct OnboardingView<Camera: View>: View {
     private let spotlightColor = Color(hex: 0x1D1D1D)
     private let spotlightPadding: CGFloat = 10
     private let controlsHeight: CGFloat = 66
+    private let minTapTarget: CGFloat = 44
 
     init(
         signalSource: any OnboardingSignalSource,
@@ -110,11 +111,15 @@ struct OnboardingView<Camera: View>: View {
         HStack {
             Spacer()
             if step != .done {
-                Button("Skip") { coordinator.skip() }
-                    .font(.subheadline)
-                    .underline()
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.3), radius: 2)
+                Button { coordinator.skip() } label: {
+                    Text("Skip")
+                        .frame(minWidth: minTapTarget, minHeight: minTapTarget)
+                        .contentShape(Rectangle())
+                }
+                .font(.subheadline)
+                .underline()
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.3), radius: 2)
             }
         }
         .frame(height: 44)

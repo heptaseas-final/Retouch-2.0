@@ -41,12 +41,12 @@ struct LightModeButton: View {
                     .overlay(Capsule().fill(Color.white.opacity(0.6)))
                     .overlay(Capsule().strokeBorder(Color.black.opacity(0.1), lineWidth: 1))
                     .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
-                    .frame(height: mode.lightColor == nil ? size : size * 2)
+                    .frame(height: mode.lightColor == nil ? size : size * 2 + inset)
             }
             .overlay(alignment: .top) {
                 if let lightColor = mode.lightColor {
                     indicator(for: lightColor)
-                        .offset(y: -(circleSize + inset))
+                        .offset(y: -(circleSize + inset * 2))
                         .transition(.scale(scale: 0.5).combined(with: .opacity))
                 }
             }

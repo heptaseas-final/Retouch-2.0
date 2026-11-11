@@ -38,12 +38,23 @@ struct CameraControls: View {
     var expandedHeight: CGFloat = 66
     var pickerWidth: CGFloat = 233
 
+    @State private var availableWidth: CGFloat = 0
+
+    private let columnSpacing: CGFloat = 20
+    private let minControlGap: CGFloat = 12
+
     private var lightButtonEmphasis: ControlEmphasis {
         flashEmphasis == .dimmed && lightColorEmphasis == .dimmed ? .dimmed : .normal
     }
 
+    private var fittedPickerWidth: CGFloat {
+        guard availableWidth > 0 else { return pickerWidth }
+        let minSideColumn = height - 2 * (columnSpacing - minControlGap)
+        return min(pickerWidth, availableWidth - 2 * (columnSpacing + minSideColumn))
+    }
+
     var body: some View {
-        HStack(alignment: .bottom, spacing: 20) {
+        HStack(alignment: .bottom, spacing: columnSpacing) {
             ZStack {
                 if isLightDocked {
                     LightModeButton(mode: $lightMode, onChange: onLightTap, nextMode: nextLightMode, size: height,
@@ -69,14 +80,15 @@ struct CameraControls: View {
             .frame(maxWidth: .infinity)
             .zIndex(1)
 
-            HorizontalPicker(items: FacePart.allCases, selection: $part, swipe: swipe, width: pickerWidth,
+            HorizontalPicker(items: FacePart.allCases, selection: $part, swipe: swipe, width: fittedPickerWidth,
                              height: height, expandedHeight: expandedHeight) { $0.title.uppercased() }
                 .emphasis(pickerEmphasis)
-                .frame(width: pickerWidth, height: expandedHeight)
+                .frame(width: fittedPickerWidth, height: expandedHeight)
 
             Color.clear
                 .frame(maxWidth: .infinity, maxHeight: expandedHeight)
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
     }
 }
 
