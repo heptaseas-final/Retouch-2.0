@@ -9,6 +9,8 @@ struct MirrorView: View {
     @State private var isDraggingLight = false
     @State private var screenFrame: CGRect = .zero
     @State private var dockSlotCenter: CGPoint = .zero
+    @State private var isPickerFullWidth = false
+    @State private var dockBeforeFullWidth: LightDock?
     private let showsControls: Bool
     private let onReplayTutorial: (() -> Void)?
 
@@ -74,6 +76,7 @@ struct MirrorView: View {
                         Image(systemName: "questionmark")
                             .font(.headline)
                             .fontWeight(.bold)
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                             .foregroundStyle(Color.appMagenta)
                             .frame(width: 46, height: 46)
                             .glassStyle(in: Circle())
@@ -81,6 +84,7 @@ struct MirrorView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Replay tutorial")
+                    .accessibilityShowsLargeContentViewer()
                 }
                 Spacer()
             }
@@ -101,7 +105,8 @@ struct MirrorView: View {
                 onLightLiftDrag: liftDragChanged,
                 onLightLiftEnd: liftEnded,
                 onLightMoveToSide: { move(to: .side(edge: .trailing), from: dockSlotCenter) },
-                onLightSlotCenter: { dockSlotCenter = $0 }
+                onLightSlotCenter: { dockSlotCenter = $0 },
+                onPickerLayoutChange: pickerLayoutChanged
             )
         }
         .padding(.horizontal, 16)
@@ -120,13 +125,33 @@ struct MirrorView: View {
                 let half = Self.sideMargin + size / 2
                 LightModeButton(mode: Binding(get: { viewModel.lightMode }, set: viewModel.setLightMode), size: size,
                                 onLiftDrag: liftDragChanged, onLiftEnd: liftEnded,
-                                moveAction: ("Move to bottom", { move(to: .docked, from: sideCenter(edge)) }))
+                                moveAction: sideMoveAction(from: edge))
                     .frame(height: size * 3, alignment: .bottom)
                     .position(x: edge == .trailing ? geo.size.width - half : half,
                               y: geo.size.height / 2 - size)
                     .offset(lightDrag)
             }
             .transition(.identity)
+        }
+    }
+
+    private func sideMoveAction(from edge: HorizontalEdge) -> (label: String, perform: () -> Void) {
+        guard isPickerFullWidth else {
+            return ("Move to bottom", { move(to: .docked, from: sideCenter(edge)) })
+        }
+        let otherEdge: HorizontalEdge = edge == .leading ? .trailing : .leading
+        return ("Move to other side", { move(to: .side(edge: otherEdge), from: sideCenter(edge)) })
+    }
+
+    private func pickerLayoutChanged(_ isFull: Bool) {
+        guard isFull != isPickerFullWidth else { return }
+        isPickerFullWidth = isFull
+        if isFull {
+            dockBeforeFullWidth = lightDock
+            if lightDock == .docked { lightDock = .side(edge: .leading) }
+        } else if let previous = dockBeforeFullWidth {
+            lightDock = previous
+            dockBeforeFullWidth = nil
         }
     }
 
@@ -151,7 +176,8 @@ struct MirrorView: View {
         let start = center(of: lightDock)
         let drop = CGPoint(x: start.x + translation.width, y: start.y + translation.height)
         let draggedDown = translation.height > 60 && translation.height > abs(translation.width)
-        let target: LightDock = draggedDown || drop.y > screenFrame.maxY - Self.dockZoneHeight
+        let wantsDock = draggedDown || drop.y > screenFrame.maxY - Self.dockZoneHeight
+        let target: LightDock = wantsDock && !isPickerFullWidth
             ? .docked
             : .side(edge: drop.x < screenFrame.midX ? .leading : .trailing)
         move(to: target, from: drop)

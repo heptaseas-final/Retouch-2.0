@@ -33,15 +33,18 @@ struct CameraControls: View {
     var onLightLiftEnd: ((CGSize) -> Void)? = nil
     var onLightMoveToSide: (() -> Void)? = nil
     var onLightSlotCenter: ((CGPoint) -> Void)? = nil
+    var onPickerLayoutChange: ((Bool) -> Void)? = nil
 
     var height: CGFloat = 54
     var expandedHeight: CGFloat = 66
     var pickerWidth: CGFloat = 233
 
     @State private var availableWidth: CGFloat = 0
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private let columnSpacing: CGFloat = 20
     private let minControlGap: CGFloat = 12
+    private let pickerSlotPadding: CGFloat = 20
 
     private var lightButtonEmphasis: ControlEmphasis {
         flashEmphasis == .dimmed && lightColorEmphasis == .dimmed ? .dimmed : .normal
@@ -53,7 +56,35 @@ struct CameraControls: View {
         return min(pickerWidth, availableWidth - 2 * (columnSpacing + minSideColumn))
     }
 
+    private var pickerFont: UIFont { PickerMetrics.font(for: typeSize) }
+
+    private var pickerExpandedHeight: CGFloat {
+        PickerMetrics.height(height, font: pickerFont) + expandedHeight - height
+    }
+
+    private var widestPickerSlot: CGFloat {
+        let widestTitle = FacePart.allCases.map { PickerMetrics.textWidth(pickerTitle($0), font: pickerFont) }.max() ?? 0
+        return widestTitle + 2 * pickerSlotPadding
+    }
+
+    private var isPickerFullWidth: Bool {
+        availableWidth > 0 && widestPickerSlot > fittedPickerWidth
+    }
+
     var body: some View {
+        Group {
+            if isPickerFullWidth {
+                picker(width: availableWidth)
+            } else {
+                dockedLayout
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
+        .onChange(of: isPickerFullWidth, initial: true) { _, isFull in onPickerLayoutChange?(isFull) }
+    }
+
+    private var dockedLayout: some View {
         HStack(alignment: .bottom, spacing: columnSpacing) {
             ZStack {
                 if isLightDocked {
@@ -80,15 +111,22 @@ struct CameraControls: View {
             .frame(maxWidth: .infinity)
             .zIndex(1)
 
-            HorizontalPicker(items: FacePart.allCases, selection: $part, swipe: swipe, width: fittedPickerWidth,
-                             height: height, expandedHeight: expandedHeight) { $0.title.uppercased() }
-                .emphasis(pickerEmphasis)
-                .frame(width: fittedPickerWidth, height: expandedHeight)
+            picker(width: fittedPickerWidth)
 
             Color.clear
-                .frame(maxWidth: .infinity, maxHeight: expandedHeight)
+                .frame(maxWidth: .infinity, maxHeight: pickerExpandedHeight)
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
+    }
+
+    private func picker(width: CGFloat) -> some View {
+        HorizontalPicker(items: FacePart.allCases, selection: $part, swipe: swipe, width: width,
+                         padding: pickerSlotPadding, height: height, expandedHeight: expandedHeight, title: pickerTitle)
+            .emphasis(pickerEmphasis)
+            .frame(width: width, height: pickerExpandedHeight)
+    }
+
+    private func pickerTitle(_ part: FacePart) -> String {
+        part.title.uppercased()
     }
 }
 

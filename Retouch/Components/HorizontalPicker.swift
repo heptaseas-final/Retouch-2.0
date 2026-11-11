@@ -18,16 +18,20 @@ struct HorizontalPicker<Item: Hashable>: View {
     let title: (Item) -> String
 
     @State private var base = 0
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private let maxStepsPerSwipe = 1
 
     var body: some View {
-        let track = PickerTrack(slots: items.map { pickerTextWidth(title($0)) + 2 * padding })
+        let font = PickerMetrics.font(for: typeSize)
+        let restingHeight = PickerMetrics.height(height, font: font)
+        let liftedHeight = restingHeight + expandedHeight - height
+        let track = PickerTrack(slots: items.map { PickerMetrics.textWidth(title($0), font: font) + 2 * padding })
         let dragX = track.center(base) - (swipe.isDragging ? swipe.translation : 0)
         let x = min(max(dragX, track.center(base - maxStepsPerSwipe)), track.center(base + maxStepsPerSwipe))
         let current = track.nearest(to: x, around: base)
         let capsuleWidth = swipe.isDragging ? track.slotWidth(at: x, around: base) : track.slot(base)
-        let currentHeight = swipe.isDragging ? expandedHeight : height
+        let currentHeight = swipe.isDragging ? liftedHeight : restingHeight
 
         ZStack {
             Color.clear
@@ -39,7 +43,7 @@ struct HorizontalPicker<Item: Hashable>: View {
 
             ForEach(Array(current - 5...current + 5), id: \.self) { index in
                 Text(title(item(at: index)))
-                    .font(Font(pickerFont))
+                    .font(Font(font))
                     .foregroundStyle(index == current ? Color.appMagenta : Color.appInactive.opacity(0.6))
                     .lineLimit(1)
                     .fixedSize()
@@ -104,14 +108,24 @@ struct HorizontalPicker<Item: Hashable>: View {
     }
 }
 
-private let pickerFont: UIFont = {
-    let regular = UIFont.systemFont(ofSize: 15, weight: .regular)
-    guard let rounded = regular.fontDescriptor.withDesign(.rounded) else { return regular }
-    return UIFont(descriptor: rounded, size: 15)
-}()
+enum PickerMetrics {
+    private static let baseSize: CGFloat = 15
+    private static let textVerticalInset: CGFloat = 18
 
-private func pickerTextWidth(_ text: String) -> CGFloat {
-    ceil((text as NSString).size(withAttributes: [.font: pickerFont]).width)
+    static func font(for typeSize: DynamicTypeSize) -> UIFont {
+        let regular = UIFont.systemFont(ofSize: baseSize, weight: .regular)
+        let base = regular.fontDescriptor.withDesign(.rounded).map { UIFont(descriptor: $0, size: baseSize) } ?? regular
+        let traits = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(typeSize))
+        return UIFontMetrics(forTextStyle: .subheadline).scaledFont(for: base, compatibleWith: traits)
+    }
+
+    static func textWidth(_ text: String, font: UIFont) -> CGFloat {
+        ceil((text as NSString).size(withAttributes: [.font: font]).width)
+    }
+
+    static func height(_ minimum: CGFloat, font: UIFont) -> CGFloat {
+        max(minimum, ceil(font.lineHeight) + 2 * textVerticalInset)
+    }
 }
 
 private struct PickerTrack {
