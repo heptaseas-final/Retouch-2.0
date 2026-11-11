@@ -2,8 +2,8 @@
 
 > **WAJIB setiap kali mulai chat baru Claude: (PENTINGGGGG)**
 >
-> 1. Ketik **`/retouch-spec /karpathy-guidelines /antislop /swift-architecture /swift-agents`** untuk panggil skill.
-> 2. Attach **`SPEC.md` terbaru** sebagai konteks. (bisa didownload di sini: [**Agent Skills & Spec**](https://www.dropbox.com/scl/fo/5diw7gwkih5gkqf2orbdq/APQSa6HRDgNgEkk1QC3RsTs?rlkey=w6eeo89j0ui9c053wl4n144s1&st=2q55uvsr&dl=0))
+> 1. Attach **`SPEC.md` terbaru** sebagai konteks. (bisa didownload di sini: [**Agent Skills & Spec**](https://www.dropbox.com/scl/fo/5diw7gwkih5gkqf2orbdq/APQSa6HRDgNgEkk1QC3RsTs?rlkey=w6eeo89j0ui9c053wl4n144s1&st=2q55uvsr&dl=0))
+> 2. Selalu pastiin skills kalian dalam versi terbaru.
 > 3. Lampirkan file yang mau diubah (Swift/zip), lalu minta **rencana dulu** sebelum kode.
 >
 > JANGAN LUPA, nanti conflict hehehehehe
