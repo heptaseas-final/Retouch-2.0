@@ -5,7 +5,7 @@ description: Engineering rules for the Retouch iOS app (Team Heptaseas): MVVM st
 
 # Retouch engineering
 
-Version: 1. If `engineering.md` shows a different version, tell the user this skill is outdated and must be re-uploaded.
+Version: 2. If `engineering.md` shows a different version, tell the user this skill is outdated and must be re-uploaded.
 
 SPEC.md says what to build. `engineering.md` says how. Follow both.
 

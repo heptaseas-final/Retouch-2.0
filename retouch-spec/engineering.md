@@ -1,6 +1,6 @@
 # Retouch engineering rules
 
-Version: 1
+Version: 2
 Scope: all Swift code in `Retouch/` and `RetouchTests/`.
 Precedence: SPEC.md (product) first, then this file, then general Swift defaults. Where this file conflicts with general guidance (comments, one type per file), this file wins.
 
@@ -10,7 +10,7 @@ Precedence: SPEC.md (product) first, then this file, then general Swift defaults
 - AVFoundation, Vision, Core Image, Metal. No third-party dependency.
 - UserDefaults only. No backend. Frames are never saved. Camera permission only.
 - Build settings: default actor isolation is MainActor, Swift language mode 5.0. Do not change build settings or `project.yml` without asking.
-- English identifiers and user-facing text. No comments (section 4).
+- English identifiers and user-facing text. No comments except the Xcode file header (section 4).
 
 ## 2. Layers and the only call path
 
@@ -31,7 +31,9 @@ CameraSessionManager -> FramePipeline -+-> FrameForwarder -> ZoomService
 ```
 Result flow: `ZoomService -> ZoomStore (@Observable, main actor) -> ViewModel -> View`.
 
-Wiring: `AppContainer` is the only place that creates services and stores, in dependency order (camera, lighting, pipeline, zoom). It also builds the ViewModels. Views receive their ViewModel through `init`. No `@Environment` for services.
+Wiring: `AppContainer` is the only place that creates services and stores, in dependency order (camera, lighting, pipeline, zoom). It also builds the ViewModels: a screen that lives for the whole app gets one instance (`mirrorViewModel`), a screen that is shown again and again gets a `make<Name>()` factory. `RetouchApp` passes them to `ContentView`, which passes them to each screen through `init`. No `@Environment` for services.
+
+Camera lifecycle: `CameraService` owns start, stop and app lifecycle, and tells `LightingService` through `CameraLifecycleListening`. Zoom results reach the main actor only through `ZoomStore`; other screens listen with `ZoomStore.addTrackingListener`.
 
 ## 3. Folder map and where things go
 
@@ -71,9 +73,10 @@ Where does it go?
 
 - One file, one responsibility, one primary type. File name equals the primary type name.
 - Companion types may share the file: its Store, protocol, enum, view modifier, or small plain data types of the same domain without logic.
+- A service too big for 300 lines is split into extension files in the same folder named `<Type>+<Concern>.swift`, e.g. `ZoomService+Frame.swift`, `ZoomService+Learning.swift`. Stored properties stay in `<Type>.swift`. Members used across those files are `internal` instead of `private`. Pure logic that needs no stored state goes in its own `struct` instead, e.g. `ZoomReadiness`.
 - Maximum 300 lines per file. Maximum 8 files per folder, then add a subfolder.
 - No top-level folders beyond section 3. No `Helpers`, `Utils`, `Misc`, `Common`.
-- No comments of any kind: no `//`, `///`, `/* */`, file headers, `MARK`, `TODO`, commented-out code. Names must explain the code.
+- No comments: no `//`, `///`, `/* */`, `MARK`, `TODO`, commented-out code. Names must explain the code. The only exception is the Xcode file header at the top of a file (`//  File.swift`, `//  Retouch`, `//  Created by ...`): keep it, never edit it. New files may have it or not.
 - `#Preview` is allowed and uses inline sample data.
 
 ## 5. Naming
@@ -125,7 +128,7 @@ Hotspots (everyone edits them, so edit minimally):
 | `App/AppContainer.swift` | Append-only: one line per service, one factory method per ViewModel. Never reorder. Ask who owns it |
 | `App/ContentView.swift` | Append-only: one route per feature |
 | `Features/Mirror/ViewModels/MirrorViewModel.swift` | Smallest diff. If it passes 300 lines, propose a split |
-| `Services/ZoomGesture/ZoomService.swift` | Smallest diff. New behavior goes in its own file |
+| `Services/ZoomGesture/ZoomService.swift`, `ZoomService+*.swift` | Smallest diff. New behavior goes in its own file |
 | `*Config.swift`, `ZoomTuning.swift` | State old and new value and which acceptance criterion it affects |
 | `project.yml`, build settings | Do not edit without asking |
 
@@ -151,7 +154,7 @@ Hotspots (everyone edits them, so edit minimally):
 - A feature importing another feature.
 - `ObservableObject`, `@Published`, `@StateObject`, `@ObservedObject`, `@EnvironmentObject`.
 - `DispatchQueue` in new code, `Task.sleep(nanoseconds:)`.
-- Comments of any kind, commented-out code.
+- Comments other than the Xcode file header, commented-out code.
 - Third-party packages, new permissions, saving frames, backend calls.
 - Debug overlays, log screens, mock types in production code.
 - Force unwrap and force `try`.

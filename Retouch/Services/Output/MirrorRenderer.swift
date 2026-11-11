@@ -1,0 +1,160 @@
+import CoreImage
+import CoreImage.CIFilterBuiltins
+import Metal
+import QuartzCore
+
+final class MirrorRenderer {
+    var zoom: ZoomState {
+        get { lock.withLock { _zoom } }
+        set { lock.withLock { _zoom = newValue } }
+    }
+
+    var isReady: Bool {
+        lock.withLock { layer != nil && drawableSize.width > 0 && drawableSize.height > 0 }
+    }
+
+    private let device: MTLDevice?
+    private let context: CIContext?
+    private let makeupLook: MakeupLook?
+    private let colorSpace = CGColorSpace(name: CGColorSpace.displayP3)!
+
+    private let lock = NSLock()
+    private var layer: CAMetalLayer?
+    private var drawableSize: CGSize = .zero
+    private var pointScale: CGFloat = 1
+    private var _zoom = ZoomState()
+
+    init(device: MTLDevice?) {
+        self.device = device
+        makeupLook = device.flatMap { MakeupLook(device: $0) }
+        context = device.map { [colorSpace] in
+            CIContext(mtlDevice: $0, options: [.cacheIntermediates: false,
+                                               .workingColorSpace: colorSpace,
+                                               .outputColorSpace: colorSpace])
+        }
+    }
+
+    func attach(_ layer: CAMetalLayer, drawableSize: CGSize) {
+        layer.device = device
+        layer.pixelFormat = .bgra8Unorm
+        layer.framebufferOnly = false
+        layer.maximumDrawableCount = 2
+        layer.colorspace = colorSpace
+        layer.drawableSize = drawableSize
+        lock.withLock {
+            self.layer = layer
+            self.drawableSize = drawableSize
+            self.pointScale = layer.contentsScale
+        }
+    }
+
+    func detach(_ layer: CAMetalLayer) {
+        lock.withLock {
+            guard self.layer === layer else { return }
+            self.layer = nil
+            self.drawableSize = .zero
+        }
+    }
+
+        func render(_ frame: CIImage, zoom: ZoomState, stabilization: CGSize = .zero, commandBuffer: MTLCommandBuffer) {
+        let (layer, size, pointScale) = lock.withLock { (self.layer, drawableSize, self.pointScale) }
+        guard let layer, let context, size.width > 0, size.height > 0 else {
+            commandBuffer.commit()
+            return
+        }
+        let isLandscape = frame.extent.width > frame.extent.height
+        let image = compose(Self.uprightMirror(frame), size: size, zoom: zoom, pointScale: pointScale,
+                            stabilization: Self.uprightFraction(stabilization, isLandscape: isLandscape))
+
+        if let makeupLook,
+           ProcessInfo.processInfo.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue,
+           let target = makeupLook.nextTarget(width: Int(size.width), height: Int(size.height)) {
+            let destination = CIRenderDestination(mtlTexture: target, commandBuffer: commandBuffer)
+            destination.isFlipped = true
+            destination.colorSpace = colorSpace
+            _ = try? context.startTask(toRender: image, to: destination)
+            guard let drawable = layer.nextDrawable(),
+                  makeupLook.encode(source: target, into: drawable.texture,
+                                    zoom: Float(zoom.scale), commandBuffer: commandBuffer) else {
+                commandBuffer.commit()
+                return
+            }
+            commandBuffer.present(drawable)
+            commandBuffer.commit()
+            return
+        }
+
+        guard let drawable = layer.nextDrawable() else {
+            commandBuffer.commit()
+            return
+        }
+        let destination = CIRenderDestination(mtlTexture: drawable.texture, commandBuffer: commandBuffer)
+        destination.isFlipped = true
+        destination.colorSpace = colorSpace
+        _ = try? context.startTask(toRender: image, to: destination)
+        commandBuffer.present(drawable)
+        commandBuffer.commit()
+    }
+
+    private static func uprightFraction(_ fraction: CGSize, isLandscape: Bool) -> CGSize {
+        isLandscape ? CGSize(width: fraction.height, height: fraction.width)
+                    : CGSize(width: -fraction.width, height: fraction.height)
+    }
+
+    private static func uprightMirror(_ frame: CIImage) -> CIImage {
+        guard frame.extent.width > frame.extent.height else { return frame.oriented(.upMirrored) }
+        return frame.oriented(.leftMirrored)
+    }
+
+    private func compose(_ frame: CIImage, size: CGSize, zoom: ZoomState, pointScale: CGFloat,
+                         stabilization: CGSize) -> CIImage {
+        let extent = frame.extent
+        let outputRect = CGRect(origin: .zero, size: size)
+        let black = CIImage(color: .black).cropped(to: outputRect)
+
+        let fill = max(size.width / extent.width, size.height / extent.height)
+        let total = fill * max(zoom.scale, 0.01)
+
+        let fast = CGSize(width: stabilization.width * extent.width * total,
+                          height: stabilization.height * extent.height * total)
+        let wanted = CGPoint(x: size.width / 2 + zoom.offset.width * pointScale + fast.width,
+                             y: size.height / 2 - zoom.offset.height * pointScale - fast.height)
+        let origin = Self.keptInsideFrame(wanted, extent: extent, total: total, size: size)
+
+        let center = CGPoint(x: extent.midX, y: extent.midY)
+
+        let visible = CGRect(x: center.x - origin.x / total, y: center.y - origin.y / total,
+                             width: size.width / total, height: size.height / total)
+        let source = visible.insetBy(dx: -4, dy: -4).intersection(extent)
+        guard !source.isNull, !source.isEmpty else { return black }
+
+        var image = frame.cropped(to: source)
+            .transformed(by: CGAffineTransform(translationX: -source.minX, y: -source.minY))
+        if total < 0.99 {
+            let lanczos = CIFilter.lanczosScaleTransform()
+            lanczos.inputImage = image
+            lanczos.scale = Float(total)
+            lanczos.aspectRatio = 1
+            image = lanczos.outputImage ?? image.transformed(by: CGAffineTransform(scaleX: total, y: total))
+        } else if total > 1.01 {
+            image = image.transformed(by: CGAffineTransform(scaleX: total, y: total))
+        }
+
+        let placed = CGPoint(x: (source.minX - center.x) * total + origin.x,
+                             y: (source.minY - center.y) * total + origin.y)
+        return image.transformed(by: CGAffineTransform(translationX: placed.x, y: placed.y))
+            .composited(over: black)
+            .cropped(to: outputRect)
+    }
+
+    private static func keptInsideFrame(_ origin: CGPoint, extent: CGRect, total: CGFloat, size: CGSize) -> CGPoint {
+        CGPoint(x: clamp(origin.x, halfSpan: extent.width * total / 2, length: size.width),
+                y: clamp(origin.y, halfSpan: extent.height * total / 2, length: size.height))
+    }
+
+    private static func clamp(_ value: CGFloat, halfSpan: CGFloat, length: CGFloat) -> CGFloat {
+        let low = length - halfSpan, high = halfSpan
+        guard low <= high else { return value }
+        return min(max(value, low), high)
+    }
+}
