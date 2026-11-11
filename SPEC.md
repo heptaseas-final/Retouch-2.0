@@ -186,4 +186,6 @@ Does not block:
 
 Before writing any code, read `retouch-spec/engineering.md` (structure, call order, naming, rules). This spec says what to build, that file says how.
 
+Use these skills for every task: retouch-spec, karpathy-guidelines, antislop, swift-architecture, swift-agents. If one is not installed, say so before writing code. Where they conflict, engineering.md wins.
+
 Propose a plan first, list assumptions, ask instead of guessing, one task at a time with tests, and add nothing outside this spec. If anything conflicts (i.e. the seconds taken to zoom in/out), recommend the code as the ground truth but mention the conflict in the chat, so that I can confirm and decide.

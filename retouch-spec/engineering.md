@@ -2,7 +2,7 @@
 
 Version: 2
 Scope: all Swift code in `Retouch/` and `RetouchTests/`.
-Precedence: SPEC.md (product) first, then this file, then general Swift defaults. Where this file conflicts with general guidance (comments, one type per file), this file wins.
+Precedence: SPEC.md (product) first, then this file, then the installed swift-agents, swift-architecture, karpathy-guidelines and antislop skills, then general Swift defaults. Where this file conflicts with them (comments, one type per file, folder structure), this file wins.
 
 ## 1. Fixed constraints (from SPEC.md)
 
@@ -76,7 +76,7 @@ Where does it go?
 - A service too big for 300 lines is split into extension files in the same folder named `<Type>+<Concern>.swift`, e.g. `ZoomService+Frame.swift`, `ZoomService+Learning.swift`. Stored properties stay in `<Type>.swift`. Members used across those files are `internal` instead of `private`. Pure logic that needs no stored state goes in its own `struct` instead, e.g. `ZoomReadiness`.
 - Maximum 300 lines per file. Maximum 8 files per folder, then add a subfolder.
 - No top-level folders beyond section 3. No `Helpers`, `Utils`, `Misc`, `Common`.
-- No comments: no `//`, `///`, `/* */`, `MARK`, `TODO`, commented-out code. Names must explain the code. The only exception is the Xcode file header at the top of a file (`//  File.swift`, `//  Retouch`, `//  Created by ...`): keep it, never edit it. New files may have it or not.
+- No comments, except the Xcode file header (`Created by ...`). No `//`, `///`, `/* */`, `MARK`, `TODO` or commented-out code anywhere else. Names must explain the code.
 - `#Preview` is allowed and uses inline sample data.
 
 ## 5. Naming
@@ -173,7 +173,7 @@ Hotspots (everyone edits them, so edit minimally):
 3. Call path respected: View, ViewModel, Service, Model?
 4. Dependencies injected through `init`, created only in `AppContainer`?
 5. Heavy or per-frame work off the main actor?
-6. No magic numbers, no comments, no forbidden items?
+6. No magic numbers, no comments beyond the Xcode header, no forbidden items?
 7. Only files the task needs were touched?
 8. Tests added or updated for logic and ViewModels?
 9. Report lists what was not verified?

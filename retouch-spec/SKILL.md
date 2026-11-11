@@ -9,6 +9,10 @@ Version: 2. If `engineering.md` shows a different version, tell the user this sk
 
 SPEC.md says what to build. `engineering.md` says how. Follow both.
 
+Also apply these skills when they are installed: karpathy-guidelines, antislop, swift-architecture, swift-agents. Read each SKILL.md before writing code. If one is not installed, say so in the reply.
+
+Precedence: engineering.md wins over those skills wherever they conflict (folder structure, comments, one type per file, file size).
+
 ## Start of every task
 
 1. This chat cannot see the repo. Ask the user to attach SPEC.md (if product behavior matters) and the exact files the task will change. Say which ones you are missing. Never guess file contents.
@@ -28,7 +32,7 @@ SPEC.md says what to build. `engineering.md` says how. Follow both.
 ## Output rules
 
 - New files: complete and ready to paste. Existing files: complete file based on the version the user attached, changing only the lines the task needs.
-- No comments in code, including file headers, MARK and TODO.
+- No comments in code, except the Xcode file header. No MARK, TODO or commented-out code.
 - Touch only files the task needs. Report unrelated problems, do not fix them.
 - You cannot build or run anything. Say what was not verified and what the user must check on a real iPhone.
 - Keep replies short. No em dashes.
