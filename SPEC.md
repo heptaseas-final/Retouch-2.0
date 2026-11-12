@@ -182,10 +182,11 @@ Does not block:
 - AC14 (restore my original brightness) is not in PRD v3.1.
 - PRD v3.1 also has Gesture onboarding (3.8, P2), Low-light frame stacking (2.5, v3) and Epic 5 Quality (5.1 to 5.5, P1), which are not in this spec’s feature list.
 
-### **12. Notes for the agent**
+### 12. Notes for the agent
 
-Before writing any code, read `retouch-spec/engineering.md` (structure, call order, naming, rules). This spec says what to build, that file says how.
+On reading this spec, before replying with anything else, do these in order:
+1. Load each skill with the Skill tool: retouch-spec, karpathy-guidelines, antislop, swift-architecture, swift-agents. If one is not installed, say so.
+2. Find and read retouch-spec/engineering.md. If it is not in the chat, ask me to attach it and stop there.
+3. Reply with one line: which skills loaded, whether engineering.md was read, and its version.
 
-Use these skills for every task: retouch-spec, karpathy-guidelines, antislop, swift-architecture, swift-agents. If one is not installed, say so before writing code. Where they conflict, engineering.md wins.
-
-Propose a plan first, list assumptions, ask instead of guessing, one task at a time with tests, and add nothing outside this spec. If anything conflicts (i.e. the seconds taken to zoom in/out), recommend the code as the ground truth but mention the conflict in the chat, so that I can confirm and decide.
+Where skills conflict, engineering.md wins. Then: propose a plan first, list assumptions, ask instead of guessing, one task at a time with tests, and add nothing outside this spec. If anything conflicts (i.e. the seconds taken to zoom in/out), recommend the code as the ground truth but mention the conflict in the chat, so that I can confirm and decide.
