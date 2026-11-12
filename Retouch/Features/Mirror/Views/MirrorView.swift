@@ -65,12 +65,16 @@ struct MirrorView: View {
             viewModel.cameraStateDidChange(from: old, to: new)
             announceCameraState(new)
         }
+        .task { await viewModel.monitorStatus() }
+        .animation(.easeInOut, value: visibleStatus)
+        .onChange(of: visibleStatus) { _, status in
+            if let status { AccessibilityNotification.Announcement(status.message).post() }
+        }
     }
 
     private func announceCameraState(_ state: CameraState) {
         switch state {
-        case .failed: AccessibilityNotification.Announcement("Camera is not opened").post()
-        case .reconnecting: AccessibilityNotification.Announcement("Reconnecting…").post()
+        case .failed: AccessibilityNotification.Announcement("Can't open the camera. Close other apps that use the camera, then try again.").post()
         default: break
         }
     }
@@ -121,6 +125,7 @@ struct MirrorView: View {
     }
     private static let sideMargin: CGFloat = 16
     private static let dockZoneHeight: CGFloat = 120
+    private static let bannerTrailing: CGFloat = 82
 
     @ViewBuilder
     private var sideLightButton: some View {
@@ -246,29 +251,23 @@ struct MirrorView: View {
 
     @ViewBuilder
     private var cameraStateOverlay: some View {
-        switch viewModel.cameraState {
-        case .failed:
-            VStack(spacing: 16) {
-                Text("Camera is not opened")
-                    .foregroundStyle(.white)
-                Button("Try again", action: viewModel.retryCamera)
-                    .buttonStyle(.borderedProminent)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(.black)
-        case .reconnecting:
+        if viewModel.cameraState == .failed {
+            CameraFailedView(onRetry: viewModel.retryCamera)
+        } else if let status = visibleStatus {
             VStack {
-                Label("Reconnecting…", systemImage: "arrow.triangle.2.circlepath")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(.ultraThinMaterial, in: Capsule())
+                MirrorStatusBanner(status: status, onDismiss: viewModel.dismissStatus)
+                    .padding(.leading, Self.sideMargin)
+                    .padding(.trailing, showsControls ? Self.bannerTrailing : Self.sideMargin)
+                    .transition(.opacity)
                 Spacer()
             }
-            .padding(.top)
-        default:
-            EmptyView()
+            .padding(.top, 8)
         }
+    }
+
+    private var visibleStatus: MirrorStatus? {
+        guard let status = viewModel.status, showsControls || status == .cameraPaused else { return nil }
+        return status
     }
 }
 

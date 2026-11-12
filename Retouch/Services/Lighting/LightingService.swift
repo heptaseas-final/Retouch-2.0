@@ -6,6 +6,7 @@ protocol LightingServicing: AnyObject {
     var filterColor: ManualColorChoice? { get }
     var ringLightLevel: Double { get }
     var closeness: Double { get }
+    var status: LightingStatus { get }
     var isAutoBrightness: Bool { get }
     var brightness: Double { get }
     var config: LightingConfig { get }
@@ -23,6 +24,7 @@ final class LightingService: LightingServicing, CameraLifecycleListening {
     private(set) var filterColor: ManualColorChoice?
     private(set) var ringLightLevel: Double = 0
     private(set) var closeness: Double = 0
+    private(set) var status = LightingStatus()
 
     @ObservationIgnored let config: LightingConfig
     @ObservationIgnored private let brightnessController: BrightnessController
@@ -136,6 +138,7 @@ final class LightingService: LightingServicing, CameraLifecycleListening {
     }
 
     private func engineDidUpdate(_ output: LightingOutput) {
+        if status != output.status { status = output.status }
         guard isStarted, cameraState == .running else { return }
         autoRingLight = output.ringLight
         brightnessCap = output.screenBrightnessCap

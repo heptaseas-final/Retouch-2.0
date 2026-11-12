@@ -15,6 +15,7 @@ final class OnboardingCoordinator {
     private(set) var step: OnboardingStep = .placeHand
     private(set) var isInstructionVisible = true
     private(set) var isFinished = false
+    private(set) var needsDetectionHelp = false
 
     var selectedPart: FacePart
     var lightMode: LightMode = .off
@@ -23,6 +24,7 @@ final class OnboardingCoordinator {
     @ObservationIgnored private let autoPart: FacePart
     @ObservationIgnored private let onFinish: () -> Void
     @ObservationIgnored private var delayTask: Task<Void, Never>?
+    @ObservationIgnored private var helpTask: Task<Void, Never>?
     @ObservationIgnored private var isArmed = false
     @ObservationIgnored private var hasStarted = false
 
@@ -47,6 +49,16 @@ final class OnboardingCoordinator {
     func detach(_ source: any OnboardingSignalSource) {
         source.onSignal = nil
     }
+
+    var instruction: String? {
+        needsDetectionHelp ? OnboardingStep.detectionHelp : step.instruction
+    }
+
+    var spokenInstruction: String? {
+        needsDetectionHelp ? OnboardingStep.detectionHelp : step.spokenInstruction
+    }
+
+    var isBubbleVisible: Bool { isInstructionVisible || needsDetectionHelp }
 
     func skip() {
         finish()
@@ -73,6 +85,9 @@ final class OnboardingCoordinator {
         if step.revealTrigger == trigger {
             isInstructionVisible = true
         }
+        if step.advance.trigger == trigger, step.waitsForDetection {
+            stopDetectionHelp()
+        }
 
         guard step.advance.trigger == trigger, !isArmed else { return }
         armAdvance()
@@ -80,6 +95,7 @@ final class OnboardingCoordinator {
 
     private func enter(_ newStep: OnboardingStep) {
         delayTask?.cancel()
+        stopDetectionHelp()
         step = newStep
         isArmed = false
         isInstructionVisible = newStep.revealTrigger == nil
@@ -87,6 +103,23 @@ final class OnboardingCoordinator {
         if newStep.advance.trigger == nil {
             armAdvance()
         }
+        if newStep.waitsForDetection {
+            scheduleDetectionHelp()
+        }
+    }
+
+    private func scheduleDetectionHelp() {
+        helpTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(OnboardingStep.detectionHelpDelay))
+            guard !Task.isCancelled else { return }
+            self?.needsDetectionHelp = true
+        }
+    }
+
+    private func stopDetectionHelp() {
+        helpTask?.cancel()
+        helpTask = nil
+        needsDetectionHelp = false
     }
 
     private func armAdvance() {
@@ -119,6 +152,7 @@ final class OnboardingCoordinator {
     private func finish() {
         guard !isFinished else { return }
         delayTask?.cancel()
+        stopDetectionHelp()
         isFinished = true
         onFinish()
     }
@@ -169,6 +203,12 @@ enum OnboardingStep: CaseIterable {
 
     static let pause: TimeInterval = 2.5
     static let voiceOverPause: TimeInterval = 4
+    static let detectionHelpDelay: TimeInterval = 8
+    static let detectionHelp = "Can't see your hand yet. Keep your face in view and bring your hand closer to your eye."
+
+    var waitsForDetection: Bool {
+        advance.trigger == .handNearEye || advance.trigger == .zoomedIn
+    }
 
     var instruction: String? {
         switch self {

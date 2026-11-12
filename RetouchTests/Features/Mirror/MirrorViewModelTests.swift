@@ -29,6 +29,18 @@ struct MirrorViewModelTests {
         #expect(viewModel.lightPlacement == .left && settings.lightPlacement == .left)
     }
 
+    @Test func lowLightStatusAppearsAndCanBeDismissed() {
+        let viewModel = makeViewModel()
+        viewModel.setLightMode(.on(.white))
+        lighting.status = LightingStatus(faceLux: 100)
+        viewModel.refreshStatus(now: 0)
+        viewModel.refreshStatus(now: 2)
+        #expect(viewModel.status == .notEnoughLight)
+        viewModel.dismissStatus()
+        viewModel.refreshStatus(now: 3)
+        #expect(viewModel.status == nil)
+    }
+
     @Test func reduceMotionIsForwardedToZoom() {
         let viewModel = makeViewModel()
         viewModel.setReduceMotion(true)

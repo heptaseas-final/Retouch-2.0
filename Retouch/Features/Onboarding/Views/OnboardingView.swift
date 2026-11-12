@@ -113,7 +113,7 @@ struct OnboardingView<Camera: View>: View {
         .pickerSwipe(pickerSwipe, isEnabled: step.focus == .picker)
         .animation(.easeInOut(duration: 0.2), value: pickerSwipe.isDragging)
         .animation(.snappy, value: coordinator.step)
-        .animation(.snappy, value: coordinator.isInstructionVisible)
+        .animation(.snappy, value: coordinator.isBubbleVisible)
         .onChange(of: isVoiceOverOn, initial: true) { _, isOn in coordinator.isVoiceOverOn = isOn }
         .onAppear {
             coordinator.attach(signalSource)
@@ -224,10 +224,10 @@ struct OnboardingView<Camera: View>: View {
     @ViewBuilder
     private func bubble(at position: OnboardingBubblePosition) -> some View {
         if coordinator.step.bubblePosition == position,
-           coordinator.isInstructionVisible,
-           let text = coordinator.step.instruction {
+           coordinator.isBubbleVisible,
+           let text = coordinator.instruction {
             InstructionBubble(text: text, width: coordinator.step.focus.isLighting ? 233 : nil,
-                              isFullWidth: isPickerFullWidth, spokenText: coordinator.step.spokenInstruction,
+                              isFullWidth: isPickerFullWidth, spokenText: coordinator.spokenInstruction,
                               takesVoiceOverFocus: coordinator.step.focus == .none)
                 .id(text)
                 .transition(.opacity)
