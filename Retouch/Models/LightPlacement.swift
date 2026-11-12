@@ -3,9 +3,9 @@ enum LightPlacement: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .right: "Light Button: Right"
-        case .bottom: "Light Button: Bottom"
-        case .left: "Light Button: Left"
+        case .right: "Right"
+        case .bottom: "Bottom"
+        case .left: "Left"
         }
     }
 

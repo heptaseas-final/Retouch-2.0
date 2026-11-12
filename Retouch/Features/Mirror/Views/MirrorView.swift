@@ -149,13 +149,20 @@ struct MirrorView: View {
 
     private func moveByVoiceOver(to target: LightDock, named name: String, from current: LightDock) {
         move(to: target, from: center(of: current))
-        var announcement = AttributedString("Light button moved to \(name)")
+        announceLightMoved(to: target)
+    }
+
+    private func announceLightMoved(to dock: LightDock) {
+        var announcement = AttributedString("Light button moved to \(dock.placement.rawValue)")
         announcement.accessibilitySpeechAnnouncementPriority = .high
         AccessibilityNotification.Announcement(announcement).post()
     }
 
     private func chooseLightPlacement(_ placement: LightPlacement) {
-        move(to: LightDock(placement), from: center(of: lightDock))
+        let target = LightDock(placement)
+        guard target != lightDock, target != .docked || !isPickerFullWidth else { return }
+        move(to: target, from: center(of: lightDock))
+        announceLightMoved(to: target)
     }
 
     private func setLargerButtons(_ isOn: Bool) {
@@ -168,10 +175,15 @@ struct MirrorView: View {
         isPickerFullWidth = isFull
         if isFull {
             dockBeforeFullWidth = lightDock
-            if lightDock == .docked { move(to: .side(edge: .leading), from: center(of: .docked)) }
+            if lightDock == .docked {
+                move(to: .side(edge: .leading), from: center(of: .docked))
+                announceLightMoved(to: lightDock)
+            }
         } else if let previous = dockBeforeFullWidth {
             dockBeforeFullWidth = nil
+            guard previous != lightDock else { return }
             move(to: previous, from: center(of: lightDock))
+            announceLightMoved(to: previous)
         }
     }
 
