@@ -11,7 +11,13 @@ struct InstructionBubble: View {
     let text: String
     var width: CGFloat? = nil
     var isFullWidth = false
+    var spokenText: String? = nil
+    var takesVoiceOverFocus = false
 
+    @AccessibilityFocusState private var isFocused: Bool
+    @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
+
+    private let focusDelay: Duration = .milliseconds(300)
     private let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
 
     var body: some View {
@@ -32,6 +38,16 @@ struct InstructionBubble: View {
                 .overlay(shape.strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
         }
         .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenText ?? text)
+        .accessibilityAddTraits(.isStaticText)
+        .accessibilityFocused($isFocused)
+        .task(id: text) { await focusIfNeeded() }
+    }
+
+    private func focusIfNeeded() async {
+        guard takesVoiceOverFocus, isVoiceOverOn, (try? await Task.sleep(for: focusDelay)) != nil else { return }
+        isFocused = true
     }
 
     private var label: some View {
@@ -42,7 +58,6 @@ struct InstructionBubble: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 22)
             .padding(.vertical, 14)
-            .accessibilityAddTraits(.isStaticText)
     }
 }
 

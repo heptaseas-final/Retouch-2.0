@@ -18,6 +18,7 @@ final class OnboardingCoordinator {
 
     var selectedPart: FacePart
     var lightMode: LightMode = .off
+    var isVoiceOverOn = false
 
     @ObservationIgnored private let autoPart: FacePart
     @ObservationIgnored private let onFinish: () -> Void
@@ -74,8 +75,7 @@ final class OnboardingCoordinator {
         }
 
         guard step.advance.trigger == trigger, !isArmed else { return }
-        isArmed = true
-        scheduleAdvance(after: step.advance.delay)
+        armAdvance()
     }
 
     private func enter(_ newStep: OnboardingStep) {
@@ -85,9 +85,14 @@ final class OnboardingCoordinator {
         isInstructionVisible = newStep.revealTrigger == nil
 
         if newStep.advance.trigger == nil {
-            isArmed = true
-            scheduleAdvance(after: newStep.advance.delay)
+            armAdvance()
         }
+    }
+
+    private func armAdvance() {
+        isArmed = true
+        let delay = step.advance.delay
+        scheduleAdvance(after: isVoiceOverOn && delay > 0 ? max(delay, OnboardingStep.voiceOverPause) : delay)
     }
 
     private func scheduleAdvance(after delay: TimeInterval) {
@@ -163,6 +168,7 @@ enum OnboardingStep: CaseIterable {
     case done
 
     static let pause: TimeInterval = 2.5
+    static let voiceOverPause: TimeInterval = 4
 
     var instruction: String? {
         switch self {
@@ -171,12 +177,24 @@ enum OnboardingStep: CaseIterable {
         case .noNeedToTap:   "so you don’t have to tap anything on screen."
         case .swipeModes:    "Swipe left or right to switch modes and focus on one area."
         case .zoomedOnArea:  nil
-        case .needLight:     "Need more light? Tap here for lighting"
+        case .needLight:     "Need more light? Tap the light button."
         case .tapForWarm:    "Tap to see warm light."
         case .tapForCool:    "Tap again to see cool light."
-        case .tapForWhite:   "Tap again to go back to white light."
-        case .tapToTurnOff:  "Tap here to turn off the light."
+        case .tapForWhite:   "Tap again to go back to neutral light."
+        case .tapToTurnOff:  "Tap the light button to turn it off."
         case .done:          "Happy Retouch-ing!"
+        }
+    }
+
+    var spokenInstruction: String? {
+        switch self {
+        case .swipeModes:    "Swipe up or down on Zoom target to switch modes and focus on one area."
+        case .needLight:     "Need more light? Double tap the Light button."
+        case .tapForWarm:    "Double tap Light color to see warm light."
+        case .tapForCool:    "Double tap Light color again to see cool light."
+        case .tapForWhite:   "Double tap Light color again to go back to neutral light."
+        case .tapToTurnOff:  "Double tap the Light button to turn it off."
+        default:             instruction
         }
     }
 

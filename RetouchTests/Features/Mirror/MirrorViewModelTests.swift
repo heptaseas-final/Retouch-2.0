@@ -6,10 +6,27 @@ struct MirrorViewModelTests {
     let camera = FakeCameraService()
     let lighting = FakeLightingService()
     let zoom = FakeZoomService()
+    let settings = FakeMirrorSettingsStore()
 
     func makeViewModel() -> MirrorViewModel {
         MirrorViewModel(camera: camera, lighting: lighting, zoom: zoom,
-                        zoomStore: ZoomStore(), renderer: MirrorRenderer(device: nil))
+                        zoomStore: ZoomStore(), renderer: MirrorRenderer(device: nil), settings: settings)
+    }
+
+    @Test func loadsSavedSettings() {
+        settings.isLargerButtons = true
+        settings.lightPlacement = .right
+        let viewModel = makeViewModel()
+        #expect(viewModel.isLargerButtons)
+        #expect(viewModel.lightPlacement == .right)
+    }
+
+    @Test func changingSettingsSavesThem() {
+        let viewModel = makeViewModel()
+        viewModel.setLargerButtons(true)
+        viewModel.setLightPlacement(.left)
+        #expect(viewModel.isLargerButtons && settings.isLargerButtons)
+        #expect(viewModel.lightPlacement == .left && settings.lightPlacement == .left)
     }
 
     @Test func selectingPartUpdatesStateAndZoom() {

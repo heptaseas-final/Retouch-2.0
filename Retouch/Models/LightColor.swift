@@ -20,9 +20,17 @@ enum LightColor: CaseIterable, Identifiable {
         }
     }
 
+    var name: String {
+        switch self {
+        case .white: "Neutral"
+        case .warm: "Warm"
+        case .cool: "Cool"
+        }
+    }
+
     var label: String {
         switch self {
-        case .white: "White light"
+        case .white: "Neutral light"
         case .warm: "Warm light"
         case .cool: "Cool light"
         }

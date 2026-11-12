@@ -60,9 +60,8 @@ struct HorizontalPicker<Item: Hashable>: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: swipe.isDragging)
         .sensoryFeedback(.selection, trigger: current)
         .accessibilityElement()
-        .accessibilityAddTraits(.isButton)
         .accessibilityLabel("Zoom target")
-        .accessibilityValue(title(selection))
+        .accessibilityValue(title(selection).capitalized)
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: select(base + 1)

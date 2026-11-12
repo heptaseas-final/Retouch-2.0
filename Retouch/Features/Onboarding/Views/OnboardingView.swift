@@ -17,13 +17,15 @@ struct OnboardingView<Camera: View>: View {
 
     @State private var pickerSwipe = PickerSwipe()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
 
     private let handSize: CGFloat = 200
     private let spotlightColor = Color(hex: 0x1D1D1D)
     private let spotlightPadding: CGFloat = 10
     private let controlsHeight: CGFloat = 66
     private let minTapTarget: CGFloat = 44
-    private let lightButtonSize: CGFloat = 54
+    @Environment(\.isLargerButtons) private var isLargerButtons
+    @Environment(\.dynamicTypeSize) private var typeSize
     private let bubbleGap: CGFloat = 16
     private let layoutSpace = "onboardingLayout"
 
@@ -84,29 +86,34 @@ struct OnboardingView<Camera: View>: View {
                     .transition(.opacity)
             }
 
-            if showsSideLight(for: step), lightFrame != .zero, controlsFrame != .zero {
-                fullWidthBubbles(for: step)
-            } else {
-                VStack(spacing: 0) {
-                    topBar(for: step)
-                    bubble(at: .top)
-                        .padding(.top, 8)
-                    Spacer(minLength: 0)
-                    bottomBubble
-                        .padding(.bottom, 16)
-                    Color.clear
-                        .frame(height: max(controlsHeight, controlsFrame.height))
-                        .allowsHitTesting(false)
+            Group {
+                if showsSideLight(for: step), lightFrame != .zero, controlsFrame != .zero {
+                    fullWidthBubbles(for: step)
+                } else {
+                    VStack(spacing: 0) {
+                        topBar(for: step)
+                        bubble(at: .top)
+                            .padding(.top, 8)
+                        Spacer(minLength: 0)
+                        bottomBubble
+                            .padding(.bottom, 16)
+                        Color.clear
+                            .frame(height: max(controlsHeight, controlsFrame.height))
+                            .allowsHitTesting(false)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
             }
+            .accessibilityElement(children: .contain)
+            .accessibilitySortPriority(1)
         }
         .coordinateSpace(.named(layoutSpace))
         .pickerSwipe(pickerSwipe, isEnabled: step.focus == .picker)
         .animation(.easeInOut(duration: 0.2), value: pickerSwipe.isDragging)
         .animation(.snappy, value: coordinator.step)
         .animation(.snappy, value: coordinator.isInstructionVisible)
+        .onChange(of: isVoiceOverOn, initial: true) { _, isOn in coordinator.isVoiceOverOn = isOn }
         .onAppear {
             coordinator.attach(signalSource)
             coordinator.start()
@@ -131,6 +138,7 @@ struct OnboardingView<Camera: View>: View {
                 }
                 .font(.subheadline)
                 .underline()
+                .largerButtonsTypeSize(isLargerButtons)
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.3), radius: 2)
             }
@@ -188,7 +196,7 @@ struct OnboardingView<Camera: View>: View {
         let buttonEmphasis: ControlEmphasis = flash == .dimmed && color == .dimmed ? .dimmed : .normal
         return HStack {
             LightModeButton(mode: lightModeBinding, onChange: { _ in coordinator.flashTapped() },
-                            nextMode: { coordinator.nextLightMode(from: $0) }, size: lightButtonSize,
+                            nextMode: { coordinator.nextLightMode(from: $0) }, size: LargerButtons.controlSize(isLarger: isLargerButtons, typeSize: typeSize),
                             boltEmphasis: buttonEmphasis == .dimmed ? .normal : flash,
                             colorEmphasis: buttonEmphasis == .dimmed ? .normal : color)
                 .emphasis(buttonEmphasis)
@@ -205,11 +213,11 @@ struct OnboardingView<Camera: View>: View {
     }
 
     private func flashEmphasis(for step: OnboardingStep) -> ControlEmphasis {
-        step.focus == .flash ? .highlighted(flashGlow) : .dimmed
+        step.focus == .flash ? .highlighted(flashGlow, guide: step.spokenInstruction) : .dimmed
     }
 
     private func lightColorEmphasis(for step: OnboardingStep) -> ControlEmphasis {
-        step.focus == .lightColor ? .highlighted(flashGlow) : .dimmed
+        step.focus == .lightColor ? .highlighted(flashGlow, guide: step.spokenInstruction) : .dimmed
     }
 
     @ViewBuilder
@@ -218,7 +226,8 @@ struct OnboardingView<Camera: View>: View {
            coordinator.isInstructionVisible,
            let text = coordinator.step.instruction {
             InstructionBubble(text: text, width: coordinator.step.focus.isLighting ? 233 : nil,
-                              isFullWidth: isPickerFullWidth)
+                              isFullWidth: isPickerFullWidth, spokenText: coordinator.step.spokenInstruction,
+                              takesVoiceOverFocus: coordinator.step.focus == .none)
                 .id(text)
                 .transition(.opacity)
         }
@@ -234,7 +243,7 @@ struct OnboardingView<Camera: View>: View {
             swipe: pickerSwipe,
             nextLightMode: { coordinator.nextLightMode(from: $0) },
             onLightTap: { _ in coordinator.flashTapped() },
-            pickerEmphasis: step.focus == .picker ? .highlighted(pickerGlow) : .dimmed,
+            pickerEmphasis: step.focus == .picker ? .highlighted(pickerGlow, guide: step.spokenInstruction) : .dimmed,
             flashEmphasis: flashEmphasis(for: step),
             lightColorEmphasis: lightColorEmphasis(for: step),
             onPickerLayoutChange: { isPickerFullWidth = $0 }
