@@ -23,6 +23,7 @@ struct CameraPermissionDeniedView: View {
             .accessibilityElement(children: .combine)
             Button("Open Settings", action: onOpenSettings)
                 .buttonStyle(.borderedProminent)
+                .tint(.appMagenta)
         }
     }
 }

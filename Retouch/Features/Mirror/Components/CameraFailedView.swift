@@ -16,6 +16,7 @@ struct CameraFailedView: View {
             .accessibilityElement(children: .combine)
             Button("Try Again", action: onRetry)
                 .buttonStyle(.borderedProminent)
+                .tint(.appMagenta)
         }
         .padding(.horizontal, 32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

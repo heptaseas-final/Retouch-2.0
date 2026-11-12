@@ -9,7 +9,7 @@ struct MirrorStatusBanner: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: symbol)
-                .foregroundStyle(tint)
+                .foregroundStyle(.white)
                 .accessibilityHidden(true)
             Text(status.message)
                 .font(.subheadline.weight(.semibold))
@@ -35,14 +35,6 @@ struct MirrorStatusBanner: View {
         case .error: "exclamationmark.triangle.fill"
         case .success: "checkmark.circle.fill"
         case .info: "info.circle.fill"
-        }
-    }
-
-    private var tint: Color {
-        switch status.kind {
-        case .error: .yellow
-        case .success: .green
-        case .info: .white
         }
     }
 }

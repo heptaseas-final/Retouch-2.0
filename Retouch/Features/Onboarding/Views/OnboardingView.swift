@@ -12,15 +12,11 @@ struct OnboardingView<Camera: View>: View {
     private let signalSource: any OnboardingSignalSource
     private let camera: (FacePart, LightMode) -> Camera
 
-    private let pickerGlow = Color(red: 0.85, green: 0.30, blue: 0.40)
-    private let flashGlow = Color(red: 0.76, green: 0.60, blue: 0.45)
-
     @State private var pickerSwipe = PickerSwipe()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
 
     private let handSize: CGFloat = 200
-    private let spotlightColor = Color(hex: 0x1D1D1D)
     private let spotlightPadding: CGFloat = 10
     private let controlsHeight: CGFloat = 66
     private let minTapTarget: CGFloat = 44
@@ -72,7 +68,7 @@ struct OnboardingView<Camera: View>: View {
                 GeometryReader { proxy in
                     SpotlightShape(hole: target.map { proxy[$0].insetBy(dx: -spotlightPadding, dy: -spotlightPadding) },
                                    animatesHole: !reduceMotion)
-                        .fill(spotlightColor.opacity(spotlightOpacity(for: step)), style: FillStyle(eoFill: true))
+                        .fill(Color.spotlightColor.opacity(spotlightOpacity(for: step)), style: FillStyle(eoFill: true))
                 }
                 .allowsHitTesting(false)
             }
@@ -134,8 +130,11 @@ struct OnboardingView<Camera: View>: View {
             if step != .done {
                 Button { coordinator.skip() } label: {
                     Text("Skip")
+                        .padding(.horizontal, 12)
                         .frame(minWidth: minTapTarget, minHeight: minTapTarget)
-                        .contentShape(Rectangle())
+                        .background(.black.opacity(0.55), in: Capsule())
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .contentShape(Capsule())
                 }
                 .font(.subheadline)
                 .underline()
@@ -214,11 +213,11 @@ struct OnboardingView<Camera: View>: View {
     }
 
     private func flashEmphasis(for step: OnboardingStep) -> ControlEmphasis {
-        step.focus == .flash ? .highlighted(flashGlow, guide: step.spokenInstruction) : .dimmed
+        step.focus == .flash ? .highlighted(Color.lightGlow, guide: step.spokenInstruction) : .dimmed
     }
 
     private func lightColorEmphasis(for step: OnboardingStep) -> ControlEmphasis {
-        step.focus == .lightColor ? .highlighted(flashGlow, guide: step.spokenInstruction) : .dimmed
+        step.focus == .lightColor ? .highlighted(Color.lightGlow, guide: step.spokenInstruction) : .dimmed
     }
 
     @ViewBuilder
@@ -244,7 +243,7 @@ struct OnboardingView<Camera: View>: View {
             swipe: pickerSwipe,
             nextLightMode: { coordinator.nextLightMode(from: $0) },
             onLightTap: { _ in coordinator.flashTapped() },
-            pickerEmphasis: step.focus == .picker ? .highlighted(pickerGlow, guide: step.spokenInstruction) : .dimmed,
+            pickerEmphasis: step.focus == .picker ? .highlighted(Color.pickerGlow, guide: step.spokenInstruction) : .dimmed,
             flashEmphasis: flashEmphasis(for: step),
             lightColorEmphasis: lightColorEmphasis(for: step),
             onPickerLayoutChange: { isPickerFullWidth = $0 }

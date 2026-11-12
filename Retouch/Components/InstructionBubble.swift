@@ -34,7 +34,7 @@ struct InstructionBubble: View {
         .background {
             shape
                 .fill(.ultraThinMaterial)
-                .overlay(shape.fill(Color.black.opacity(0.35)))
+                .overlay(shape.fill(Color.black.opacity(0.55)))
                 .overlay(shape.strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
         }
         .shadow(color: .black.opacity(0.15), radius: 8, y: 4)

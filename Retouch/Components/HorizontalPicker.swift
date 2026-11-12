@@ -20,6 +20,7 @@ struct HorizontalPicker<Item: Hashable>: View {
     @State private var base = 0
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
 
     private let maxStepsPerSwipe = 1
 
@@ -36,7 +37,7 @@ struct HorizontalPicker<Item: Hashable>: View {
 
         ZStack {
             Color.clear
-                .pickerGlass(tint: nil)
+                .pickerGlass(tint: contrast == .increased ? .white.opacity(0.8) : nil)
 
             Color.clear
                 .pickerGlass(tint: .white.opacity(0.4))
@@ -45,7 +46,7 @@ struct HorizontalPicker<Item: Hashable>: View {
             ForEach(Array(current - 5...current + 5), id: \.self) { index in
                 Text(title(item(at: index)))
                     .font(Font(font))
-                    .foregroundStyle(index == current ? Color.appMagenta : Color.appInactive.opacity(0.6))
+                    .foregroundStyle(index == current ? Color.appMagenta : Color.appInactive.opacity(contrast == .increased ? 1 : 0.6))
                     .lineLimit(1)
                     .fixedSize()
                     .frame(width: track.slot(index), height: currentHeight)
@@ -94,6 +95,7 @@ struct HorizontalPicker<Item: Hashable>: View {
             if delta < -items.count / 2 { delta += items.count }
             withAnimation(.snappy) { base += delta }
         }
+        .environment(\.colorScheme, .light)
     }
 
     private func wrapped(_ index: Int) -> Int {

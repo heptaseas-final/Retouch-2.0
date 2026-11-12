@@ -14,9 +14,9 @@ enum LightColor: CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .white: Color(hex: 0xFFFFFF)
-        case .warm: Color(hex: 0xFFECBB)
-        case .cool: Color(hex: LightingTuning.softBlue)
+        case .white: .lightNeutral
+        case .warm: .lightWarm
+        case .cool: .lightCool
         }
     }
 

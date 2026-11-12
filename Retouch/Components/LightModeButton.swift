@@ -37,9 +37,7 @@ struct LightModeButton: View {
             .padding(inset)
             .background(alignment: .bottom) {
                 Capsule()
-                    .fill(.ultraThinMaterial)
-                    .overlay(Capsule().fill(Color.white.opacity(0.6)))
-                    .overlay(Capsule().strokeBorder(Color.black.opacity(0.1), lineWidth: 1))
+                    .fill(Color.appLightCapsule)
                     .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
                     .frame(height: mode.lightColor == nil ? size : size * 2 + inset)
             }
@@ -119,12 +117,8 @@ struct LightModeButton: View {
             .foregroundStyle(Color.appMagenta)
             .contentTransition(.symbolEffect(.replace))
             .frame(width: circleSize, height: circleSize)
-            .background(Circle().fill(buttonFill))
+            .background(Circle().fill(Color.appLightFace))
             .overlay(Circle().strokeBorder(Color.black.opacity(0.12), lineWidth: 1))
-    }
-
-    private var buttonFill: LinearGradient {
-        LinearGradient(colors: [.white, Color(white: 0.94)], startPoint: .top, endPoint: .bottom)
     }
 
     private var flashButton: some View {
