@@ -5,6 +5,7 @@ struct ZoomableCameraPreview: View {
     var announcesZoom = true
 
     @State private var announcedTarget: ZoomTarget?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let announcementDelay: Duration = .milliseconds(800)
 
@@ -25,6 +26,7 @@ struct ZoomableCameraPreview: View {
         .accessibilityLabel("Mirror")
         .accessibilityValue(viewModel.zoomTarget.spokenName)
         .task(id: viewModel.zoomTarget) { await announceWhenStable(viewModel.zoomTarget) }
+        .onChange(of: reduceMotion, initial: true) { _, isOn in viewModel.setReduceMotion(isOn) }
     }
 
     private func announceWhenStable(_ target: ZoomTarget) async {

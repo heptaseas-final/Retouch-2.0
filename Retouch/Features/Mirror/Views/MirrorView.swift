@@ -7,6 +7,7 @@ struct MirrorView: View {
     @State private var lightDock: LightDock
     @Environment(\.isLargerButtons) private var isLargerButtons
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var lightDrag: CGSize = .zero
     @State private var isDraggingLight = false
     @State private var screenFrame: CGRect = .zero
@@ -220,6 +221,7 @@ struct MirrorView: View {
         let destination = center(of: target)
         lightDock = target
         if !isPickerFullWidth { viewModel.setLightPlacement(target.placement) }
+        guard !reduceMotion else { return lightDrag = .zero }
         lightDrag = CGSize(width: drop.x - destination.x, height: drop.y - destination.y)
         DispatchQueue.main.async {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { lightDrag = .zero }

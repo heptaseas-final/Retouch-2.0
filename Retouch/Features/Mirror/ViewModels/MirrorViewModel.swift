@@ -77,6 +77,8 @@ final class MirrorViewModel {
         settings.lightPlacement = placement
     }
 
+    func setReduceMotion(_ isOn: Bool) { zoom.setReduceMotion(isOn) }
+
     func setViewSize(_ size: CGSize) { zoom.setViewSize(size) }
 
     func pinchChanged(_ magnification: CGFloat) { zoom.pinchChanged(magnification) }

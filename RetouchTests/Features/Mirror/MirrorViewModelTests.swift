@@ -29,6 +29,12 @@ struct MirrorViewModelTests {
         #expect(viewModel.lightPlacement == .left && settings.lightPlacement == .left)
     }
 
+    @Test func reduceMotionIsForwardedToZoom() {
+        let viewModel = makeViewModel()
+        viewModel.setReduceMotion(true)
+        #expect(zoom.reduceMotionValues == [true])
+    }
+
     @Test func selectingPartUpdatesStateAndZoom() {
         let viewModel = makeViewModel()
         viewModel.select(.mouth)

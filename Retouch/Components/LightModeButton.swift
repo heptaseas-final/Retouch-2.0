@@ -25,6 +25,7 @@ struct LightModeButton: View {
     @State private var liftOrigin: CGSize = .zero
     @State private var lastTranslation: CGSize = .zero
     @State private var liftTask: Task<Void, Never>?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let tapSlop: CGFloat = 10
 
@@ -46,12 +47,12 @@ struct LightModeButton: View {
                 if let lightColor = mode.lightColor {
                     indicator(for: lightColor)
                         .offset(y: -(circleSize + inset * 2))
-                        .transition(.scale(scale: 0.5).combined(with: .opacity))
+                        .transition(reduceMotion ? .opacity : .scale(scale: 0.5).combined(with: .opacity))
                 }
             }
-        .scaleEffect(isLifted ? 1.12 : 1)
+        .scaleEffect(isLifted && !reduceMotion ? 1.12 : 1)
         .shadow(color: .black.opacity(isLifted ? 0.25 : 0), radius: 12, y: 6)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isLifted)
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.7), value: isLifted)
         .sensoryFeedback(.impact(weight: .medium), trigger: isLifted) { _, lifted in lifted }
     }
 

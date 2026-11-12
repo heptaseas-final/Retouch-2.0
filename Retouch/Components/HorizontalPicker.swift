@@ -19,6 +19,7 @@ struct HorizontalPicker<Item: Hashable>: View {
 
     @State private var base = 0
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let maxStepsPerSwipe = 1
 
@@ -57,7 +58,7 @@ struct HorizontalPicker<Item: Hashable>: View {
         .frame(width: width, height: currentHeight)
         .clipShape(Capsule())
         .contentShape(Capsule())
-        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: swipe.isDragging)
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.6), value: swipe.isDragging)
         .sensoryFeedback(.selection, trigger: current)
         .accessibilityElement()
         .accessibilityLabel("Zoom target")
@@ -115,26 +116,6 @@ struct HorizontalPicker<Item: Hashable>: View {
 
     private func commit(_ item: Item) {
         if selection != item { selection = item }
-    }
-}
-
-enum PickerMetrics {
-    private static let baseSize: CGFloat = 15
-    private static let textVerticalInset: CGFloat = 18
-
-    static func font(for typeSize: DynamicTypeSize) -> UIFont {
-        let regular = UIFont.systemFont(ofSize: baseSize, weight: .regular)
-        let base = regular.fontDescriptor.withDesign(.rounded).map { UIFont(descriptor: $0, size: baseSize) } ?? regular
-        let traits = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(typeSize))
-        return UIFontMetrics(forTextStyle: .subheadline).scaledFont(for: base, compatibleWith: traits)
-    }
-
-    static func textWidth(_ text: String, font: UIFont) -> CGFloat {
-        ceil((text as NSString).size(withAttributes: [.font: font]).width)
-    }
-
-    static func height(_ minimum: CGFloat, font: UIFont) -> CGFloat {
-        max(minimum, ceil(font.lineHeight) + 2 * textVerticalInset)
     }
 }
 

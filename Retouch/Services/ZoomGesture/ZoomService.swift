@@ -13,6 +13,7 @@ nonisolated protocol ZoomServicing: AnyObject, Sendable {
     func pinchEnded()
     func resetSession()
     func select(_ part: FacePart)
+    func setReduceMotion(_ isOn: Bool)
 }
 
 nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
@@ -232,6 +233,10 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         }
         setGestureEnabled(false)
         setManualTarget(target)
+    }
+
+    func setReduceMotion(_ isOn: Bool) {
+        Task { @MainActor [animator] in animator.reducesMotion = isOn }
     }
 
     func setManualTarget(_ target: ZoomTarget) {
