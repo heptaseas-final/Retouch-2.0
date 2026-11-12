@@ -62,6 +62,12 @@ struct HorizontalPicker<Item: Hashable>: View {
         .accessibilityElement()
         .accessibilityLabel("Zoom target")
         .accessibilityValue(title(selection).capitalized)
+        .accessibilityInputLabels([Text("Zoom target"), Text("Zoom"), Text(title(selection).capitalized)])
+        .accessibilityActions {
+            ForEach(items, id: \.self) { item in
+                Button("Select \(title(item).capitalized)") { select(item: item) }
+            }
+        }
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: select(base + 1)
@@ -100,6 +106,11 @@ struct HorizontalPicker<Item: Hashable>: View {
     private func select(_ index: Int) {
         withAnimation(.snappy) { base = index }
         commit(item(at: index))
+    }
+
+    private func select(item: Item) {
+        guard let target = items.firstIndex(of: item) else { return }
+        select(base + target - wrapped(base))
     }
 
     private func commit(_ item: Item) {

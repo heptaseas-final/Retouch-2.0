@@ -105,6 +105,7 @@ struct LightModeButton: View {
             .accessibilityElement()
             .accessibilityAddTraits(.isButton)
             .accessibilityLabel("Light color")
+            .accessibilityInputLabels([Text("Light color"), Text("Color")])
             .accessibilityValue(lightColor.name)
             .accessibilityHint(colorEmphasis.guide ?? colorTarget?.lightColor.map { "Changes to \($0.name.lowercased())." } ?? "")
             .accessibilityAction { changeColor() }
@@ -133,6 +134,7 @@ struct LightModeButton: View {
             .accessibilityElement()
             .accessibilityAddTraits(.isButton)
             .accessibilityLabel("Light")
+            .accessibilityInputLabels([Text("Light"), Text("Light button"), Text("Flash")])
             .accessibilityValue(mode.isOn ? "On" : "Off")
             .accessibilityHint(boltEmphasis.guide ?? (mode.isOn ? "Turns the light off." : "Turns the light on."))
             .accessibilityAction { tap() }
