@@ -22,7 +22,8 @@ final class AppContainer {
         cameraSession.onFrame = { [pipeline] frame in pipeline.process(frame) }
         zoom = ZoomService()
         mirrorViewModel = MirrorViewModel(camera: camera, lighting: lighting, zoom: zoom,
-                                          zoomStore: zoomStore, renderer: pipeline.renderer)
+                                          zoomStore: zoomStore, renderer: pipeline.renderer,
+                                          settings: MirrorSettingsStore())
         connectZoom()
     }
 

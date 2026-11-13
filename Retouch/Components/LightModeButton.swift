@@ -15,7 +15,7 @@ struct LightModeButton: View {
     var size: CGFloat = 46
     var onLiftDrag: ((CGSize) -> Void)? = nil
     var onLiftEnd: ((CGSize) -> Void)? = nil
-    var moveAction: (label: String, perform: () -> Void)? = nil
+    var moveActions: [(label: String, perform: () -> Void)] = []
     var boltEmphasis: ControlEmphasis = .normal
     var colorEmphasis: ControlEmphasis = .normal
 
@@ -25,10 +25,10 @@ struct LightModeButton: View {
     @State private var liftOrigin: CGSize = .zero
     @State private var lastTranslation: CGSize = .zero
     @State private var liftTask: Task<Void, Never>?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let tapSlop: CGFloat = 10
 
-    private let accent = Color(red: 0.55, green: 0.23, blue: 0.35)
     private let inset: CGFloat = 4
     private var circleSize: CGFloat { size - inset * 2 }
 
@@ -37,28 +37,21 @@ struct LightModeButton: View {
             .padding(inset)
             .background(alignment: .bottom) {
                 Capsule()
-                    .fill(.ultraThinMaterial)
-                    .overlay(Capsule().fill(Color.white.opacity(0.6)))
-                    .overlay(Capsule().strokeBorder(Color.black.opacity(0.1), lineWidth: 1))
+                    .fill(Color.appLightCapsule)
                     .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
-                    .frame(height: mode.lightColor == nil ? size : size * 2)
+                    .frame(height: mode.lightColor == nil ? size : size * 2 + inset)
             }
             .overlay(alignment: .top) {
                 if let lightColor = mode.lightColor {
                     indicator(for: lightColor)
-                        .offset(y: -(circleSize + inset))
-                        .transition(.scale(scale: 0.5).combined(with: .opacity))
+                        .offset(y: -(circleSize + inset * 2))
+                        .transition(reduceMotion ? .opacity : .scale(scale: 0.5).combined(with: .opacity))
                 }
             }
-        .scaleEffect(isLifted ? 1.12 : 1)
+        .scaleEffect(isLifted && !reduceMotion ? 1.12 : 1)
         .shadow(color: .black.opacity(isLifted ? 0.25 : 0), radius: 12, y: 6)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isLifted)
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.7), value: isLifted)
         .sensoryFeedback(.impact(weight: .medium), trigger: isLifted) { _, lifted in lifted }
-        .accessibilityActions {
-            if let moveAction {
-                Button(moveAction.label, action: moveAction.perform)
-            }
-        }
     }
 
     private func pressGesture(onTap: @escaping () -> Void) -> some Gesture {
@@ -111,7 +104,9 @@ struct LightModeButton: View {
             .accessibilityElement()
             .accessibilityAddTraits(.isButton)
             .accessibilityLabel("Light color")
-            .accessibilityValue(lightColor.label)
+            .accessibilityInputLabels([Text("Light color"), Text("Color")])
+            .accessibilityValue(lightColor.name)
+            .accessibilityHint(colorEmphasis.guide ?? colorTarget?.lightColor.map { "Changes to \($0.name.lowercased())." } ?? "")
             .accessibilityAction { changeColor() }
             .emphasis(colorEmphasis)
     }
@@ -119,15 +114,11 @@ struct LightModeButton: View {
     private var flashFace: some View {
         Image(systemName: mode.isOn ? "bolt.fill" : "bolt.slash.fill")
             .font(.system(size: circleSize * 0.45, weight: .semibold))
-            .foregroundStyle(mode.isOn ? accent : Color(white: 0.25))
+            .foregroundStyle(Color.appMagenta)
             .contentTransition(.symbolEffect(.replace))
             .frame(width: circleSize, height: circleSize)
-            .background(Circle().fill(buttonFill))
+            .background(Circle().fill(Color.appLightFace))
             .overlay(Circle().strokeBorder(Color.black.opacity(0.12), lineWidth: 1))
-    }
-
-    private var buttonFill: LinearGradient {
-        LinearGradient(colors: [.white, Color(white: 0.94)], startPoint: .top, endPoint: .bottom)
     }
 
     private var flashButton: some View {
@@ -137,9 +128,16 @@ struct LightModeButton: View {
             .sensoryFeedback(.impact(weight: .light), trigger: mode)
             .accessibilityElement()
             .accessibilityAddTraits(.isButton)
-            .accessibilityLabel("Light mode")
-            .accessibilityValue(mode.label)
+            .accessibilityLabel("Light")
+            .accessibilityInputLabels([Text("Light"), Text("Light button"), Text("Flash")])
+            .accessibilityValue(mode.isOn ? "On" : "Off")
+            .accessibilityHint(boltEmphasis.guide ?? (mode.isOn ? "Turns the light off." : "Turns the light on."))
             .accessibilityAction { tap() }
+            .accessibilityActions {
+                ForEach(moveActions.indices, id: \.self) { index in
+                    Button(moveActions[index].label, action: moveActions[index].perform)
+                }
+            }
             .emphasis(boltEmphasis)
     }
 
@@ -147,16 +145,17 @@ struct LightModeButton: View {
         set(mode.isOn ? .off : nextMode(.off))
     }
 
-    private func changeColor() {
-        guard let current = mode.lightColor else { return }
+    private var colorTarget: LightMode? {
+        guard let current = mode.lightColor else { return nil }
         let suggested = nextMode(mode)
-        if suggested.isOn, suggested != mode {
-            set(suggested)
-        } else {
-            let all = LightColor.allCases
-            let index = all.firstIndex(of: current) ?? 0
-            set(.on(all[(index + 1) % all.count]))
-        }
+        if suggested.isOn, suggested != mode { return suggested }
+        let all = LightColor.allCases
+        let index = all.firstIndex(of: current) ?? 0
+        return .on(all[(index + 1) % all.count])
+    }
+
+    private func changeColor() {
+        if let colorTarget { set(colorTarget) }
     }
 
     private func set(_ newMode: LightMode) {

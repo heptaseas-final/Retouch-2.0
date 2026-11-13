@@ -17,4 +17,11 @@ extension Color {
     static let appInactive = Color(hex: 0x454546)
     static let appTitle = Color(hex: 0x5A0A28)
     static let spotlightColor = Color(hex: 0x1D1D1D)
+    static let appLightCapsule = Color(hex: 0x54656F)
+    static let appLightFace = Color(hex: 0xFAFAFA)
+    static let lightNeutral = Color(hex: 0xFFFFFF)
+    static let lightWarm = Color(hex: 0xFFECBB)
+    static let lightCool = Color(hex: LightingTuning.softBlue)
+    static let pickerGlow = Color(hex: 0xD94D66)
+    static let lightGlow = Color(hex: 0xC29973)
 }

@@ -12,10 +12,18 @@ struct CameraPermissionDeniedView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("Turn on the camera permission")
-                .foregroundStyle(.white)
+            VStack(spacing: 8) {
+                Text("Retouch needs your camera")
+                    .font(.headline)
+                Text("Your camera works as the mirror. Turn on camera access in Settings.")
+                    .font(.subheadline)
+            }
+            .foregroundStyle(.white)
+            .multilineTextAlignment(.center)
+            .accessibilityElement(children: .combine)
             Button("Open Settings", action: onOpenSettings)
                 .buttonStyle(.borderedProminent)
+                .tint(.appMagenta)
         }
     }
 }
