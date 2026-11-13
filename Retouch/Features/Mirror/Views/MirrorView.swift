@@ -119,6 +119,7 @@ struct MirrorView: View {
     }
     private static let sideMargin: CGFloat = 16
     private static let dockZoneHeight: CGFloat = 120
+    private static let bannerTrailing: CGFloat = 82
 
     @ViewBuilder
     private var sideLightButton: some View {

@@ -100,6 +100,7 @@ struct HorizontalPicker<Item: Hashable>: View {
             if delta < -items.count / 2 { delta += items.count }
             withAnimation(.snappy) { base += delta }
         }
+        .environment(\.colorScheme, .light)
     }
 
     private func wrapped(_ index: Int) -> Int {

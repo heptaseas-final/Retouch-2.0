@@ -95,8 +95,4 @@ nonisolated struct ZoomGestureResolver {
 
     private static func isEye(_ t: ZoomTarget) -> Bool { t == .leftEye || t == .rightEye }
     private static func isHandTarget(_ t: ZoomTarget) -> Bool { isEye(t) || t == .lips || t == .nose }
-
-    func idleTime(now: Date) -> TimeInterval {
-        target == .fullFace ? 0 : now.timeIntervalSince(lastActive)
-    }
 }

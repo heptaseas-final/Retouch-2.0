@@ -15,4 +15,37 @@ struct ZoomReadinessTests {
         #expect(eye.handLost && lips.handLost && nose.handLost)
         #expect(!eye.poseLeft && !eye.poseRight && !lips.pose2Ready && !nose.pose2Ready)
     }
+
+    @Test func toolReadingFillsEyeInputTriggerAndHold() {
+        var reading = ToolZoneReading()
+        reading.eyeTriggerLeft = true
+        reading.eyeHoldLeft = true
+        reading.eyeHoldRight = true
+        let input = ZoomReadiness.applying(reading, to: EyeZoomFlow.Input())
+        #expect(input.toolLeft && !input.toolRight)
+        #expect(input.holdLeft && input.holdRight)
+    }
+
+    @Test func toolReadingKeepsHandHoldOnEyeInput() {
+        var base = EyeZoomFlow.Input()
+        base.holdRight = true
+        let input = ZoomReadiness.applying(ToolZoneReading(), to: base)
+        #expect(input.holdRight)
+        #expect(!input.toolLeft && !input.toolRight)
+    }
+
+    @Test func toolReadingFillsLipsInput() {
+        var reading = ToolZoneReading()
+        reading.lipsTrigger = true
+        reading.lipsHold = true
+        let input = ZoomReadiness.applying(reading, to: LipsZoomFlow.Input())
+        #expect(input.toolReady && input.fingerNear)
+    }
+
+    @Test func toolReadingKeepsHandNearOnLipsInput() {
+        var base = LipsZoomFlow.Input()
+        base.fingerNear = true
+        let input = ZoomReadiness.applying(ToolZoneReading(), to: base)
+        #expect(input.fingerNear && !input.toolReady)
+    }
 }
