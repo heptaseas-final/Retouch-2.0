@@ -32,6 +32,10 @@ enum GlassConfig {
 struct GlassStyleModifier<S: Shape>: ViewModifier {
     let shape: S
 
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    private var isIncreased: Bool { contrast == .increased }
+
     func body(content: Content) -> some View {
         if #available(iOS 26, *) {
             content.glassEffect(glass, in: shape)
@@ -39,7 +43,7 @@ struct GlassStyleModifier<S: Shape>: ViewModifier {
             content.background {
                 shape.fill(.ultraThinMaterial)
                 if GlassConfig.variant == .white {
-                    shape.fill(.white.opacity(0.25))
+                    shape.fill(.white.opacity(isIncreased ? 0.85 : 0.25))
                 }
             }
         }
@@ -48,8 +52,8 @@ struct GlassStyleModifier<S: Shape>: ViewModifier {
     @available(iOS 26, *)
     private var glass: Glass {
         switch GlassConfig.variant {
-        case .white: .regular.tint(.white.opacity(0.5))
-        case .transparent: .clear
+        case .white: .regular.tint(.white.opacity(isIncreased ? 0.85 : 0.5))
+        case .transparent: isIncreased ? .regular.tint(.white.opacity(0.85)) : .clear
         }
     }
 }

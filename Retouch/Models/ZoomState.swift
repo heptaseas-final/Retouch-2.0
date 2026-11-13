@@ -33,4 +33,20 @@ nonisolated enum ZoomTarget: Equatable {
         case .faceSide: ZoomTuning.sideZoom
         }
     }
+
+    var spokenName: String {
+        switch self {
+        case .fullFace: "Full face"
+        case .leftEye: "Left eye"
+        case .rightEye: "Right eye"
+        case .lips: "Lips"
+        case .nose: "Nose"
+        case .faceSide(.left): "Left side of face"
+        case .faceSide(.right): "Right side of face"
+        }
+    }
+
+    var zoomAnnouncement: String {
+        self == .fullFace ? "Back to full face" : "Zoomed to \(spokenName.lowercased())"
+    }
 }

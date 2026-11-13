@@ -15,7 +15,12 @@ struct SpotlightTargetKey: PreferenceKey {
 enum ControlEmphasis: Equatable {
     case normal
     case dimmed
-    case highlighted(Color)
+    case highlighted(Color, guide: String? = nil)
+
+    var guide: String? {
+        if case let .highlighted(_, guide) = self { return guide }
+        return nil
+    }
 }
 
 struct CameraControls: View {
@@ -31,24 +36,69 @@ struct CameraControls: View {
     var lightOffset: CGSize = .zero
     var onLightLiftDrag: ((CGSize) -> Void)? = nil
     var onLightLiftEnd: ((CGSize) -> Void)? = nil
-    var onLightMoveToSide: (() -> Void)? = nil
+    var lightMoveActions: [(label: String, perform: () -> Void)] = []
     var onLightSlotCenter: ((CGPoint) -> Void)? = nil
+    var onPickerLayoutChange: ((Bool) -> Void)? = nil
 
-    var height: CGFloat = 54
     var expandedHeight: CGFloat = 66
     var pickerWidth: CGFloat = 233
+
+    @State private var availableWidth: CGFloat = 0
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.isLargerButtons) private var isLargerButtons
+
+    private var height: CGFloat { LargerButtons.controlSize(isLarger: isLargerButtons, typeSize: typeSize) }
+
+    private let columnSpacing: CGFloat = 20
+    private let minControlGap: CGFloat = 12
+    private let pickerSlotPadding: CGFloat = 20
 
     private var lightButtonEmphasis: ControlEmphasis {
         flashEmphasis == .dimmed && lightColorEmphasis == .dimmed ? .dimmed : .normal
     }
 
+    private var fittedPickerWidth: CGFloat {
+        guard availableWidth > 0 else { return pickerWidth }
+        let minSideColumn = height - 2 * (columnSpacing - minControlGap)
+        return min(pickerWidth, availableWidth - 2 * (columnSpacing + minSideColumn))
+    }
+
+    private var pickerFont: UIFont { PickerMetrics.font(for: LargerButtons.typeSize(typeSize, isLarger: isLargerButtons)) }
+
+    private var pickerExpandedHeight: CGFloat {
+        PickerMetrics.height(height, font: pickerFont) + expandedHeight - height
+    }
+
+    private var widestPickerSlot: CGFloat {
+        let widestTitle = FacePart.allCases.map { PickerMetrics.textWidth(pickerTitle($0), font: pickerFont) }.max() ?? 0
+        return widestTitle + 2 * pickerSlotPadding
+    }
+
+    private var isPickerFullWidth: Bool {
+        availableWidth > 0 && (isLargerButtons || widestPickerSlot > fittedPickerWidth)
+    }
+
     var body: some View {
-        HStack(alignment: .bottom, spacing: 20) {
+        Group {
+            if isPickerFullWidth {
+                picker(width: availableWidth)
+            } else {
+                dockedLayout
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .largerButtonsTypeSize(isLargerButtons)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
+        .onChange(of: isPickerFullWidth, initial: true) { _, isFull in onPickerLayoutChange?(isFull) }
+    }
+
+    private var dockedLayout: some View {
+        HStack(alignment: .bottom, spacing: columnSpacing) {
             ZStack {
                 if isLightDocked {
                     LightModeButton(mode: $lightMode, onChange: onLightTap, nextMode: nextLightMode, size: height,
                                     onLiftDrag: onLightLiftDrag, onLiftEnd: onLightLiftEnd,
-                                    moveAction: onLightMoveToSide.map { ("Move to side", $0) },
+                                    moveActions: lightMoveActions,
                                     boltEmphasis: lightButtonEmphasis == .dimmed ? .normal : flashEmphasis,
                                     colorEmphasis: lightButtonEmphasis == .dimmed ? .normal : lightColorEmphasis)
                         .emphasis(lightButtonEmphasis)
@@ -69,14 +119,23 @@ struct CameraControls: View {
             .frame(maxWidth: .infinity)
             .zIndex(1)
 
-            HorizontalPicker(items: FacePart.allCases, selection: $part, swipe: swipe, width: pickerWidth,
-                             height: height, expandedHeight: expandedHeight) { $0.title.uppercased() }
-                .emphasis(pickerEmphasis)
-                .frame(width: pickerWidth, height: expandedHeight)
+            picker(width: fittedPickerWidth)
 
             Color.clear
-                .frame(maxWidth: .infinity, maxHeight: expandedHeight)
+                .frame(maxWidth: .infinity, maxHeight: pickerExpandedHeight)
         }
+    }
+
+    private func picker(width: CGFloat) -> some View {
+        HorizontalPicker(items: FacePart.allCases, selection: $part, swipe: swipe, width: width,
+                         padding: pickerSlotPadding, height: height, expandedHeight: expandedHeight, title: pickerTitle)
+            .accessibilityHint(pickerEmphasis.guide ?? "")
+            .emphasis(pickerEmphasis)
+            .frame(width: width, height: pickerExpandedHeight)
+    }
+
+    private func pickerTitle(_ part: FacePart) -> String {
+        part.title.uppercased()
     }
 }
 
@@ -87,9 +146,10 @@ extension View {
         case .normal:
             self
         case .dimmed:
-            self.opacity(0.5).allowsHitTesting(false)
-        case .highlighted:
+            self.opacity(0.5).allowsHitTesting(false).disabled(true).accessibilityHidden(true)
+        case .highlighted(_, let guide):
             self.anchorPreference(key: SpotlightTargetKey.self, value: .bounds) { $0 }
+                .modifier(GuidedFocus(guide: guide))
         }
     }
 }
