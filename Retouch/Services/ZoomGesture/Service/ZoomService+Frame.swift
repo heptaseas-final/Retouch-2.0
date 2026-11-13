@@ -4,11 +4,13 @@ import Foundation
 nonisolated extension ZoomService {
     func update(faceSnap: DetectionSnapshot<FaceObservation?>?,
                         handSnap: DetectionSnapshot<HandScan>?,
+                        toolSnap: DetectionSnapshot<ToolScan>? = nil,
                         imageSize: CGSize) {
         guard viewSize.width > 0, viewSize.height > 0 else { return }
         let converter = CoordinateConverter(imageSize: imageSize, viewSize: viewSize)
 
-        let now = max(max(faceSnap?.timestamp ?? .distantPast, handSnap?.timestamp ?? .distantPast),
+        let now = max(max(faceSnap?.timestamp ?? .distantPast, handSnap?.timestamp ?? .distantPast,
+                          toolSnap?.timestamp ?? .distantPast),
                       lastLogicTime)
         lastLogicTime = now
 
@@ -29,7 +31,7 @@ nonisolated extension ZoomService {
 
         let H = viewSize.height
 
-        if let handSnap {
+        if let handSnap, !toolReading.isInZone {
             lastScan = handSnap.value
             if ZoomTuning.handSeenBoostsRate, lastScan.handsSeen > 0 {
                 pacer.noteMotion(at: handSnap.timestamp)
@@ -53,6 +55,7 @@ nonisolated extension ZoomService {
             lastFace = faceSnap.value
             points = faceTracker.update(face: lastFace, covering: covering, converter: converter, now: faceSnap.timestamp)
         }
+        refreshTools(snap: toolSnap, converter: converter, points: points, now: now)
 
         if handSnap != nil {
             let support = ZoomTuning.pitchEnabled && ZoomTuning.pitchHandSupportEnabled && pitchRecognizer.isLifted
@@ -87,10 +90,12 @@ nonisolated extension ZoomService {
         var eyeIn = eyeInput
         eyeIn.activityLeft = eyeActivity.leftState
         eyeIn.activityRight = eyeActivity.rightState
+        eyeIn = ZoomReadiness.applying(toolReading, to: eyeIn)
         if lipsShowing { eyeIn.enterDwellFactor *= Self.preemptDwellFactor }
         eyeFlow.update(eyeIn, now: now)
         var lipIn = lipsInput
         lipIn.lipsMoving = lipMotion.isMoving
+        lipIn = ZoomReadiness.applying(toolReading, to: lipIn)
         lipFlow.update(lipIn, now: now)
         var noseIn = noseInput
         if eyeShowing || lipsShowing { noseIn.enterDwellFactor = Self.preemptDwellFactor }
