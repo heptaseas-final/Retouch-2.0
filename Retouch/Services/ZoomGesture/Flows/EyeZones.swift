@@ -48,26 +48,7 @@ nonisolated struct EyeZones {
         return t(p) > lt - ZoomTuning.lipsHoldLineTolerance
     }
 
-    func lineSegment(halfLength: CGFloat, shift: CGFloat = 0) -> (CGPoint, CGPoint)? {
-        guard let lt = lineT else { return nil }
-        let c = CGPoint(x: mid.x + v.x * (lt + shift) * d, y: mid.y + v.y * (lt + shift) * d)
-        return (CGPoint(x: c.x - u.x * d * halfLength, y: c.y - u.y * d * halfLength),
-                CGPoint(x: c.x + u.x * d * halfLength, y: c.y + u.y * d * halfLength))
-    }
-
     private func eye(_ side: EyeSide) -> CGPoint { side == .left ? leftEye : rightEye }
-
-    func distance(_ p: CGPoint, to side: EyeSide) -> CGFloat {
-        let e = eye(side)
-        return hypot(p.x - e.x, p.y - e.y) / d
-    }
-
-    private func zoneCenter(_ side: EyeSide) -> CGPoint {
-        let e = eye(side)
-        let sign: CGFloat = side == .left ? -1 : 1
-        let shift = sign * ZoomTuning.eyeZoneOffsetX * d
-        return CGPoint(x: e.x + u.x * shift, y: e.y + u.y * shift)
-    }
 
     func triggerEye(at p: CGPoint, owner: CGPoint? = nil) -> EyeSide? {
         guard !isLipsSide(owner ?? p) else { return nil }

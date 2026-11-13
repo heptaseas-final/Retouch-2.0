@@ -38,13 +38,6 @@ nonisolated struct ZoomTuning {
 
     static let handEnterDistance = 0.38
     static let handMaxSpeed = 1.2
-    static let eyeEnterFactor: CGFloat = 0.85
-    static let handEnterDwell: TimeInterval = 0.35
-    static let eyeEnterDwell: TimeInterval = 0.4
-    static let handWinMargin: CGFloat = 0.12
-    static let handSwitchMargin: CGFloat = 0.12
-    static let handSwitchDwell: TimeInterval = 0.3
-    static let handHoldGrace: TimeInterval = 0.4
     static let coverDistance: CGFloat = 0.65
     static let coverGrace: TimeInterval = 1.8
     static let coverHold: TimeInterval = 1.8
@@ -71,8 +64,6 @@ nonisolated struct ZoomTuning {
     static let handLearnSessionRange = 0.15
     static let headRearmEnabled = true
     static let headRearmStraight: TimeInterval = 0.3
-    static let eventLogCapacity = 500
-    static let flipFlopWindow: TimeInterval = 1.5
 
     static let pitchEnabled = true
     static let pitchYawFreezeEnabled = true
@@ -91,8 +82,6 @@ nonisolated struct ZoomTuning {
     static let pitchBaselineTau = 6.0
     static let maxPitchBaseline = 10.0
     static let pitchLipsReach: CGFloat = 1.15
-    static let pitchLipsDwellFactor: TimeInterval = 0.6
-    static let pitchEyeReach: CGFloat = 1.1
     static let pitchEyeDwellFactor: TimeInterval = 0.75
 
     static let toolTipReach: CGFloat = 0.3
@@ -118,7 +107,6 @@ nonisolated struct ZoomTuning {
     static let lipsEnterDwell: TimeInterval = 0.5
     static let lipsReleaseDwell: TimeInterval = 1.0
     static let lipsPose2Max: CGFloat = 0.4
-    static let lipsHoldRadius = handEnterDistance * 0.85
     static let lipMotionBaselineTau = 0.8
     static let lipMotionDevTau = 0.15
     static let lipMotionEnter = 0.05
@@ -133,7 +121,6 @@ nonisolated struct ZoomTuning {
 
     static let eyeTriggerRadiusX: CGFloat = 0.5
     static let eyeTriggerRadiusY: CGFloat = 0.4
-    static let eyeZoneHold: CGFloat = 0.70
     static let eyeZoneDead: CGFloat = 0.09
     static let eyeZoneOffsetX: CGFloat = 0.12
     static let eyeHoldScale: CGFloat = 1.2
