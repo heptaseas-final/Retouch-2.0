@@ -9,7 +9,6 @@ import SwiftUI
 
 struct InstructionBubble: View {
     let text: String
-    var width: CGFloat? = nil
     var isFullWidth = false
     var spokenText: String? = nil
     var takesVoiceOverFocus = false
@@ -17,6 +16,7 @@ struct InstructionBubble: View {
     @AccessibilityFocusState private var isFocused: Bool
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
 
+    private let width: CGFloat = 309
     private let focusDelay: Duration = .milliseconds(300)
     private let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
 
@@ -30,7 +30,7 @@ struct InstructionBubble: View {
                 .scrollBounceBehavior(.basedOnSize)
         }
         .frame(width: isFullWidth ? nil : width)
-        .frame(maxWidth: isFullWidth ? .infinity : (width ?? 300))
+        .frame(maxWidth: isFullWidth ? .infinity : nil)
         .background {
             shape
                 .fill(.ultraThinMaterial)

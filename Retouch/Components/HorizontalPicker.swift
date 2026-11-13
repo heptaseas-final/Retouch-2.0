@@ -21,11 +21,12 @@ struct HorizontalPicker<Item: Hashable>: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.legibilityWeight) private var legibilityWeight
 
     private let maxStepsPerSwipe = 1
 
     var body: some View {
-        let font = PickerMetrics.font(for: typeSize)
+        let font = PickerMetrics.font(for: typeSize, isBold: legibilityWeight == .bold)
         let restingHeight = PickerMetrics.height(height, font: font)
         let liftedHeight = restingHeight + expandedHeight - height
         let track = PickerTrack(slots: items.map { PickerMetrics.textWidth(title($0), font: font) + 2 * padding })
@@ -44,20 +45,24 @@ struct HorizontalPicker<Item: Hashable>: View {
                 .frame(width: capsuleWidth, height: currentHeight)
 
             ForEach(Array(current - 5...current + 5), id: \.self) { index in
-                Text(title(item(at: index)))
-                    .font(Font(font))
-                    .foregroundStyle(index == current ? Color.appMagenta : Color.appInactive.opacity(contrast == .increased ? 1 : 0.6))
-                    .lineLimit(1)
-                    .fixedSize()
-                    .frame(width: track.slot(index), height: currentHeight)
-                    .contentShape(Rectangle())
-                    .onTapGesture { select(index) }
-                    .allowsHitTesting(abs(track.center(index) - x) < width / 2)
+                Button { select(index) } label: {
+                    Text(title(item(at: index)))
+                        .font(Font(font))
+                        .foregroundStyle(index == current ? Color.appMagenta : Color.appInactive.opacity(contrast == .increased ? 1 : 0.6))
+                        .lineLimit(1)
+                        .fixedSize()
+                        .frame(width: track.slot(index), height: currentHeight)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHidden(true)
+                .allowsHitTesting(abs(track.center(index) - x) < width / 2)
                     .offset(x: track.center(index) - x)
             }
         }
         .frame(width: width, height: currentHeight)
         .clipShape(Capsule())
+        .ringLightBorder()
         .contentShape(Capsule())
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.6), value: swipe.isDragging)
         .sensoryFeedback(.selection, trigger: current)
@@ -160,92 +165,6 @@ private struct PickerTrack {
 
     private func wrapped(_ index: Int) -> Int {
         ((index % slots.count) + slots.count) % slots.count
-    }
-}
-
-@MainActor @Observable
-final class PickerSwipe {
-    struct Release: Equatable {
-        let id = UUID()
-        let predicted: CGFloat
-    }
-
-    fileprivate(set) var translation: CGFloat = 0
-    fileprivate(set) var isDragging = false
-    fileprivate(set) var release: Release?
-
-    fileprivate func update(_ dx: CGFloat) {
-        translation = dx
-        isDragging = true
-    }
-
-    fileprivate func end(predicted dx: CGFloat) {
-        guard isDragging else { return }
-        release = Release(predicted: dx)
-    }
-
-    fileprivate func finish() {
-        isDragging = false
-        translation = 0
-        release = nil
-    }
-
-    fileprivate func cancel() {
-        guard isDragging else { return }
-        withAnimation(.snappy) { finish() }
-    }
-}
-
-private struct PickerSwipeGesture: ViewModifier {
-    let swipe: PickerSwipe
-    let isEnabled: Bool
-
-    @State private var axis: Axis?
-    @State private var isPinching = false
-
-    func body(content: Content) -> some View {
-        content
-            .simultaneousGesture(drag, including: isEnabled ? .all : .subviews)
-            .simultaneousGesture(pinch, including: isEnabled ? .all : .subviews)
-    }
-
-    private var drag: some Gesture {
-        DragGesture(minimumDistance: 12)
-            .onChanged { value in
-                if axis == nil {
-                    axis = abs(value.translation.width) > abs(value.translation.height) ? .horizontal : .vertical
-                }
-                guard axis == .horizontal, !isPinching else { return }
-                swipe.update(value.translation.width)
-            }
-            .onEnded { value in
-                defer {
-                    axis = nil
-                    isPinching = false
-                }
-                guard axis == .horizontal, !isPinching else {
-                    swipe.cancel()
-                    return
-                }
-                swipe.end(predicted: value.predictedEndTranslation.width)
-            }
-    }
-
-    private var pinch: some Gesture {
-        MagnifyGesture()
-            .onChanged { _ in
-                isPinching = true
-                swipe.cancel()
-            }
-            .onEnded { _ in
-                if axis == nil { isPinching = false }
-            }
-    }
-}
-
-extension View {
-    func pickerSwipe(_ swipe: PickerSwipe, isEnabled: Bool = true) -> some View {
-        modifier(PickerSwipeGesture(swipe: swipe, isEnabled: isEnabled))
     }
 }
 

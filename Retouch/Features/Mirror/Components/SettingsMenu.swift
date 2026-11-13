@@ -4,12 +4,10 @@ struct SettingsMenu: View {
     @Binding var isLargerButtons: Bool
     @Binding var lightPlacement: LightPlacement
     let isBottomAvailable: Bool
-    var size: CGFloat = 54
     let onReplayTutorial: () -> Void
 
     @State private var pendingLargerButtons: Bool?
 
-    private let glyphScale: CGFloat = 0.4
     private let menuCloseDelay: Duration = .milliseconds(400)
 
     var body: some View {
@@ -28,15 +26,8 @@ struct SettingsMenu: View {
         } label: {
             Label("Settings", systemImage: "gearshape.fill")
                 .labelStyle(.iconOnly)
-                .font(.system(size: size * glyphScale, weight: .bold))
-                .foregroundStyle(Color.appMagenta)
-                .frame(width: size, height: size)
-                .glassStyle(in: Circle())
-                .contentShape(Circle())
         }
-        .buttonStyle(.plain)
-        .accessibilityRemoveTraits(.isButton)
-        .accessibilityShowsLargeContentViewer()
+        .tint(Color.appMagenta)
         .task(id: pendingLargerButtons) { await applyLargerButtonsAfterClose() }
     }
 

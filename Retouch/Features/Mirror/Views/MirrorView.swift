@@ -38,18 +38,18 @@ struct MirrorView: View {
                                 softness: viewModel.ringLightSoftness)
                     .ignoresSafeArea()
                 cameraStateOverlay
-                if showsControls {
+                if showsControls, viewModel.cameraState != .failed {
                   VStack(spacing: 12) {
                       Spacer()
                       controls
                           .transition(.opacity)
                   }
                   sideLightButton
-                  settingsButton
                 }
             }
         }
-        .pickerSwipe(pickerSwipe, isEnabled: showsControls && viewModel.permission != .denied && !isDraggingLight)
+        .toolbar { settingsToolbar }
+        .pickerSwipe(pickerSwipe, isEnabled: showsControls && viewModel.permission != .denied && viewModel.cameraState != .failed && !isDraggingLight)
         .sensoryFeedback(.impact(weight: .medium), trigger: lightDock)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { screenFrame = $0 }
         .animation(.easeInOut, value: showsControls)
@@ -79,24 +79,18 @@ struct MirrorView: View {
         }
     }
 
-    @ViewBuilder
-    private var settingsButton: some View {
-        if let onReplayTutorial {
-            VStack {
-                HStack {
-                    Spacer()
-                    SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
-                                 lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement),
-                                 isBottomAvailable: !isPickerFullWidth) {
-                        viewModel.select(.face)
-                        viewModel.setLightMode(.off)
-                        onReplayTutorial()
-                    }
+    @ToolbarContentBuilder
+    private var settingsToolbar: some ToolbarContent {
+        if showsControls, viewModel.permission != .denied, let onReplayTutorial {
+            ToolbarItem(placement: .topBarTrailing) {
+                SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
+                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement),
+                             isBottomAvailable: !isPickerFullWidth) {
+                    viewModel.select(.face)
+                    viewModel.setLightMode(.off)
+                    onReplayTutorial()
                 }
-                Spacer()
             }
-            .padding(.horizontal, 16)
-            .transition(.opacity)
         }
     }
 
@@ -228,7 +222,7 @@ struct MirrorView: View {
         if !isPickerFullWidth { viewModel.setLightPlacement(target.placement) }
         guard !reduceMotion else { return lightDrag = .zero }
         lightDrag = CGSize(width: drop.x - destination.x, height: drop.y - destination.y)
-        DispatchQueue.main.async {
+        Task { @MainActor in
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { lightDrag = .zero }
         }
     }
@@ -257,7 +251,7 @@ struct MirrorView: View {
             VStack {
                 MirrorStatusBanner(status: status, onDismiss: viewModel.dismissStatus)
                     .padding(.leading, Self.sideMargin)
-                    .padding(.trailing, showsControls ? Self.bannerTrailing : Self.sideMargin)
+                    .padding(.trailing, Self.sideMargin)
                     .transition(.opacity)
                 Spacer()
             }

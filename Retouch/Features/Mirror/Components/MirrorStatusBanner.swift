@@ -4,8 +4,6 @@ struct MirrorStatusBanner: View {
     let status: MirrorStatus
     let onDismiss: () -> Void
 
-    private let minTapTarget: CGFloat = 44
-
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: symbol)
@@ -19,12 +17,13 @@ struct MirrorStatusBanner: View {
             Button("Close", systemImage: "xmark", action: onDismiss)
                 .labelStyle(.iconOnly)
                 .font(.subheadline.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(minWidth: minTapTarget, minHeight: minTapTarget)
-                .contentShape(Rectangle())
+                .glassButtonStyle()
+                .buttonBorderShape(.circle)
+                .controlSize(.large)
         }
         .padding(.leading, 16)
-        .padding(.vertical, 4)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
         .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .accessibilityElement(children: .contain)

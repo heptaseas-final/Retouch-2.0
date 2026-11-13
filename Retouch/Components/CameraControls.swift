@@ -46,6 +46,7 @@ struct CameraControls: View {
     @State private var availableWidth: CGFloat = 0
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.isLargerButtons) private var isLargerButtons
+    @Environment(\.legibilityWeight) private var legibilityWeight
 
     private var height: CGFloat { LargerButtons.controlSize(isLarger: isLargerButtons, typeSize: typeSize) }
 
@@ -63,7 +64,7 @@ struct CameraControls: View {
         return min(pickerWidth, availableWidth - 2 * (columnSpacing + minSideColumn))
     }
 
-    private var pickerFont: UIFont { PickerMetrics.font(for: LargerButtons.typeSize(typeSize, isLarger: isLargerButtons)) }
+    private var pickerFont: UIFont { PickerMetrics.font(for: LargerButtons.typeSize(typeSize, isLarger: isLargerButtons), isBold: legibilityWeight == .bold) }
 
     private var pickerExpandedHeight: CGFloat {
         PickerMetrics.height(height, font: pickerFont) + expandedHeight - height
