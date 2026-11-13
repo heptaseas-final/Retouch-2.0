@@ -25,6 +25,7 @@ struct ContentView: View {
                 .transition(.opacity)
             }
         }
+        .environment(\.isLargerButtons, mirrorViewModel.isLargerButtons)
     }
 }
 

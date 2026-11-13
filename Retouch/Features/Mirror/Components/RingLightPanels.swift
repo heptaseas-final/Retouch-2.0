@@ -6,10 +6,13 @@ struct RingLightPanels: View {
     var maxSideFraction: CGFloat = 0.15
     var softness: Double = 0.35
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         Canvas { context, size in
-            let l = min(max(level, 0), 1)
-            guard l > 0.001 else { return }
+            let shown = min(max(level, 0), 1)
+            guard shown > 0.001 else { return }
+            let l = reduceMotion ? 1 : shown
             context.translateBy(x: size.width / 2, y: size.height / 2)
             context.scaleBy(x: size.width / 2, y: size.height / 2)
 
@@ -36,6 +39,7 @@ struct RingLightPanels: View {
                          with: .radialGradient(Gradient(stops: stops), center: .zero,
                                                startRadius: 0, endRadius: end))
         }
+        .opacity(reduceMotion ? min(max(level, 0), 1) : 1)
         .allowsHitTesting(false)
     }
 }

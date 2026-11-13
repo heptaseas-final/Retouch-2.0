@@ -50,6 +50,7 @@ nonisolated struct ZoomTuning {
 
     static let zoomInTau: CGFloat = 0.2
     static let zoomOutTau: CGFloat = 0.25
+    static let reducedMotionStableDelay: TimeInterval = 0.3
 
     static let exitHold: TimeInterval = 1.2
     static let minTurnEnter = 16.0

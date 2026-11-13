@@ -9,6 +9,7 @@ final class FakeZoomService: ZoomServicing, @unchecked Sendable {
     private(set) var resetCount = 0
     private(set) var stopCount = 0
     private(set) var gestureEnabled: [Bool] = []
+    private(set) var reduceMotionValues: [Bool] = []
 
     func start() {}
     func stop() { stopCount += 1 }
@@ -20,4 +21,5 @@ final class FakeZoomService: ZoomServicing, @unchecked Sendable {
     func pinchEnded() {}
     func resetSession() { resetCount += 1 }
     func select(_ part: FacePart) { selectedParts.append(part) }
+    func setReduceMotion(_ isOn: Bool) { reduceMotionValues.append(isOn) }
 }

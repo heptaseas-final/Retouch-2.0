@@ -13,6 +13,7 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     }
 
     var onChange: (@Sendable (ZoomState) -> Void)?
+    var reducesMotion = false
 
     private let zoomInTau = ZoomTuning.zoomInTau
     private let zoomOutTau = ZoomTuning.zoomOutTau
@@ -38,6 +39,9 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     private var lastState = ZoomState()
     private var link: CADisplayLink?
     private var shownScale: CGFloat = 1
+    private var cutGate = ZoomCutGate(stableDelay: ZoomTuning.reducedMotionStableDelay)
+    private var lastGoalWasManual = false
+    private var snapPending = false
 
     func reset() {
         goalScale = 1
@@ -52,6 +56,8 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         lastRawFocus = nil
         focusFilterX.reset()
         focusFilterY.reset()
+        cutGate.reset()
+        snapPending = false
         scaleLock.lock(); shownScale = 1; scaleLock.unlock()
         lastState = ZoomState()
         onChange?(lastState)
@@ -77,6 +83,7 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     func setViewSize(_ size: CGSize) { viewSize = size }
 
     func setGoal(scale: CGFloat, focus: Focus) {
+        if reducesMotion, !acceptsCut(to: focus) { return }
         goalScale = scale
         switch focus {
         case .center:
@@ -118,6 +125,27 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         }
     }
 
+    private func acceptsCut(to focus: Focus) -> Bool {
+        let key: ZoomCutGate.Key
+        let isImmediate: Bool
+        switch focus {
+        case .center:
+            key = .center
+            isImmediate = lastGoalWasManual
+        case .pinch:
+            key = .pinch
+            isImmediate = true
+        case .target(let target, _, let manual):
+            key = .target(target)
+            isImmediate = manual
+            lastGoalWasManual = manual
+        }
+        let isCut = key != cutGate.accepted
+        guard cutGate.accept(key, isImmediate: isImmediate, now: CACurrentMediaTime()) else { return false }
+        if isCut, key != .pinch { snapPending = true }
+        return true
+    }
+
     private func screenPosition(of point: CGPoint) -> CGPoint {
         let size = viewSize
         let inset = ZoomTuning.pinInset
@@ -149,8 +177,13 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         let center = CGPoint(x: size.width / 2, y: size.height / 2)
         let dt = min(max(CGFloat(link.targetTimestamp - link.timestamp), 1.0 / 120.0), 0.05)
 
-        let tau = goalScale > currentScale ? zoomInTau : zoomOutTau
-        currentScale += (goalScale - currentScale) * (1 - exp(-dt / tau))
+        let snaps = reducesMotion && snapPending
+        if snaps || (reducesMotion && mode == .pinch) {
+            currentScale = goalScale
+        } else {
+            let tau = goalScale > currentScale ? zoomInTau : zoomOutTau
+            currentScale += (goalScale - currentScale) * (1 - exp(-dt / tau))
+        }
         scaleLock.lock(); shownScale = currentScale; scaleLock.unlock()
 
         let maxX = (currentScale - 1) * size.width / 2
@@ -167,8 +200,16 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         goalX = min(max(goalX, -maxX), maxX)
         goalY = min(max(goalY, -maxY), maxY)
 
-        panX = Self.smoothDamp(panX, goalX, &velX, smoothTime: ZoomTuning.panSmoothTime, dt: dt)
-        panY = Self.smoothDamp(panY, goalY, &velY, smoothTime: ZoomTuning.panSmoothTime, dt: dt)
+        if snaps {
+            panX = goalX
+            panY = goalY
+            velX = 0
+            velY = 0
+            snapPending = false
+        } else {
+            panX = Self.smoothDamp(panX, goalX, &velX, smoothTime: ZoomTuning.panSmoothTime, dt: dt)
+            panY = Self.smoothDamp(panY, goalY, &velY, smoothTime: ZoomTuning.panSmoothTime, dt: dt)
+        }
 
         if abs(lastState.scale - currentScale) > 0.0005
             || abs(lastState.offset.width - panX) > 0.05

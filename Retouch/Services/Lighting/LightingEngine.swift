@@ -4,6 +4,7 @@ import Foundation
 struct LightingOutput: Equatable {
     var ringLight: Double
     var screenBrightnessCap: Double
+    var status = LightingStatus()
 }
 
 final class LightingEngine {
@@ -28,6 +29,9 @@ final class LightingEngine {
     private var _correction = LightingTuning.auto
     private var _snapGains = false
     private var lastKnownLux: Float?
+    private var _faceLux: Float?
+    private let glowMaxMargin: Float = 0.03
+    private let faceLuxPublishStep: Float = 0.1
     private let lowLuxFull: Float = 18
     private let lowLuxNone: Float = 30
     private let minRedGain: Float = 0.45
@@ -92,7 +96,8 @@ final class LightingEngine {
         }
         let darkness = darkness(roomLux: roomLux, threshold: config.ringLightStartLux)
         updatePanel(roomLux: roomLux, manual: manual, dt: Float(dt))
-        publish(LightingOutput(ringLight: Double(panel), screenBrightnessCap: quality.brightnessCap))
+        publish(LightingOutput(ringLight: Double(panel), screenBrightnessCap: quality.brightnessCap,
+                               status: currentStatus()))
 
         let noise = noiseLevel(iso: frame.iso)
         var params = FrameEnhancer.Parameters()
@@ -170,6 +175,7 @@ final class LightingEngine {
         let accepted = result.areaLuma.compactMap { $0 }
         guard accepted.count >= config.minFaceAreas, result.exposureDuration > 0, result.iso > 0 else {
             smoothedFaceLogLux = nil
+            lock.withLock { _faceLux = nil }
             return
         }
         let scale = config.faceLuxCalibration * result.aperture * result.aperture
@@ -179,6 +185,7 @@ final class LightingEngine {
         let smoothed = smoothedFaceLogLux.map { $0 + (logLux - $0) * 0.4 } ?? logLux
         smoothedFaceLogLux = smoothed
         lastKnownLux = exp2(smoothed)
+        lock.withLock { _faceLux = exp2(smoothed) }
     }
 
     private func updateRedness(_ redness: Float?, faceHeight: Float?) {
@@ -217,10 +224,27 @@ final class LightingEngine {
         }
     }
 
+    private func currentStatus() -> LightingStatus {
+        let thermal = ProcessInfo.processInfo.thermalState
+        return LightingStatus(faceLux: lock.withLock { _faceLux }.map(Double.init),
+                              isGlowAtMax: isPanelOn && panel >= quality.panelCap - glowMaxMargin,
+                              isHeatLimited: thermal == .serious || thermal == .critical)
+    }
+
+    private func isSameStatus(_ a: LightingStatus, _ b: LightingStatus) -> Bool {
+        guard a.isGlowAtMax == b.isGlowAtMax, a.isHeatLimited == b.isHeatLimited else { return false }
+        switch (a.faceLux, b.faceLux) {
+        case (nil, nil): return true
+        case let (x?, y?): return abs(log2(max(x, 0.1) / max(y, 0.1))) < Double(faceLuxPublishStep)
+        default: return false
+        }
+    }
+
     private func publish(_ output: LightingOutput) {
         if let published,
            abs(published.ringLight - output.ringLight) < 0.003,
-           abs(published.screenBrightnessCap - output.screenBrightnessCap) < 0.01 {
+           abs(published.screenBrightnessCap - output.screenBrightnessCap) < 0.01,
+           isSameStatus(published.status, output.status) {
             return
         }
         published = output

@@ -14,6 +14,14 @@ struct OnboardingHandOverlay: View {
     var width: CGFloat = 200
 
     @State private var isBreathing = false
+    @State private var heldAnchor: CGPoint?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let jumpDistance: CGFloat = 0.06
+
+    private var shownAnchor: CGPoint? {
+        reduceMotion ? heldAnchor ?? eyeAnchor : eyeAnchor
+    }
 
     private var aspect: CGFloat {
         guard let size = UIImage(named: assetName)?.size, size.width > 0 else { return 1 }
@@ -22,7 +30,7 @@ struct OnboardingHandOverlay: View {
 
     var body: some View {
         GeometryReader { proxy in
-            if let eyeAnchor {
+            if let eyeAnchor = shownAnchor {
                 let w = width
                 let h = width * aspect
                 let point = CGPoint(
@@ -39,17 +47,25 @@ struct OnboardingHandOverlay: View {
                         y: point.y - tip.y * h + h / 2
                     )
                     .shadow(color: .black.opacity(0.45), radius: 6, y: 2)
-                    .scaleEffect(isBreathing ? 1.04 : 1, anchor: UnitPoint(x: tip.x, y: tip.y))
-                    .opacity(isBreathing ? 1 : 0.8)
+                    .scaleEffect(isBreathing && !reduceMotion ? 1.04 : 1, anchor: UnitPoint(x: tip.x, y: tip.y))
+                    .opacity(reduceMotion || isBreathing ? 1 : 0.8)
             }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .onAppear {
+            guard !reduceMotion else { return }
             withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) {
                 isBreathing = true
             }
         }
+        .onChange(of: eyeAnchor, initial: true) { _, anchor in holdAnchor(anchor) }
+    }
+
+    private func holdAnchor(_ anchor: CGPoint?) {
+        guard let anchor else { return heldAnchor = nil }
+        if let held = heldAnchor, hypot(anchor.x - held.x, anchor.y - held.y) <= jumpDistance { return }
+        heldAnchor = anchor
     }
 }
 

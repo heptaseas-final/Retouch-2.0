@@ -6,6 +6,7 @@ final class FakeLightingService: LightingServicing {
     var filterColor: ManualColorChoice?
     var ringLightLevel: Double = 0
     var closeness: Double = 0
+    var status = LightingStatus()
     var isAutoBrightness = true
     var brightness: Double = 0
     let config = LightingConfig()

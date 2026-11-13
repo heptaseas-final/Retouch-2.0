@@ -10,6 +10,12 @@ enum CameraState: Equatable {
     case failed
 }
 
+struct LightingStatus: Equatable {
+    var faceLux: Double?
+    var isGlowAtMax = false
+    var isHeatLimited = false
+}
+
 enum ManualColorChoice: String, CaseIterable {
     case warm, natural, cool
 }

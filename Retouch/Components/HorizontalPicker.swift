@@ -18,20 +18,26 @@ struct HorizontalPicker<Item: Hashable>: View {
     let title: (Item) -> String
 
     @State private var base = 0
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
 
     private let maxStepsPerSwipe = 1
 
     var body: some View {
-        let track = PickerTrack(slots: items.map { pickerTextWidth(title($0)) + 2 * padding })
+        let font = PickerMetrics.font(for: typeSize)
+        let restingHeight = PickerMetrics.height(height, font: font)
+        let liftedHeight = restingHeight + expandedHeight - height
+        let track = PickerTrack(slots: items.map { PickerMetrics.textWidth(title($0), font: font) + 2 * padding })
         let dragX = track.center(base) - (swipe.isDragging ? swipe.translation : 0)
         let x = min(max(dragX, track.center(base - maxStepsPerSwipe)), track.center(base + maxStepsPerSwipe))
         let current = track.nearest(to: x, around: base)
         let capsuleWidth = swipe.isDragging ? track.slotWidth(at: x, around: base) : track.slot(base)
-        let currentHeight = swipe.isDragging ? expandedHeight : height
+        let currentHeight = swipe.isDragging ? liftedHeight : restingHeight
 
         ZStack {
             Color.clear
-                .pickerGlass(tint: nil)
+                .pickerGlass(tint: contrast == .increased ? .white.opacity(0.8) : nil)
 
             Color.clear
                 .pickerGlass(tint: .white.opacity(0.4))
@@ -39,8 +45,8 @@ struct HorizontalPicker<Item: Hashable>: View {
 
             ForEach(Array(current - 5...current + 5), id: \.self) { index in
                 Text(title(item(at: index)))
-                    .font(Font(pickerFont))
-                    .foregroundStyle(index == current ? Color.appMagenta : Color.appInactive.opacity(0.6))
+                    .font(Font(font))
+                    .foregroundStyle(index == current ? Color.appMagenta : Color.appInactive.opacity(contrast == .increased ? 1 : 0.6))
                     .lineLimit(1)
                     .fixedSize()
                     .frame(width: track.slot(index), height: currentHeight)
@@ -53,12 +59,17 @@ struct HorizontalPicker<Item: Hashable>: View {
         .frame(width: width, height: currentHeight)
         .clipShape(Capsule())
         .contentShape(Capsule())
-        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: swipe.isDragging)
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.6), value: swipe.isDragging)
         .sensoryFeedback(.selection, trigger: current)
         .accessibilityElement()
-        .accessibilityAddTraits(.isButton)
         .accessibilityLabel("Zoom target")
-        .accessibilityValue(title(selection))
+        .accessibilityValue(title(selection).capitalized)
+        .accessibilityInputLabels([Text("Zoom target"), Text("Zoom"), Text(title(selection).capitalized)])
+        .accessibilityActions {
+            ForEach(items, id: \.self) { item in
+                Button("Select \(title(item).capitalized)") { select(item: item) }
+            }
+        }
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: select(base + 1)
@@ -84,6 +95,7 @@ struct HorizontalPicker<Item: Hashable>: View {
             if delta < -items.count / 2 { delta += items.count }
             withAnimation(.snappy) { base += delta }
         }
+        .environment(\.colorScheme, .light)
     }
 
     private func wrapped(_ index: Int) -> Int {
@@ -99,19 +111,14 @@ struct HorizontalPicker<Item: Hashable>: View {
         commit(item(at: index))
     }
 
+    private func select(item: Item) {
+        guard let target = items.firstIndex(of: item) else { return }
+        select(base + target - wrapped(base))
+    }
+
     private func commit(_ item: Item) {
         if selection != item { selection = item }
     }
-}
-
-private let pickerFont: UIFont = {
-    let regular = UIFont.systemFont(ofSize: 15, weight: .regular)
-    guard let rounded = regular.fontDescriptor.withDesign(.rounded) else { return regular }
-    return UIFont(descriptor: rounded, size: 15)
-}()
-
-private func pickerTextWidth(_ text: String) -> CGFloat {
-    ceil((text as NSString).size(withAttributes: [.font: pickerFont]).width)
 }
 
 private struct PickerTrack {
