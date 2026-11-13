@@ -20,125 +20,104 @@ struct LightModeButton: View {
     var colorEmphasis: ControlEmphasis = .normal
 
     @State private var isLifted = false
-    @State private var isPressing = false
-    @State private var movedTooFar = false
-    @State private var liftOrigin: CGSize = .zero
-    @State private var lastTranslation: CGSize = .zero
-    @State private var liftTask: Task<Void, Never>?
+    @State private var ignoresNextTap = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let tapSlop: CGFloat = 10
-
+    private let liftDelay: Double = 0.3
+    private let tapResetDelay: Duration = .milliseconds(150)
     private let inset: CGFloat = 4
     private var circleSize: CGFloat { size - inset * 2 }
 
     var body: some View {
-        flashButton
-            .padding(inset)
-            .background(alignment: .bottom) {
-                Capsule()
-                    .fill(Color.appLightCapsule)
-                    .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
-                    .frame(height: mode.lightColor == nil ? size : size * 2 + inset)
+        VStack(spacing: 12) {
+            if let lightColor = mode.lightColor {
+                indicator(for: lightColor)
+                    .transition(reduceMotion ? .opacity : .scale(scale: 0.5).combined(with: .opacity))
             }
-            .overlay(alignment: .top) {
-                if let lightColor = mode.lightColor {
-                    indicator(for: lightColor)
-                        .offset(y: -(circleSize + inset * 2))
-                        .transition(reduceMotion ? .opacity : .scale(scale: 0.5).combined(with: .opacity))
-                }
-            }
+            flashButton
+                .accessibilitySortPriority(1)
+        }
+        .accessibilityElement(children: .contain)
+        .padding(inset)
+        .lightGlass()
+        .ringLightBorder()
+        .frame(width: size, height: size, alignment: .bottom)
         .scaleEffect(isLifted && !reduceMotion ? 1.12 : 1)
         .shadow(color: .black.opacity(isLifted ? 0.25 : 0), radius: 12, y: 6)
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.7), value: isLifted)
         .sensoryFeedback(.impact(weight: .medium), trigger: isLifted) { _, lifted in lifted }
     }
 
-    private func pressGesture(onTap: @escaping () -> Void) -> some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+    private var liftGesture: some Gesture {
+        LongPressGesture(minimumDuration: liftDelay)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
             .onChanged { value in
-                lastTranslation = value.translation
-                if !isPressing {
-                    isPressing = true
-                    scheduleLift()
+                guard case .second(true, let drag) = value else { return }
+                if !isLifted {
+                    isLifted = true
+                    ignoresNextTap = true
+                    onLiftDrag?(.zero)
                 }
-                if isLifted {
-                    onLiftDrag?(value.translation - liftOrigin)
-                } else if hypot(value.translation.width, value.translation.height) > tapSlop {
-                    movedTooFar = true
-                    liftTask?.cancel()
-                }
+                if let drag { onLiftDrag?(drag.translation) }
             }
             .onEnded { value in
-                liftTask?.cancel()
-                if isLifted {
-                    isLifted = false
-                    onLiftEnd?(value.translation - liftOrigin)
-                } else if !movedTooFar {
-                    onTap()
+                guard isLifted else { return }
+                isLifted = false
+                if case .second(true, let drag) = value { onLiftEnd?(drag?.translation ?? .zero) }
+                Task { @MainActor in
+                    try? await Task.sleep(for: tapResetDelay)
+                    ignoresNextTap = false
                 }
-                isPressing = false
-                movedTooFar = false
             }
-    }
-
-    private func scheduleLift() {
-        guard onLiftDrag != nil else { return }
-        liftTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled, isPressing, !movedTooFar else { return }
-            liftOrigin = lastTranslation
-            isLifted = true
-            onLiftDrag?(.zero)
-        }
     }
 
     private func indicator(for lightColor: LightColor) -> some View {
-        Circle()
-            .fill(lightColor.color)
-            .overlay(Circle().strokeBorder(Color.black.opacity(0.2), lineWidth: 1.5))
-            .frame(width: circleSize, height: circleSize)
-            .shadow(color: lightColor.color.opacity(0.6), radius: 10)
-            .contentShape(Circle())
-            .gesture(pressGesture(onTap: changeColor))
-            .accessibilityElement()
-            .accessibilityAddTraits(.isButton)
-            .accessibilityLabel("Light color")
-            .accessibilityInputLabels([Text("Light color"), Text("Color")])
-            .accessibilityValue(lightColor.name)
-            .accessibilityHint(colorEmphasis.guide ?? colorTarget?.lightColor.map { "Changes to \($0.name.lowercased())." } ?? "")
-            .accessibilityAction { changeColor() }
-            .emphasis(colorEmphasis)
-    }
-
-    private var flashFace: some View {
-        Image(systemName: mode.isOn ? "bolt.fill" : "bolt.slash.fill")
-            .font(.system(size: circleSize * 0.45, weight: .semibold))
-            .foregroundStyle(Color.appMagenta)
-            .contentTransition(.symbolEffect(.replace))
-            .frame(width: circleSize, height: circleSize)
-            .background(Circle().fill(Color.appLightFace))
-            .overlay(Circle().strokeBorder(Color.black.opacity(0.12), lineWidth: 1))
+        Button { perform(changeColor) } label: {
+            Circle()
+                .fill(lightColor.color)
+                .overlay(Circle().strokeBorder(Color.black.opacity(0.5), lineWidth: 1.5))
+                .frame(width: circleSize, height: circleSize)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(liftGesture, including: onLiftDrag == nil ? .subviews : .all)
+        .accessibilityLabel("Light color")
+        .accessibilityInputLabels([Text("Light color"), Text("Color")])
+        .accessibilityValue(lightColor.name)
+        .accessibilityHint(colorEmphasis.guide ?? colorTarget?.lightColor.map { "Changes to \($0.name.lowercased())." } ?? "")
+        .emphasis(colorEmphasis)
     }
 
     private var flashButton: some View {
-        flashFace
-            .contentShape(Circle())
-            .gesture(pressGesture(onTap: tap))
-            .sensoryFeedback(.impact(weight: .light), trigger: mode)
-            .accessibilityElement()
-            .accessibilityAddTraits(.isButton)
-            .accessibilityLabel("Light")
-            .accessibilityInputLabels([Text("Light"), Text("Light button"), Text("Flash")])
-            .accessibilityValue(mode.isOn ? "On" : "Off")
-            .accessibilityHint(boltEmphasis.guide ?? (mode.isOn ? "Turns the light off." : "Turns the light on."))
-            .accessibilityAction { tap() }
-            .accessibilityActions {
-                ForEach(moveActions.indices, id: \.self) { index in
-                    Button(moveActions[index].label, action: moveActions[index].perform)
-                }
+        Button { perform(tap) } label: {
+            Label("Light", systemImage: mode.isOn ? "bolt.fill" : "bolt.slash.fill")
+                .labelStyle(.iconOnly)
+                .font(.system(size: circleSize * 0.45, weight: .semibold))
+                .foregroundStyle(Color.appMagenta)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: circleSize, height: circleSize)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(liftGesture, including: onLiftDrag == nil ? .subviews : .all)
+        .sensoryFeedback(.impact(weight: .light), trigger: mode)
+        .accessibilityInputLabels([Text("Light"), Text("Light button"), Text("Flash")])
+        .accessibilityValue(mode.isOn ? "On" : "Off")
+        .accessibilityHint(boltEmphasis.guide ?? (mode.isOn ? "Turns the light off." : "Turns the light on."))
+        .accessibilityActions {
+            ForEach(moveActions.indices, id: \.self) { index in
+                Button(moveActions[index].label, action: moveActions[index].perform)
             }
-            .emphasis(boltEmphasis)
+        }
+        .emphasis(boltEmphasis)
+    }
+
+    private func perform(_ action: () -> Void) {
+        guard !ignoresNextTap else {
+            ignoresNextTap = false
+            return
+        }
+        action()
     }
 
     private func tap() {
@@ -165,6 +144,17 @@ struct LightModeButton: View {
     }
 }
 
+private extension View {
+    @ViewBuilder
+    func lightGlass() -> some View {
+        if #available(iOS 26, *) {
+            glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            background(.ultraThinMaterial, in: Capsule())
+        }
+    }
+}
+
 #Preview {
     struct Demo: View {
         @State private var mode: LightMode = .off
@@ -177,8 +167,4 @@ struct LightModeButton: View {
         }
     }
     return Demo()
-}
-
-private func - (lhs: CGSize, rhs: CGSize) -> CGSize {
-    CGSize(width: lhs.width - rhs.width, height: lhs.height - rhs.height)
 }

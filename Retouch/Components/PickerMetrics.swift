@@ -5,8 +5,8 @@ enum PickerMetrics {
     private static let baseSize: CGFloat = 15
     private static let textVerticalInset: CGFloat = 18
 
-    static func font(for typeSize: DynamicTypeSize) -> UIFont {
-        let regular = UIFont.systemFont(ofSize: baseSize, weight: .regular)
+    static func font(for typeSize: DynamicTypeSize, isBold: Bool = false) -> UIFont {
+        let regular = UIFont.systemFont(ofSize: baseSize, weight: .semibold)
         let base = regular.fontDescriptor.withDesign(.rounded).map { UIFont(descriptor: $0, size: baseSize) } ?? regular
         let traits = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(typeSize))
         return UIFontMetrics(forTextStyle: .subheadline).scaledFont(for: base, compatibleWith: traits)

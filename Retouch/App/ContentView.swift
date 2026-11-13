@@ -13,19 +13,32 @@ struct ContentView: View {
     let makeOnboardingSignals: () -> ZoomOnboardingSignals
 
     var body: some View {
-        ZStack {
-            MirrorView(viewModel: mirrorViewModel, showsControls: hasCompletedOnboarding) {
-                withAnimation(.easeInOut) { hasCompletedOnboarding = false }
-            }
-
-            if !hasCompletedOnboarding {
-                OnboardingFlow(signals: makeOnboardingSignals()) {
-                    withAnimation(.easeInOut) { hasCompletedOnboarding = true }
+        NavigationStack {
+            ZStack {
+                MirrorView(viewModel: mirrorViewModel, showsControls: hasCompletedOnboarding) {
+                    withAnimation(.easeInOut) { hasCompletedOnboarding = false }
                 }
-                .transition(.opacity)
+
+                if !hasCompletedOnboarding, mirrorViewModel.cameraState != .failed, mirrorViewModel.permission != .denied {
+                    OnboardingFlow(signals: makeOnboardingSignals()) {
+                        withAnimation(.easeInOut) { hasCompletedOnboarding = true }
+                    }
+                    .transition(.opacity)
+                }
             }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackgroundVisibility(barBackground, for: .navigationBar)
         }
         .environment(\.isLargerButtons, mirrorViewModel.isLargerButtons)
+        .environment(\.isRingLightVisible, mirrorViewModel.ringLightLevel > RingLightBorder.visibleLevel)
+        .environment(\.colorScheme, .light)
+
+    }
+
+    private var barBackground: Visibility {
+        if #available(iOS 26, *) { return .hidden }
+        return .visible
     }
 }
 

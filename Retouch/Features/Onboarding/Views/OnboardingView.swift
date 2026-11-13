@@ -19,7 +19,6 @@ struct OnboardingView<Camera: View>: View {
     private let handSize: CGFloat = 200
     private let spotlightPadding: CGFloat = 10
     private let controlsHeight: CGFloat = 66
-    private let minTapTarget: CGFloat = 44
     @Environment(\.isLargerButtons) private var isLargerButtons
     @Environment(\.dynamicTypeSize) private var typeSize
     private let bubbleGap: CGFloat = 16
@@ -88,7 +87,6 @@ struct OnboardingView<Camera: View>: View {
                     fullWidthBubbles(for: step)
                 } else {
                     VStack(spacing: 0) {
-                        topBar(for: step)
                         bubble(at: .top)
                             .padding(.top, 8)
                         Spacer(minLength: 0)
@@ -106,6 +104,7 @@ struct OnboardingView<Camera: View>: View {
             .accessibilitySortPriority(1)
         }
         .coordinateSpace(.named(layoutSpace))
+        .toolbar { skipButton(for: step) }
         .pickerSwipe(pickerSwipe, isEnabled: step.focus == .picker)
         .animation(.easeInOut(duration: 0.2), value: pickerSwipe.isDragging)
         .animation(.snappy, value: coordinator.step)
@@ -124,26 +123,13 @@ struct OnboardingView<Camera: View>: View {
         return step.focus == .none ? 0 : 0.4
     }
 
-    private func topBar(for step: OnboardingStep) -> some View {
-        HStack {
-            Spacer()
-            if step != .done {
-                Button { coordinator.skip() } label: {
-                    Text("Skip")
-                        .padding(.horizontal, 12)
-                        .frame(minWidth: minTapTarget, minHeight: minTapTarget)
-                        .background(.black.opacity(0.55), in: Capsule())
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .contentShape(Capsule())
-                }
-                .font(.subheadline)
-                .underline()
-                .largerButtonsTypeSize(isLargerButtons)
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.3), radius: 2)
+    @ToolbarContentBuilder
+    private func skipButton(for step: OnboardingStep) -> some ToolbarContent {
+        if step != .done {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Skip", action: coordinator.skip)
             }
         }
-        .frame(minHeight: minTapTarget)
     }
 
     private var showsSwipeHand: Bool {
@@ -181,7 +167,6 @@ struct OnboardingView<Camera: View>: View {
         let bottomStart = lightFrame.maxY + bubbleGap
         let bottomRegion = max(controlsFrame.minY - bubbleGap - bottomStart, 0)
         return ZStack(alignment: .top) {
-            topBar(for: step)
             bubble(at: .bottom)
                 .frame(height: bottomRegion, alignment: .bottom)
                 .padding(.top, bottomStart)
@@ -225,8 +210,7 @@ struct OnboardingView<Camera: View>: View {
         if coordinator.step.bubblePosition == position,
            coordinator.isBubbleVisible,
            let text = coordinator.instruction {
-            InstructionBubble(text: text, width: coordinator.step.focus.isLighting ? 233 : nil,
-                              isFullWidth: isPickerFullWidth, spokenText: coordinator.spokenInstruction,
+            InstructionBubble(text: text, isFullWidth: isPickerFullWidth, spokenText: coordinator.spokenInstruction,
                               takesVoiceOverFocus: coordinator.step.focus == .none)
                 .id(text)
                 .transition(.opacity)

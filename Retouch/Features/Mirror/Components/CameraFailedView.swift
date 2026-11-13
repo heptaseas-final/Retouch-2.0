@@ -4,22 +4,17 @@ struct CameraFailedView: View {
     let onRetry: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 8) {
-                Text("Can't open the camera")
-                    .font(.headline)
-                Text("Close other apps that use the camera, then try again.")
-                    .font(.subheadline)
-            }
-            .foregroundStyle(.white)
-            .multilineTextAlignment(.center)
-            .accessibilityElement(children: .combine)
+        ContentUnavailableView {
+            Label("Can't open the camera", systemImage: "video.slash.fill")
+        } description: {
+            Text("Close other apps that use the camera, then try again.")
+        } actions: {
             Button("Try Again", action: onRetry)
-                .buttonStyle(.borderedProminent)
+                .glassButtonStyle(prominent: true)
+                .controlSize(.large)
                 .tint(.appMagenta)
         }
-        .padding(.horizontal, 32)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .environment(\.colorScheme, .dark)
         .background(.black)
     }
 }
