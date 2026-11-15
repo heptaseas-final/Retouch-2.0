@@ -42,6 +42,8 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     private var cutGate = ZoomCutGate(stableDelay: ZoomTuning.reducedMotionStableDelay)
     private var lastGoalWasManual = false
     private var snapPending = false
+    private var fadeOrigin: ZoomFade?
+    private var fadeStartedAt: TimeInterval = 0
 
     func reset() {
         goalScale = 1
@@ -58,6 +60,7 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         focusFilterY.reset()
         cutGate.reset()
         snapPending = false
+        fadeOrigin = nil
         scaleLock.lock(); shownScale = 1; scaleLock.unlock()
         lastState = ZoomState()
         onChange?(lastState)
@@ -178,6 +181,10 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         let dt = min(max(CGFloat(link.targetTimestamp - link.timestamp), 1.0 / 120.0), 0.05)
 
         let snaps = reducesMotion && snapPending
+        if snaps {
+            fadeOrigin = ZoomFade(fromScale: lastState.scale, fromOffset: lastState.offset, progress: 0)
+            fadeStartedAt = CACurrentMediaTime()
+        }
         if snaps || (reducesMotion && mode == .pinch) {
             currentScale = goalScale
         } else {
@@ -211,10 +218,23 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
             panY = Self.smoothDamp(panY, goalY, &velY, smoothTime: ZoomTuning.panSmoothTime, dt: dt)
         }
 
+        var fade: ZoomFade?
+        if var origin = fadeOrigin {
+            let elapsed = CACurrentMediaTime() - fadeStartedAt
+            let progress = ZoomTransition.style(reduceMotion: reducesMotion).fadeProgress(elapsed: elapsed)
+            if progress < 1 {
+                origin.progress = CGFloat(progress)
+                fade = origin
+            } else {
+                fadeOrigin = nil
+            }
+        }
+
         if abs(lastState.scale - currentScale) > 0.0005
             || abs(lastState.offset.width - panX) > 0.05
-            || abs(lastState.offset.height - panY) > 0.05 {
-            lastState = ZoomState(scale: currentScale, offset: CGSize(width: panX, height: panY))
+            || abs(lastState.offset.height - panY) > 0.05
+            || fade != lastState.fade {
+            lastState = ZoomState(scale: currentScale, offset: CGSize(width: panX, height: panY), fade: fade)
             onChange?(lastState)
         }
     }
