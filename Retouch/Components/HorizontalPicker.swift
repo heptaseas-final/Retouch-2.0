@@ -40,15 +40,15 @@ struct HorizontalPicker<Item: Hashable>: View {
             Color.clear
                 .pickerGlass(tint: contrast == .increased ? .white.opacity(0.8) : nil)
 
-            Color.clear
-                .pickerGlass(tint: .white.opacity(0.4))
+           Capsule()
+                .fill(Color.appMagenta)
                 .frame(width: capsuleWidth, height: currentHeight)
 
             ForEach(Array(current - 5...current + 5), id: \.self) { index in
                 Button { select(index) } label: {
                     Text(title(item(at: index)))
                         .font(Font(font))
-                        .foregroundStyle(index == current ? Color.appMagenta : Color.appInactive.opacity(contrast == .increased ? 1 : 0.6))
+                        .foregroundStyle(index == current ? Color.white : Color.appInactive.opacity(contrast == .increased ? 1 : 0.8))
                         .lineLimit(1)
                         .fixedSize()
                         .frame(width: track.slot(index), height: currentHeight)

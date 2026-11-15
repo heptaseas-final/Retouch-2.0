@@ -29,7 +29,7 @@ struct LightModeButton: View {
     private var circleSize: CGFloat { size - inset * 2 }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             if let lightColor = mode.lightColor {
                 indicator(for: lightColor)
                     .transition(reduceMotion ? .opacity : .scale(scale: 0.5).combined(with: .opacity))
@@ -38,9 +38,9 @@ struct LightModeButton: View {
                 .accessibilitySortPriority(1)
         }
         .accessibilityElement(children: .contain)
-        .padding(inset)
+        .padding(.horizontal, 6)
+        .padding(.vertical, inset)
         .lightGlass()
-        .ringLightBorder()
         .frame(width: size, height: size, alignment: .bottom)
         .scaleEffect(isLifted && !reduceMotion ? 1.12 : 1)
         .shadow(color: .black.opacity(isLifted ? 0.25 : 0), radius: 12, y: 6)
@@ -75,7 +75,7 @@ struct LightModeButton: View {
         Button { perform(changeColor) } label: {
             Circle()
                 .fill(lightColor.color)
-                .overlay(Circle().strokeBorder(Color.black.opacity(0.5), lineWidth: 1.5))
+                .overlay(Circle().strokeBorder(Color.appMagenta, lineWidth: 2))
                 .frame(width: circleSize, height: circleSize)
                 .contentShape(Circle())
         }
@@ -93,9 +93,10 @@ struct LightModeButton: View {
             Label("Light", systemImage: mode.isOn ? "bolt.fill" : "bolt.slash.fill")
                 .labelStyle(.iconOnly)
                 .font(.system(size: circleSize * 0.45, weight: .semibold))
-                .foregroundStyle(Color.appMagenta)
+                .foregroundStyle(mode.isOn ? Color.white : Color.appMagenta)
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: circleSize, height: circleSize)
+                .background(mode.isOn ? Color.appMagenta : Color.clear, in: Capsule())
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
