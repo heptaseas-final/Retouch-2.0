@@ -24,7 +24,7 @@ struct SplashView: View {
         }
         .buttonStyle(.plain)
         .ignoresSafeArea()
-        .accessibilityLabel("Re-touch")
+        .accessibilityLabel("Retouch")
         .accessibilityHint("Double tap to skip.")
         .task {
             guard reduceMotion, (try? await Task.sleep(for: stillDuration)) != nil else { return }
