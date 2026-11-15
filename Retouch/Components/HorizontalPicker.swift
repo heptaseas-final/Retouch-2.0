@@ -62,6 +62,7 @@ struct HorizontalPicker<Item: Hashable>: View {
         }
         .frame(width: width, height: currentHeight)
         .clipShape(Capsule())
+        .ringLightBorder()
         .contentShape(Capsule())
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.6), value: swipe.isDragging)
         .sensoryFeedback(.selection, trigger: current)
