@@ -10,6 +10,22 @@ nonisolated struct ZoomReadiness {
 
     private var activeHands: [TrackedHand] { hands.filter { $0.hasPose || $0.holding } }
 
+    static func applying(_ tools: ToolZoneReading, to input: EyeZoomFlow.Input) -> EyeZoomFlow.Input {
+        var result = input
+        result.toolLeft = tools.eyeTriggerLeft
+        result.toolRight = tools.eyeTriggerRight
+        result.holdLeft = input.holdLeft || tools.eyeHoldLeft
+        result.holdRight = input.holdRight || tools.eyeHoldRight
+        return result
+    }
+
+    static func applying(_ tools: ToolZoneReading, to input: LipsZoomFlow.Input) -> LipsZoomFlow.Input {
+        var result = input
+        result.toolReady = tools.lipsTrigger
+        result.fingerNear = input.fingerNear || tools.lipsHold
+        return result
+    }
+
     func lips(points: FacePoints, support: Bool) -> LipsZoomFlow.Input {
         var input = LipsZoomFlow.Input()
         input.handLost = scan.handsSeen == 0 && hands.isEmpty

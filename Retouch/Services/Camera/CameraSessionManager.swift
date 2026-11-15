@@ -29,7 +29,6 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
     private let analysisQueue = DispatchQueue(label: "autolight.camera.analysis", qos: .userInitiated)
     private var device: AVCaptureDevice?
     private var videoConnection: AVCaptureConnection?
-    private var lastSampleTime: CFTimeInterval = 0
 
     private var isConfigured = false
     private var wantsRunning = false
