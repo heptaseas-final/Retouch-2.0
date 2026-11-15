@@ -119,7 +119,6 @@ struct MirrorView: View {
     }
     private static let sideMargin: CGFloat = 16
     private static let dockZoneHeight: CGFloat = 120
-    private static let bannerTrailing: CGFloat = 82
 
     @ViewBuilder
     private var sideLightButton: some View {
@@ -249,9 +248,8 @@ struct MirrorView: View {
             CameraFailedView(onRetry: viewModel.retryCamera)
         } else if let status = visibleStatus {
             VStack {
-                MirrorStatusBanner(status: status, onDismiss: viewModel.dismissStatus)
-                    .padding(.leading, Self.sideMargin)
-                    .padding(.trailing, Self.sideMargin)
+                MirrorStatusBanner(status: status)
+                    .padding(.horizontal, Self.sideMargin)
                     .transition(.opacity)
                 Spacer()
             }

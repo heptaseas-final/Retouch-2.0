@@ -31,7 +31,7 @@ struct ContentView: View {
             .toolbarBackgroundVisibility(barBackground, for: .navigationBar)
         }
         .environment(\.isLargerButtons, mirrorViewModel.isLargerButtons)
-        .environment(\.isRingLightVisible, mirrorViewModel.ringLightLevel > RingLightBorder.visibleLevel)
+//        .environment(\.isRingLightVisible, mirrorViewModel.ringLightLevel > RingLightBorder.visibleLevel)
         .environment(\.colorScheme, .light)
 
     }
