@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct SpotlightTargetKey: PreferenceKey {
-    static var defaultValue: Anchor<CGRect>? = nil
+    static var defaultValue: Anchor<CGRect>?
     static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
         value = value ?? nextValue()
     }
@@ -28,17 +28,17 @@ struct CameraControls: View {
     @Binding var lightMode: LightMode
     let swipe: PickerSwipe
     var nextLightMode: (LightMode) -> LightMode = { $0.next }
-    var onLightTap: ((LightMode) -> Void)? = nil
+    var onLightTap: ((LightMode) -> Void)?
     var pickerEmphasis: ControlEmphasis = .normal
     var flashEmphasis: ControlEmphasis = .normal
     var lightColorEmphasis: ControlEmphasis = .normal
     var isLightDocked = true
     var lightOffset: CGSize = .zero
-    var onLightLiftDrag: ((CGSize) -> Void)? = nil
-    var onLightLiftEnd: ((CGSize) -> Void)? = nil
+    var onLightLiftDrag: ((CGSize) -> Void)?
+    var onLightLiftEnd: ((CGSize) -> Void)?
     var lightMoveActions: [(label: String, perform: () -> Void)] = []
-    var onLightSlotCenter: ((CGPoint) -> Void)? = nil
-    var onPickerLayoutChange: ((Bool) -> Void)? = nil
+    var onLightSlotCenter: ((CGPoint) -> Void)?
+    var onPickerLayoutChange: ((Bool) -> Void)?
 
     var expandedHeight: CGFloat = 66
     var pickerWidth: CGFloat = 233

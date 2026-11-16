@@ -5,7 +5,6 @@
 //  Created by Davin P on 15/11/26.
 //
 
-
 import XCTest
 
 final class RoomLightOverallCheckUITests: RetouchUITestCase {

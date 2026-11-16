@@ -125,7 +125,7 @@ final class MakeupLook {
         float3 lab = toOklab(p3ToSrgb(decodeGamma(saturate(pixel.rgb))));
         float L = lab.x;
         float C = length(lab.yz);
-        float hue = atan2(lab.z, lab.y);                       
+        float hue = atan2(lab.z, lab.y);
 
         // 1. Bobot kulit: hue dekat 47.5° (±30° penuh, hilang di ±42°) dan chroma rendah-sedang.
         //    Rentang 17.5–77.5° mencakup kulit kemerahan/flushed, pinkish, Asia, kuning langsat,

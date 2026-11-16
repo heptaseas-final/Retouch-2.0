@@ -7,14 +7,14 @@ nonisolated struct GripObservation {
     var threeFinger = false
     var holding = false
     var mode = ""
-    var base: CGPoint? = nil
+    var base: CGPoint?
     var kept = false
 }
 
 nonisolated struct PointObservation {
     var point: CGPoint
     var mode = ""
-    var base: CGPoint? = nil
+    var base: CGPoint?
 }
 
 nonisolated struct HandScan {

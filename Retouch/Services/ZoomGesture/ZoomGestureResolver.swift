@@ -17,8 +17,7 @@ nonisolated struct ZoomGestureResolver {
 
     init(exitHold: TimeInterval = ZoomTuning.exitHold) { self.exitHold = exitHold }
 
-    mutating func resolve(hand: ZoomTarget?, lips: Bool, nose: Bool = false, head: ZoomTarget?, covering: Bool, headStraight: Bool, headQuickRelease: Bool = false, now: Date) -> ZoomTarget
-    {
+    mutating func resolve(hand: ZoomTarget?, lips: Bool, nose: Bool = false, head: ZoomTarget?, covering: Bool, headStraight: Bool, headQuickRelease: Bool = false, now: Date) -> ZoomTarget {
         let handCandidate: ZoomTarget? = nose ? .nose : (hand ?? (lips ? .lips : nil))
         if handCandidate != nil { lastHandSeen = now }
         let handDriven = Self.isHandTarget(target)

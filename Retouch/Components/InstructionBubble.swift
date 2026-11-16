@@ -10,7 +10,7 @@ import SwiftUI
 struct InstructionBubble: View {
     let text: String
     var isFullWidth = false
-    var spokenText: String? = nil
+    var spokenText: String?
     var takesVoiceOverFocus = false
 
     @AccessibilityFocusState private var isFocused: Bool

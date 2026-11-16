@@ -222,8 +222,7 @@ nonisolated final class HandPointDetector: @unchecked Sendable {
                     guard mcpLen > handSize * 0.3 else { continue }
                     let ext = dist(wS, scaled(tp.location)) / mcpLen
                     known += 1
-                    if ext <= curlMax { curled += 1 }
-                    else if ext >= straightMin { straight += 1 }
+                    if ext <= curlMax { curled += 1 } else if ext >= straightMin { straight += 1 }
                 }
                 let thumbGap = min(dist(tS, iS), mS.map { dist(tS, $0) } ?? .infinity) / handSize
                 return conf2 >= jH && known >= 3 && straight == 0
