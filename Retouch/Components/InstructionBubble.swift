@@ -18,7 +18,6 @@ struct InstructionBubble: View {
 
     private let width: CGFloat = 309
     private let focusDelay: Duration = .milliseconds(300)
-    private let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
 
     var body: some View {
         ViewThatFits(in: .vertical) {
@@ -31,12 +30,7 @@ struct InstructionBubble: View {
         }
         .frame(width: isFullWidth ? nil : width)
         .frame(maxWidth: isFullWidth ? .infinity : nil)
-        .background {
-            shape
-                .fill(.ultraThinMaterial)
-                .overlay(shape.fill(Color.black.opacity(0.55)))
-                .overlay(shape.strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
-        }
+        .background(Color.appInactive.opacity(0.8), in: Capsule())
         .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spokenText ?? text)
@@ -56,8 +50,8 @@ struct InstructionBubble: View {
             .foregroundStyle(.white)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 22)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
     }
 }
 
