@@ -16,7 +16,7 @@ struct OnboardingView<Camera: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
 
-    private let handSize: CGFloat = 200
+    private let handSize: CGFloat = 277
     private let spotlightPadding: CGFloat = 10
     private let controlsHeight: CGFloat = 66
     @Environment(\.isLargerButtons) private var isLargerButtons
@@ -76,12 +76,6 @@ struct OnboardingView<Camera: View>: View {
                 swipeHand
             }
 
-            if step.showsHandOverlay {
-                OnboardingHandOverlay(eyeAnchor: signalSource.eyeAnchor)
-                    .ignoresSafeArea()
-                    .transition(.opacity)
-            }
-
             Group {
                 if showsSideLight(for: step), lightFrame != .zero, controlsFrame != .zero {
                     fullWidthBubbles(for: step)
@@ -93,7 +87,7 @@ struct OnboardingView<Camera: View>: View {
                         bottomBubble
                             .padding(.bottom, 16)
                         Color.clear
-                            .frame(height: max(controlsHeight, controlsFrame.height))
+                            .frame(height: bottomReserve)
                             .allowsHitTesting(false)
                     }
                     .padding(.horizontal, 16)
@@ -118,6 +112,12 @@ struct OnboardingView<Camera: View>: View {
             coordinator.detach(signalSource)
         }
     }
+    private var bottomReserve: CGFloat {
+        let base = max(controlsHeight, controlsFrame.height)
+        guard coordinator.lightMode.isOn, !isPickerFullWidth else { return base }
+        return base + LargerButtons.controlSize(isLarger: isLargerButtons, typeSize: typeSize)
+    }
+
     private func spotlightOpacity(for step: OnboardingStep) -> Double {
         if step.dimsBackdrop { return 0.7 }
         return step.focus == .none ? 0 : 0.4
