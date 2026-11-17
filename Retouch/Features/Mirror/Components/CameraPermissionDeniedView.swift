@@ -1,4 +1,3 @@
-//
 //  CameraPermissionDeniedView.swift
 //  Retouch
 //
