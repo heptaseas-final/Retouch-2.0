@@ -32,9 +32,11 @@ final class MirrorViewModel {
 
     var zoomState: ZoomState { zoomStore.zoomState }
     var zoomTarget: ZoomTarget { zoomStore.tracking.target }
+    var zoomLevel: CGFloat { selectedPart.zoomTarget?.zoomScale ?? zoomState.scale }
+    var zoomLevelText: String { "\((zoomLevel * 100).rounded() / 100)" }
     var cameraState: CameraState { camera.state }
     var permission: CameraPermissionStatus { cameraState == .permissionDenied ? .denied : .granted }
-    var ringLightLevel: Double { lighting.ringLightLevel }
+    var ringLightLevel: Double { UITestMode.forcesGlowMaximum ? 1 : lighting.ringLightLevel }
     var ringLightWidth: CGFloat { CGFloat(lighting.config.ringLightWidth) }
     var ringLightSoftness: Double { lighting.config.ringLightSoftness }
     var filterColor: ManualColorChoice? { lighting.filterColor }
@@ -82,6 +84,7 @@ final class MirrorViewModel {
 
     func monitorStatus() async {
         while !Task.isCancelled {
+            if permission == .denied { camera.start() }
             refreshStatus(now: ProcessInfo.processInfo.systemUptime)
             try? await Task.sleep(for: MirrorStatusConfig.refreshInterval)
         }
@@ -116,7 +119,10 @@ final class MirrorViewModel {
 
     func pinchChanged(_ magnification: CGFloat) { zoom.pinchChanged(magnification) }
 
-    func pinchEnded() { zoom.pinchEnded() }
+    func pinchEnded() {
+        zoom.pinchEnded()
+        if selectedPart == .face { selectedPart = .smile }
+    }
 
     func cameraStateDidChange(from old: CameraState, to new: CameraState) {
         if new == .running, old != .running {

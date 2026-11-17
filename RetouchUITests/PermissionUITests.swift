@@ -47,7 +47,7 @@ final class PermissionUITests: RetouchUITestCase {
         button.tap()
         let cameraSwitch = settings.switches[Name.cameraSwitch]
         XCTAssertTrue(cameraSwitch.waitForExistence(timeout: 5), "TC-1.1-09: switch Camera tidak ada")
-        if (cameraSwitch.value as? String) == "0" { cameraSwitch.tap() }
+        if (cameraSwitch.value as? String) == "0" { cameraSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap() }
         app.activate()
         XCTAssertTrue(waitUntilGone(element(Name.permissionMessage)), "TC-1.1-09: pesan izin masih tampil")
         XCTAssertEqual(app.state, .runningForeground, "TC-1.1-09: app crash")
@@ -67,7 +67,7 @@ final class PermissionUITests: RetouchUITestCase {
         var prompts = collectPromptLabels(timeout: 5)
         finishOnboardingIfShown()
         if element(Name.lightMode).exists { element(Name.lightMode).tap() }
-        if element(Name.zoomTarget).exists { element(Name.zoomTarget).swipeLeft() }
+        if element(Name.zoomTarget).exists { stepPicker(element(Name.zoomTarget)) }
         prompts += collectPromptLabels(timeout: 3)
         XCTAssertEqual(prompts.count, 1, "TC-5.2-04: prompt yang muncul: \(prompts)")
         XCTAssertTrue(prompts.first?.localizedCaseInsensitiveContains("camera") ?? false, "TC-5.2-04: prompt pertama bukan kamera: \(prompts)")

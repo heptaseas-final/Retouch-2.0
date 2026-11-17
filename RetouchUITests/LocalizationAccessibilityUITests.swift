@@ -5,7 +5,6 @@
 //  Created by Davin P on 15/11/26.
 //
 
-
 import XCTest
 
 final class LocalizationAccessibilityUITests: RetouchUITestCase {
@@ -13,13 +12,13 @@ final class LocalizationAccessibilityUITests: RetouchUITestCase {
         ["-AppleLanguages", "(\(code))", "-AppleLocale", code]
     }
 
-    func test_TC_1_2_09_bannerTextInBahasaIndonesia() throws {
-        throw XCTSkip("TC-1.2-09: N/A di PRD v3.1, app English only")
-    }
+//    func test_TC_1_2_09_bannerTextInBahasaIndonesia() throws {
+//        throw XCTSkip("TC-1.2-09: N/A di PRD v3.1, app English only")
+//    }
 
-    func test_TC_5_4_01_allScreensInBahasaIndonesia() throws {
-        throw XCTSkip("TC-5.4-01: N/A di PRD v3.1, app English only")
-    }
+//    func test_TC_5_4_01_allScreensInBahasaIndonesia() throws {
+//        throw XCTSkip("TC-5.4-01: N/A di PRD v3.1, app English only")
+//    }
 
     func test_TC_5_4_02_allScreensInEnglish() {
         let tc = "TC-5.4-02"
@@ -28,9 +27,9 @@ final class LocalizationAccessibilityUITests: RetouchUITestCase {
         showOnboarding(tc)
         attachScreenshot("\(tc) onboarding")
         app.buttons[Name.skip].tap()
-        XCTAssertTrue(element(Name.lightMode).waitForExistence(timeout: 3), "\(tc): label Light mode tidak English")
+        XCTAssertTrue(element(Name.lightMode).waitForExistence(timeout: 3), "\(tc): label Light tidak English")
         XCTAssertTrue(element(Name.zoomTarget).exists, "\(tc): label Zoom target tidak English")
-        XCTAssertTrue(element(Name.replay).exists, "\(tc): label Replay tutorial tidak English")
+        XCTAssertTrue(element(Name.settings).exists, "\(tc): label Settings tidak English")
         attachScreenshot("\(tc) mirror")
     }
 
@@ -40,7 +39,7 @@ final class LocalizationAccessibilityUITests: RetouchUITestCase {
             launchApp(arguments: languageArguments(code))
             answerCameraAlert(allow: true)
             finishOnboardingIfShown()
-            XCTAssertTrue(element(Name.lightMode).waitForExistence(timeout: 3), "\(tc): Light mode tidak English di \(code)")
+            XCTAssertTrue(element(Name.lightMode).waitForExistence(timeout: 3), "\(tc): label Light tidak English di \(code)")
             XCTAssertTrue(element(Name.zoomTarget).exists, "\(tc): Zoom target tidak English di \(code)")
             app.terminate()
         }
@@ -63,6 +62,7 @@ final class LocalizationAccessibilityUITests: RetouchUITestCase {
     func test_TC_5_4_07_rotation() {
         let tc = "TC-5.4-07"
         openMirror()
+        addTeardownBlock { XCUIDevice.shared.orientation = .portrait }
         XCUIDevice.shared.orientation = .landscapeLeft
         pause(1)
         let frame = app.windows.firstMatch.frame

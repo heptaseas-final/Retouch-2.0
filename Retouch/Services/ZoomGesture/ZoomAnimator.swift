@@ -74,6 +74,9 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     func start() {
         guard link == nil else { return }
         let l = CADisplayLink(target: self, selector: #selector(tick(_:)))
+        if UITestMode.isActive {
+            l.preferredFrameRateRange = CAFrameRateRange(minimum: 5, maximum: 10)
+        }
         l.add(to: .main, forMode: .common)
         link = l
     }
