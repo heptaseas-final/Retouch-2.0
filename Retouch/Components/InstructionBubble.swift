@@ -9,14 +9,18 @@ import SwiftUI
 
 struct InstructionBubble: View {
     let text: String
-    var isFullWidth = false
     var spokenText: String? = nil
     var takesVoiceOverFocus = false
 
     @AccessibilityFocusState private var isFocused: Bool
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
+    @ScaledMetric(relativeTo: .body) private var lineHeight: CGFloat = 22
 
     private let width: CGFloat = 309
+    private let maxLines: CGFloat = 2
+    private let horizontalPadding: CGFloat = 18
+    private let verticalPadding: CGFloat = 12
+    private let cornerRadius: CGFloat = 34
     private let focusDelay: Duration = .milliseconds(300)
 
     var body: some View {
@@ -48,8 +52,9 @@ struct InstructionBubble: View {
             .foregroundStyle(.white)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
     }
 }
 

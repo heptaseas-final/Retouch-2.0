@@ -38,7 +38,6 @@ struct CameraControls: View {
     var onLightLiftEnd: ((CGSize) -> Void)? = nil
     var lightMoveActions: [(label: String, perform: () -> Void)] = []
     var onLightSlotCenter: ((CGPoint) -> Void)? = nil
-    var onPickerLayoutChange: ((Bool) -> Void)? = nil
 
     var expandedHeight: CGFloat = 66
     var pickerWidth: CGFloat = 233
@@ -73,36 +72,13 @@ struct CameraControls: View {
         return min(pickerWidth, availableWidth - 2 * (columnSpacing + minSideColumn))
     }
 
-    private var pickerFont: UIFont { PickerMetrics.font(for: LargerButtons.typeSize(typeSize, isLarger: isLargerButtons), isBold: legibilityWeight == .bold) }
+    private var pickerFont: UIFont { PickerMetrics.font(for: effectiveTypeSize, isBold: legibilityWeight == .bold) }
 
     private var pickerExpandedHeight: CGFloat {
         PickerMetrics.height(height, font: pickerFont) + expandedHeight - height
     }
 
-    private var widestPickerSlot: CGFloat {
-        let widestTitle = FacePart.allCases.map { PickerMetrics.textWidth(pickerTitle($0), font: pickerFont) }.max() ?? 0
-        return widestTitle + 2 * pickerSlotPadding
-    }
-
-    private var isPickerFullWidth: Bool {
-        availableWidth > 0 && (isLargerButtons || widestPickerSlot > fittedPickerWidth)
-    }
-
     var body: some View {
-        Group {
-            if isPickerFullWidth {
-                picker(width: availableWidth)
-            } else {
-                dockedLayout
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .largerButtonsTypeSize(isLargerButtons)
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
-        .onChange(of: isPickerFullWidth, initial: true) { _, isFull in onPickerLayoutChange?(isFull) }
-    }
-
-    private var dockedLayout: some View {
         HStack(alignment: .bottom, spacing: columnSpacing) {
             ZStack {
                 if isLightDocked {
@@ -137,18 +113,6 @@ struct CameraControls: View {
         .frame(maxWidth: .infinity)
         .largerButtonsTypeSize(isLargerButtons)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
-    }
-
-    private func picker(width: CGFloat) -> some View {
-        HorizontalPicker(items: FacePart.allCases, selection: $part, swipe: swipe, width: width,
-                         padding: pickerSlotPadding, height: height, expandedHeight: expandedHeight, title: pickerTitle)
-            .accessibilityHint(pickerEmphasis.guide ?? "")
-            .emphasis(pickerEmphasis)
-            .frame(width: width, height: pickerExpandedHeight)
-    }
-
-    private func pickerTitle(_ part: FacePart) -> String {
-        part.title.uppercased()
     }
 
     private func picker(width: CGFloat) -> some View {

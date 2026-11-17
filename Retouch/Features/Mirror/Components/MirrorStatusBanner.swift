@@ -6,6 +6,7 @@ struct MirrorStatusBanner: View {
     var body: some View {
         Text(status.message)
             .font(.subheadline)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
             .foregroundStyle(.white)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
