@@ -61,10 +61,13 @@ struct HorizontalPicker<Item: Hashable>: View {
         .contentShape(Capsule())
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.6), value: swipe.isDragging)
         .sensoryFeedback(.selection, trigger: current)
+        .accessibilityShowsLargeContentViewer {
+            Text(title(selection).capitalized)
+        }
         .accessibilityElement()
         .accessibilityLabel("Zoom target")
         .accessibilityValue(title(selection).capitalized)
-        .accessibilityInputLabels([Text("Zoom target"), Text("Zoom"), Text(title(selection).capitalized)])
+        .accessibilityInputLabels([Text("Zoom target"), Text("Zoom target"), Text(title(selection).capitalized)])
         .accessibilityActions {
             ForEach(items, id: \.self) { item in
                 Button("Select \(title(item).capitalized)") { select(item: item) }

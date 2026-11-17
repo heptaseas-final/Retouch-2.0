@@ -26,6 +26,13 @@ struct ContentView: View {
             }
         }
         .environment(\.isLargerButtons, mirrorViewModel.isLargerButtons)
+        .environment(\.colorScheme, .light)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility3)
+    }
+
+    private var barBackground: Visibility {
+        if #available(iOS 26, *) { return .hidden }
+        return .visible
     }
 }
 

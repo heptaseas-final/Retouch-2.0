@@ -22,11 +22,8 @@ struct OnboardingView<Camera: View>: View {
     private let minTapTarget: CGFloat = 44
     @Environment(\.isLargerButtons) private var isLargerButtons
     @Environment(\.dynamicTypeSize) private var typeSize
-    private let bubbleGap: CGFloat = 16
     private let layoutSpace = "onboardingLayout"
 
-    @State private var isPickerFullWidth = false
-    @State private var lightFrame: CGRect = .zero
     @State private var controlsFrame: CGRect = .zero
 
     init(
@@ -55,10 +52,6 @@ struct OnboardingView<Camera: View>: View {
 
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
-                if showsSideLight(for: step) {
-                    sideLight(for: step)
-                    Spacer(minLength: 0)
-                }
                 controls(for: step)
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(layoutSpace)) } action: { controlsFrame = $0 }
             }
@@ -73,35 +66,22 @@ struct OnboardingView<Camera: View>: View {
                 .allowsHitTesting(false)
             }
 
-            if showsSwipeHand, !isPickerFullWidth {
+            if showsSwipeHand {
                 swipeHand
             }
 
-            if step.showsHandOverlay {
-                OnboardingHandOverlay(eyeAnchor: signalSource.eyeAnchor)
-                    .ignoresSafeArea()
-                    .transition(.opacity)
+            VStack(spacing: 0) {
+                bubble(at: .top)
+                    .padding(.top, 8)
+                Spacer(minLength: 0)
+                bubble(at: .bottom)
+                    .padding(.bottom, 16)
+                Color.clear
+                    .frame(height: bottomReserve)
+                    .allowsHitTesting(false)
             }
-
-            Group {
-                if showsSideLight(for: step), lightFrame != .zero, controlsFrame != .zero {
-                    fullWidthBubbles(for: step)
-                } else {
-                    VStack(spacing: 0) {
-                        topBar(for: step)
-                        bubble(at: .top)
-                            .padding(.top, 8)
-                        Spacer(minLength: 0)
-                        bottomBubble
-                            .padding(.bottom, 16)
-                        Color.clear
-                            .frame(height: max(controlsHeight, controlsFrame.height))
-                            .allowsHitTesting(false)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                }
-            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
             .accessibilityElement(children: .contain)
             .accessibilitySortPriority(1)
         }
@@ -119,6 +99,12 @@ struct OnboardingView<Camera: View>: View {
             coordinator.detach(signalSource)
         }
     }
+    private var bottomReserve: CGFloat {
+        let base = max(controlsHeight, controlsFrame.height)
+        guard coordinator.lightMode.isOn else { return base }
+        return base + LargerButtons.controlSize(isLarger: isLargerButtons, typeSize: typeSize)
+    }
+
     private func spotlightOpacity(for step: OnboardingStep) -> Double {
         if step.dimsBackdrop { return 0.7 }
         return step.focus == .none ? 0 : 0.4
@@ -158,53 +144,6 @@ struct OnboardingView<Camera: View>: View {
             .transition(.opacity)
     }
 
-    private func showsSideLight(for step: OnboardingStep) -> Bool {
-        isPickerFullWidth && step.focus.isLighting
-    }
-
-    @ViewBuilder
-    private var bottomBubble: some View {
-        if isPickerFullWidth {
-            ViewThatFits(in: .vertical) {
-                VStack(spacing: bubbleGap) {
-                    if showsSwipeHand { swipeHand }
-                    bubble(at: .bottom)
-                }
-                bubble(at: .bottom)
-            }
-        } else {
-            bubble(at: .bottom)
-        }
-    }
-
-    private func fullWidthBubbles(for step: OnboardingStep) -> some View {
-        let bottomStart = lightFrame.maxY + bubbleGap
-        let bottomRegion = max(controlsFrame.minY - bubbleGap - bottomStart, 0)
-        return ZStack(alignment: .top) {
-            topBar(for: step)
-            bubble(at: .bottom)
-                .frame(height: bottomRegion, alignment: .bottom)
-                .padding(.top, bottomStart)
-        }
-        .frame(maxHeight: .infinity, alignment: .top)
-        .padding(.horizontal, 16)
-    }
-
-    private func sideLight(for step: OnboardingStep) -> some View {
-        let flash = flashEmphasis(for: step)
-        let color = lightColorEmphasis(for: step)
-        let buttonEmphasis: ControlEmphasis = flash == .dimmed && color == .dimmed ? .dimmed : .normal
-        return HStack {
-            LightModeButton(mode: lightModeBinding, onChange: { _ in coordinator.flashTapped() },
-                            nextMode: { coordinator.nextLightMode(from: $0) }, size: LargerButtons.controlSize(isLarger: isLargerButtons, typeSize: typeSize),
-                            boltEmphasis: buttonEmphasis == .dimmed ? .normal : flash,
-                            colorEmphasis: buttonEmphasis == .dimmed ? .normal : color)
-                .emphasis(buttonEmphasis)
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(layoutSpace)) } action: { lightFrame = $0 }
-            Spacer(minLength: 0)
-        }
-    }
-
     private var lightModeBinding: Binding<LightMode> {
         Binding(
             get: { coordinator.lightMode },
@@ -225,8 +164,7 @@ struct OnboardingView<Camera: View>: View {
         if coordinator.step.bubblePosition == position,
            coordinator.isBubbleVisible,
            let text = coordinator.instruction {
-            InstructionBubble(text: text, width: coordinator.step.focus.isLighting ? 233 : nil,
-                              isFullWidth: isPickerFullWidth, spokenText: coordinator.spokenInstruction,
+            InstructionBubble(text: text, spokenText: coordinator.spokenInstruction,
                               takesVoiceOverFocus: coordinator.step.focus == .none)
                 .id(text)
                 .transition(.opacity)
@@ -245,8 +183,7 @@ struct OnboardingView<Camera: View>: View {
             onLightTap: { _ in coordinator.flashTapped() },
             pickerEmphasis: step.focus == .picker ? .highlighted(Color.pickerGlow, guide: step.spokenInstruction) : .dimmed,
             flashEmphasis: flashEmphasis(for: step),
-            lightColorEmphasis: lightColorEmphasis(for: step),
-            onPickerLayoutChange: { isPickerFullWidth = $0 }
+            lightColorEmphasis: lightColorEmphasis(for: step)
         )
     }
 }
@@ -254,7 +191,6 @@ struct OnboardingView<Camera: View>: View {
 #Preview {
     final class PreviewSignalSource: OnboardingSignalSource {
         var onSignal: ((OnboardingTrigger) -> Void)?
-        var eyeAnchor: CGPoint? = CGPoint(x: 0.62, y: 0.38)
     }
     let source = PreviewSignalSource()
     return ZStack {

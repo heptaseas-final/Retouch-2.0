@@ -122,21 +122,26 @@ struct LightModeButton: View {
     }
 
     private var flashButton: some View {
-        flashFace
-            .contentShape(Circle())
-            .gesture(pressGesture(onTap: tap))
-            .sensoryFeedback(.impact(weight: .light), trigger: mode)
-            .accessibilityElement()
-            .accessibilityAddTraits(.isButton)
-            .accessibilityLabel("Light")
-            .accessibilityInputLabels([Text("Light"), Text("Light button"), Text("Flash")])
-            .accessibilityValue(mode.isOn ? "On" : "Off")
-            .accessibilityHint(boltEmphasis.guide ?? (mode.isOn ? "Turns the light off." : "Turns the light on."))
-            .accessibilityAction { tap() }
-            .accessibilityActions {
-                ForEach(moveActions.indices, id: \.self) { index in
-                    Button(moveActions[index].label, action: moveActions[index].perform)
-                }
+        Button { perform(tap) } label: {
+            Label("Light", systemImage: mode.isOn ? "bolt.fill" : "bolt.slash.fill")
+                .labelStyle(.iconOnly)
+                .font(.system(size: circleSize * 0.45, weight: .semibold))
+                .foregroundStyle(mode.isOn ? Color.white : Color.appMagenta)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: circleSize, height: circleSize)
+                .background(mode.isOn ? Color.appMagenta : Color.clear, in: Capsule())
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(liftGesture, including: onLiftDrag == nil ? .subviews : .all)
+        .sensoryFeedback(.impact(weight: .light), trigger: mode)
+        .accessibilityInputLabels([Text("Light"), Text("Light button"), Text("Flash")])
+        .accessibilityValue(mode.isOn ? "On" : "Off")
+        .accessibilityAddTraits(.isToggle)
+        .accessibilityHint(boltEmphasis.guide ?? (mode.isOn ? "Turns the light off." : "Turns the light on."))
+        .accessibilityActions {
+            ForEach(moveActions.indices, id: \.self) { index in
+                Button(moveActions[index].label, action: moveActions[index].perform)
             }
             .emphasis(boltEmphasis)
     }
