@@ -104,6 +104,7 @@ struct LightModeButton: View {
         .sensoryFeedback(.impact(weight: .light), trigger: mode)
         .accessibilityInputLabels([Text("Light"), Text("Light button"), Text("Flash")])
         .accessibilityValue(mode.isOn ? "On" : "Off")
+        .accessibilityAddTraits(.isToggle)
         .accessibilityHint(boltEmphasis.guide ?? (mode.isOn ? "Turns the light off." : "Turns the light on."))
         .accessibilityActions {
             ForEach(moveActions.indices, id: \.self) { index in

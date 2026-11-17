@@ -24,6 +24,7 @@ struct HorizontalPicker<Item: Hashable>: View {
     @Environment(\.legibilityWeight) private var legibilityWeight
 
     private let maxStepsPerSwipe = 1
+    private let selectionInset: CGFloat = 4
 
     var body: some View {
         let font = PickerMetrics.font(for: typeSize, isBold: legibilityWeight == .bold)
@@ -40,15 +41,15 @@ struct HorizontalPicker<Item: Hashable>: View {
             Color.clear
                 .pickerGlass(tint: contrast == .increased ? .white.opacity(0.8) : nil)
 
-           Capsule()
+            Capsule()
                 .fill(Color.appMagenta)
-                .frame(width: capsuleWidth, height: currentHeight)
+                .frame(width: capsuleWidth - selectionInset * 2, height: currentHeight - selectionInset * 2)
 
             ForEach(Array(current - 5...current + 5), id: \.self) { index in
                 Button { select(index) } label: {
                     Text(title(item(at: index)))
                         .font(Font(font))
-                        .foregroundStyle(index == current ? Color.white : Color.appInactive.opacity(contrast == .increased ? 1 : 0.8))
+                        .foregroundStyle(index == current ? Color.white : Color.appInactive)
                         .lineLimit(1)
                         .fixedSize()
                         .frame(width: track.slot(index), height: currentHeight)
@@ -65,6 +66,9 @@ struct HorizontalPicker<Item: Hashable>: View {
         .contentShape(Capsule())
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.6), value: swipe.isDragging)
         .sensoryFeedback(.selection, trigger: current)
+        .accessibilityShowsLargeContentViewer {
+            Text(title(selection).capitalized)
+        }
         .accessibilityElement()
         .accessibilityLabel("Zoom target")
         .accessibilityValue(title(selection).capitalized)

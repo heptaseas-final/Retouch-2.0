@@ -180,8 +180,6 @@ struct OnboardingAdvance: Equatable {
 
 enum OnboardingFocus {
     case none, picker, flash, lightColor
-
-    var isLighting: Bool { self == .flash || self == .lightColor }
 }
 
 enum OnboardingBubblePosition {
@@ -204,7 +202,7 @@ enum OnboardingStep: CaseIterable {
     static let pause: TimeInterval = 3.5
     static let voiceOverPause: TimeInterval = 4
     static let detectionHelpDelay: TimeInterval = 8
-    static let detectionHelp = "Can't see your hand yet. Keep your face in view and bring your hand closer to the area you want to retouch."
+    static let detectionHelp = "Move your hand closer to the area you want to retouch."
 
     var waitsForDetection: Bool {
         advance.trigger == .handNearEye || advance.trigger == .zoomedIn

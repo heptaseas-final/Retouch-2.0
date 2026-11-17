@@ -52,7 +52,16 @@ struct CameraControls: View {
 
     private let columnSpacing: CGFloat = 20
     private let minControlGap: CGFloat = 12
-    private let pickerSlotPadding: CGFloat = 20
+    private let regularSlotPadding: CGFloat = 20
+    private let compactSlotPadding: CGFloat = 12
+
+    private var effectiveTypeSize: DynamicTypeSize {
+        LargerButtons.typeSize(typeSize, isLarger: isLargerButtons)
+    }
+
+    private var pickerSlotPadding: CGFloat {
+        effectiveTypeSize > .large ? compactSlotPadding : regularSlotPadding
+    }
 
     private var lightButtonEmphasis: ControlEmphasis {
         flashEmphasis == .dimmed && lightColorEmphasis == .dimmed ? .dimmed : .normal
@@ -64,36 +73,13 @@ struct CameraControls: View {
         return min(pickerWidth, availableWidth - 2 * (columnSpacing + minSideColumn))
     }
 
-    private var pickerFont: UIFont { PickerMetrics.font(for: LargerButtons.typeSize(typeSize, isLarger: isLargerButtons), isBold: legibilityWeight == .bold) }
+    private var pickerFont: UIFont { PickerMetrics.font(for: effectiveTypeSize, isBold: legibilityWeight == .bold) }
 
     private var pickerExpandedHeight: CGFloat {
         PickerMetrics.height(height, font: pickerFont) + expandedHeight - height
     }
 
-    private var widestPickerSlot: CGFloat {
-        let widestTitle = FacePart.allCases.map { PickerMetrics.textWidth(pickerTitle($0), font: pickerFont) }.max() ?? 0
-        return widestTitle + 2 * pickerSlotPadding
-    }
-
-    private var isPickerFullWidth: Bool {
-        availableWidth > 0 && (isLargerButtons || widestPickerSlot > fittedPickerWidth)
-    }
-
     var body: some View {
-        Group {
-            if isPickerFullWidth {
-                picker(width: availableWidth)
-            } else {
-                dockedLayout
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .largerButtonsTypeSize(isLargerButtons)
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
-        .onChange(of: isPickerFullWidth, initial: true) { _, isFull in onPickerLayoutChange?(isFull) }
-    }
-
-    private var dockedLayout: some View {
         HStack(alignment: .bottom, spacing: columnSpacing) {
             ZStack {
                 if isLightDocked {
@@ -116,7 +102,7 @@ struct CameraControls: View {
             } action: { center in
                 onLightSlotCenter?(center)
             }
-            .padding(.bottom, (expandedHeight - height) / 2)
+            .padding(.bottom, (pickerExpandedHeight - height) / 2)
             .frame(maxWidth: .infinity)
             .zIndex(1)
 
@@ -125,6 +111,9 @@ struct CameraControls: View {
             Color.clear
                 .frame(maxWidth: .infinity, maxHeight: pickerExpandedHeight)
         }
+        .frame(maxWidth: .infinity)
+        .largerButtonsTypeSize(isLargerButtons)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
     }
 
     private func picker(width: CGFloat) -> some View {
