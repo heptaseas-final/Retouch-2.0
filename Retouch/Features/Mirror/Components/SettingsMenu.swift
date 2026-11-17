@@ -3,11 +3,11 @@ import SwiftUI
 struct SettingsMenu: View {
     @Binding var isLargerButtons: Bool
     @Binding var lightPlacement: LightPlacement
+    let isBottomAvailable: Bool
     let onReplayTutorial: () -> Void
 
     @State private var pendingLargerButtons: Bool?
 
-    private let glyphScale: CGFloat = 0.4
     private let menuCloseDelay: Duration = .milliseconds(400)
 
     var body: some View {
@@ -19,20 +19,15 @@ struct SettingsMenu: View {
             Section("Light Button") {
                 ForEach(LightPlacement.allCases, id: \.self) { placement in
                     Toggle(placement.title, systemImage: placement.symbol, isOn: selection(placement))
+                        .disabled(isUnavailable(placement))
+                        .accessibilityHint(isUnavailable(placement) ? "Not available with Larger Buttons or large text." : "")
                 }
             }
         } label: {
             Label("Settings", systemImage: "gearshape.fill")
                 .labelStyle(.iconOnly)
-                .font(.system(size: size * glyphScale, weight: .bold))
-                .foregroundStyle(Color.appMagenta)
-                .frame(width: size, height: size)
-                .glassStyle(in: Circle())
-                .contentShape(Circle())
         }
-        .buttonStyle(.plain)
-        .accessibilityRemoveTraits(.isButton)
-        .accessibilityShowsLargeContentViewer()
+        .tint(Color.appMagenta)
         .task(id: pendingLargerButtons) { await applyLargerButtonsAfterClose() }
     }
 
@@ -50,6 +45,10 @@ struct SettingsMenu: View {
         )
     }
 
+    private func isUnavailable(_ placement: LightPlacement) -> Bool {
+        placement == .bottom && !isBottomAvailable
+    }
+
     private func applyLargerButtonsAfterClose() async {
         guard let pending = pendingLargerButtons, (try? await Task.sleep(for: menuCloseDelay)) != nil else { return }
         isLargerButtons = pending
@@ -62,7 +61,7 @@ struct SettingsMenu: View {
     @Previewable @State var placement = LightPlacement.bottom
     ZStack(alignment: .topTrailing) {
         Color.gray.ignoresSafeArea()
-        SettingsMenu(isLargerButtons: $isLarger, lightPlacement: $placement) {}
+        SettingsMenu(isLargerButtons: $isLarger, lightPlacement: $placement, isBottomAvailable: true) {}
             .padding()
     }
 }

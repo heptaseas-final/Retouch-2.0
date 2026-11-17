@@ -2,14 +2,10 @@ import SwiftUI
 
 struct MirrorStatusBanner: View {
     let status: MirrorStatus
-    let onDismiss: () -> Void
-
-    private let minTapTarget: CGFloat = 44
-
+    
     var body: some View {
         Text(status.message)
             .font(.subheadline)
-            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
             .foregroundStyle(.white)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
@@ -23,9 +19,9 @@ struct MirrorStatusBanner: View {
     ZStack(alignment: .top) {
         Color.gray.ignoresSafeArea()
         VStack {
-            MirrorStatusBanner(status: .notEnoughLight) {}
-            MirrorStatusBanner(status: .enoughLight) {}
-            MirrorStatusBanner(status: .cameraPaused) {}
+            MirrorStatusBanner(status: .notEnoughLight)
+            MirrorStatusBanner(status: .enoughLight)
+            MirrorStatusBanner(status: .cameraPaused)
         }
         .padding()
     }

@@ -13,7 +13,6 @@ nonisolated struct GripObservation {
 
 nonisolated struct PointObservation {
     var point: CGPoint
-    var isTool = false
     var mode = ""
     var base: CGPoint? = nil
 }
@@ -26,6 +25,4 @@ nonisolated struct HandScan {
     var pinchRatio: CGFloat?
     var pinchRatio2: CGFloat?
     var confidence: Float = 0
-
-    var threeFingerGrips: [GripObservation] { grips.filter { $0.threeFinger } }
 }

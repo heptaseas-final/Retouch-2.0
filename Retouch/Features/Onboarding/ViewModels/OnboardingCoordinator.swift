@@ -199,10 +199,10 @@ enum OnboardingStep: CaseIterable {
     case tapToTurnOff
     case done
 
-    static let pause: TimeInterval = 2.5
+    static let pause: TimeInterval = 3.5
     static let voiceOverPause: TimeInterval = 4
     static let detectionHelpDelay: TimeInterval = 8
-    static let detectionHelp = "Move your hand closer to the area you want to retouch."
+    static let detectionHelp = "Can't see your hand yet. Keep your face in view and bring your hand closer to the area you want to retouch."
 
     var waitsForDetection: Bool {
         advance.trigger == .handNearEye || advance.trigger == .zoomedIn
@@ -213,25 +213,25 @@ enum OnboardingStep: CaseIterable {
         case .placeHand:     "Place your hand or makeup product near the area you want to retouch."
         case .retouchKnows:  "Retouch knows what you’re working on,"
         case .noNeedToTap:   "so you don’t have to tap anything on screen."
-        case .swipeModes:    "Swipe left or right to switch modes and focus on one area."
+        case .swipeModes:    "Swipe between modes to lock onto an area."
         case .zoomedOnArea:  nil
-        case .needLight:     "Need more light? Tap the light button."
+        case .needLight:     "Need more light? Tap here for lighting."
         case .tapForWarm:    "Tap to see warm light."
         case .tapForCool:    "Tap again to see cool light."
         case .tapForWhite:   "Tap again to go back to neutral light."
-        case .tapToTurnOff:  "Tap the light button to turn it off."
+        case .tapToTurnOff:  "Tap here to turn off the light."
         case .done:          "Happy Retouch-ing!"
         }
     }
 
     var spokenInstruction: String? {
         switch self {
-        case .swipeModes:    "Swipe up or down on Zoom target to switch modes and focus on one area."
+        case .swipeModes:    "Swipe up or down on Zoom target to switch modes and lock onto an area."
         case .needLight:     "Need more light? Double tap the Light button."
         case .tapForWarm:    "Double tap Light color to see warm light."
         case .tapForCool:    "Double tap Light color again to see cool light."
         case .tapForWhite:   "Double tap Light color again to go back to neutral light."
-        case .tapToTurnOff:  "Double tap the Light button to turn it off."
+        case .tapToTurnOff:  "Double tap the Light button to turn off the light."
         default:             instruction
         }
     }
@@ -275,7 +275,6 @@ enum OnboardingStep: CaseIterable {
         }
     }
 
-    var showsHandOverlay: Bool { self == .placeHand }
     var lightModeAfterTap: LightMode? {
         switch self {
         case .needLight:     LightMode.on(.white)

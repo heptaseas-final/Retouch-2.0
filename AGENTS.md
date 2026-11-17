@@ -9,6 +9,6 @@ This repo has a strict structure. Before writing or changing any code:
 Hard rules:
 - Call path: View, ViewModel, Service (protocol), Model. Services are created only in `App/AppContainer.swift`.
 - One file, one responsibility, under 300 lines. No new folders.
-- No comments in code, no singletons, no third-party packages.
+- No comments in code except the Xcode file header, no singletons, no third-party packages.
 - Touch only the files the task needs. Report unrelated issues, do not fix them.
 - Do not edit `project.yml`, build settings, or `RetouchWidgetExt/OpenRetouchIntent.swift`.

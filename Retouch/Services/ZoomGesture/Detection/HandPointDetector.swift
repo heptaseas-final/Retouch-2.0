@@ -20,7 +20,6 @@ nonisolated final class HandPointDetector: @unchecked Sendable {
     private var sequence = 0
     private var doneCount = 0
     private var windowStart = CACurrentMediaTime()
-    private var rate = 0
     private var generation = 0
     private struct PoseMemory {
         var wrist: CGPoint
@@ -41,8 +40,6 @@ nonisolated final class HandPointDetector: @unchecked Sendable {
     }
 
     var latest: HandScan { lock.withLock { cache } }
-    var detectionsPerSecond: Int { lock.withLock { rate } }
-    var enhancementEV: Double { ZoomTuning.handLowLightEnabled ? lowLight.currentEV : 0 }
 
     func submit(_ pixelBuffer: CVPixelBuffer, minInterval: TimeInterval = 0) {
         let mediaNow = CACurrentMediaTime()
@@ -68,7 +65,6 @@ nonisolated final class HandPointDetector: @unchecked Sendable {
                 doneCount += 1
                 let now = CACurrentMediaTime()
                 if now - windowStart >= 1 {
-                    rate = doneCount
                     doneCount = 0
                     windowStart = now
                 }

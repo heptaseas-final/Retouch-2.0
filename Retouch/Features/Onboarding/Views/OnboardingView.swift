@@ -16,14 +16,16 @@ struct OnboardingView<Camera: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
 
-    private let handSize: CGFloat = 200
+    private let handSize: CGFloat = 277
     private let spotlightPadding: CGFloat = 10
     private let controlsHeight: CGFloat = 66
-    private let minTapTarget: CGFloat = 44
     @Environment(\.isLargerButtons) private var isLargerButtons
     @Environment(\.dynamicTypeSize) private var typeSize
+    private let bubbleGap: CGFloat = 16
     private let layoutSpace = "onboardingLayout"
 
+    @State private var isPickerFullWidth = false
+    @State private var lightFrame: CGRect = .zero
     @State private var controlsFrame: CGRect = .zero
 
     init(
@@ -52,6 +54,10 @@ struct OnboardingView<Camera: View>: View {
 
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
+                if showsSideLight(for: step) {
+                    sideLight(for: step)
+                    Spacer(minLength: 0)
+                }
                 controls(for: step)
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(layoutSpace)) } action: { controlsFrame = $0 }
             }
@@ -66,26 +72,33 @@ struct OnboardingView<Camera: View>: View {
                 .allowsHitTesting(false)
             }
 
-            if showsSwipeHand {
+            if showsSwipeHand, !isPickerFullWidth {
                 swipeHand
             }
 
-            VStack(spacing: 0) {
-                bubble(at: .top)
-                    .padding(.top, 8)
-                Spacer(minLength: 0)
-                bubble(at: .bottom)
-                    .padding(.bottom, 16)
-                Color.clear
-                    .frame(height: bottomReserve)
-                    .allowsHitTesting(false)
+            Group {
+                if showsSideLight(for: step), lightFrame != .zero, controlsFrame != .zero {
+                    fullWidthBubbles(for: step)
+                } else {
+                    VStack(spacing: 0) {
+                        bubble(at: .top)
+                            .padding(.top, 8)
+                        Spacer(minLength: 0)
+                        bottomBubble
+                            .padding(.bottom, 16)
+                        Color.clear
+                            .frame(height: bottomReserve)
+                            .allowsHitTesting(false)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                }
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
             .accessibilityElement(children: .contain)
             .accessibilitySortPriority(1)
         }
         .coordinateSpace(.named(layoutSpace))
+        .toolbar { skipButton(for: step) }
         .pickerSwipe(pickerSwipe, isEnabled: step.focus == .picker)
         .animation(.easeInOut(duration: 0.2), value: pickerSwipe.isDragging)
         .animation(.snappy, value: coordinator.step)
@@ -101,7 +114,7 @@ struct OnboardingView<Camera: View>: View {
     }
     private var bottomReserve: CGFloat {
         let base = max(controlsHeight, controlsFrame.height)
-        guard coordinator.lightMode.isOn else { return base }
+        guard coordinator.lightMode.isOn, !isPickerFullWidth else { return base }
         return base + LargerButtons.controlSize(isLarger: isLargerButtons, typeSize: typeSize)
     }
 
@@ -110,26 +123,13 @@ struct OnboardingView<Camera: View>: View {
         return step.focus == .none ? 0 : 0.4
     }
 
-    private func topBar(for step: OnboardingStep) -> some View {
-        HStack {
-            Spacer()
-            if step != .done {
-                Button { coordinator.skip() } label: {
-                    Text("Skip")
-                        .padding(.horizontal, 12)
-                        .frame(minWidth: minTapTarget, minHeight: minTapTarget)
-                        .background(.black.opacity(0.55), in: Capsule())
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .contentShape(Capsule())
-                }
-                .font(.subheadline)
-                .underline()
-                .largerButtonsTypeSize(isLargerButtons)
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.3), radius: 2)
+    @ToolbarContentBuilder
+    private func skipButton(for step: OnboardingStep) -> some ToolbarContent {
+        if step != .done {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Skip", action: coordinator.skip)
             }
         }
-        .frame(minHeight: minTapTarget)
     }
 
     private var showsSwipeHand: Bool {
@@ -142,6 +142,52 @@ struct OnboardingView<Camera: View>: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
             .transition(.opacity)
+    }
+
+    private func showsSideLight(for step: OnboardingStep) -> Bool {
+        isPickerFullWidth && step.focus.isLighting
+    }
+
+    @ViewBuilder
+    private var bottomBubble: some View {
+        if isPickerFullWidth {
+            ViewThatFits(in: .vertical) {
+                VStack(spacing: bubbleGap) {
+                    if showsSwipeHand { swipeHand }
+                    bubble(at: .bottom)
+                }
+                bubble(at: .bottom)
+            }
+        } else {
+            bubble(at: .bottom)
+        }
+    }
+
+    private func fullWidthBubbles(for step: OnboardingStep) -> some View {
+        let bottomStart = lightFrame.maxY + bubbleGap
+        let bottomRegion = max(controlsFrame.minY - bubbleGap - bottomStart, 0)
+        return ZStack(alignment: .top) {
+            bubble(at: .bottom)
+                .frame(height: bottomRegion, alignment: .bottom)
+                .padding(.top, bottomStart)
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .padding(.horizontal, 16)
+    }
+
+    private func sideLight(for step: OnboardingStep) -> some View {
+        let flash = flashEmphasis(for: step)
+        let color = lightColorEmphasis(for: step)
+        let buttonEmphasis: ControlEmphasis = flash == .dimmed && color == .dimmed ? .dimmed : .normal
+        return HStack {
+            LightModeButton(mode: lightModeBinding, onChange: { _ in coordinator.flashTapped() },
+                            nextMode: { coordinator.nextLightMode(from: $0) }, size: LargerButtons.controlSize(isLarger: isLargerButtons, typeSize: typeSize),
+                            boltEmphasis: buttonEmphasis == .dimmed ? .normal : flash,
+                            colorEmphasis: buttonEmphasis == .dimmed ? .normal : color)
+                .emphasis(buttonEmphasis)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(layoutSpace)) } action: { lightFrame = $0 }
+            Spacer(minLength: 0)
+        }
     }
 
     private var lightModeBinding: Binding<LightMode> {
@@ -164,7 +210,7 @@ struct OnboardingView<Camera: View>: View {
         if coordinator.step.bubblePosition == position,
            coordinator.isBubbleVisible,
            let text = coordinator.instruction {
-            InstructionBubble(text: text, spokenText: coordinator.spokenInstruction,
+            InstructionBubble(text: text, isFullWidth: isPickerFullWidth, spokenText: coordinator.spokenInstruction,
                               takesVoiceOverFocus: coordinator.step.focus == .none)
                 .id(text)
                 .transition(.opacity)
@@ -183,7 +229,8 @@ struct OnboardingView<Camera: View>: View {
             onLightTap: { _ in coordinator.flashTapped() },
             pickerEmphasis: step.focus == .picker ? .highlighted(Color.pickerGlow, guide: step.spokenInstruction) : .dimmed,
             flashEmphasis: flashEmphasis(for: step),
-            lightColorEmphasis: lightColorEmphasis(for: step)
+            lightColorEmphasis: lightColorEmphasis(for: step),
+            onPickerLayoutChange: { isPickerFullWidth = $0 }
         )
     }
 }

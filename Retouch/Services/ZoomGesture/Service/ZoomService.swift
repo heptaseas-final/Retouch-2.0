@@ -28,11 +28,19 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     let animator = ZoomAnimator()
     let faceDetector = FaceLandmarkDetector()
     let handDetector = HandPointDetector()
+    let toolDetector = MakeupToolDetector()
     let stateQueue = DispatchQueue(label: "zoom.state")
 
     let seqLock = NSLock()
     var queuedFaceSeq = 0
     var queuedHandSeq = 0
+    var queuedToolSeq = 0
+
+    var toolTracker = ToolBoxTracker()
+    var toolSchedule = ToolDetectionSchedule()
+    var lastTools: [TrackedTool] = []
+    var lastToolTime = Date.distantPast
+    var toolReading = ToolZoneReading()
 
     var headPose: HeadPoseRecognizer
     var turnAnchor: Double
@@ -136,14 +144,17 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         noseFlow = NoseZoomFlow()
         noseInput = NoseZoomFlow.Input()
         distComp = DistanceCompensator()
+        clearToolState()
     }
 
     func syncQueuedSequences() {
         let faceSeq = faceDetector.snapshot.sequence
         let handSeq = handDetector.snapshot.sequence
+        let toolSeq = toolDetector.snapshot.sequence
         seqLock.lock()
         queuedFaceSeq = faceSeq
         queuedHandSeq = handSeq
+        queuedToolSeq = toolSeq
         seqLock.unlock()
     }
 
@@ -167,6 +178,7 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         DispatchQueue.main.async { [animator] in animator.reset() }
         faceDetector.reset()
         handDetector.reset()
+        toolDetector.reset()
         syncQueuedSequences()
         stateQueue.async { [self] in
             headPose = makeHeadPose()
@@ -185,25 +197,33 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
 
     func process(_ pixelBuffer: CVPixelBuffer) {
         let (isAuto, interval) = stateQueue.sync { (isGestureEnabled, pacer.interval(now: Date())) }
+        let toolPlan = stateQueue.sync { toolDetectionPlan() }
         faceDetector.submit(pixelBuffer, minInterval: interval)
-        if isAuto { handDetector.submit(pixelBuffer, minInterval: interval) }
+        if isAuto, !toolPlan.pausesHands { handDetector.submit(pixelBuffer, minInterval: interval) }
+        if isAuto, let toolInterval = toolPlan.interval {
+            toolDetector.submit(pixelBuffer, face: faceDetector.snapshot.value, minInterval: toolInterval)
+        }
 
         let face = faceDetector.snapshot
         let hand: DetectionSnapshot<HandScan>? = isAuto ? handDetector.snapshot : nil
+        let tool: DetectionSnapshot<ToolScan>? = isAuto ? toolDetector.snapshot : nil
 
         seqLock.lock()
         let newFace = face.sequence != queuedFaceSeq
         let newHand = hand.map { $0.sequence != queuedHandSeq } ?? false
+        let newTool = tool.map { $0.sequence != queuedToolSeq } ?? false
         if newFace { queuedFaceSeq = face.sequence }
         if let hand, newHand { queuedHandSeq = hand.sequence }
+        if let tool, newTool { queuedToolSeq = tool.sequence }
         seqLock.unlock()
-        guard newFace || newHand else { return }
+        guard newFace || newHand || newTool else { return }
 
         let imageSize = CGSize(width: CVPixelBufferGetHeight(pixelBuffer),
                                height: CVPixelBufferGetWidth(pixelBuffer))
         stateQueue.async { [self] in
             update(faceSnap: newFace ? face : nil,
                    handSnap: newHand ? hand : nil,
+                   toolSnap: newTool ? tool : nil,
                    imageSize: imageSize)
         }
     }

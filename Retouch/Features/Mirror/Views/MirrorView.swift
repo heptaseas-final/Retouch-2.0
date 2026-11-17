@@ -12,6 +12,8 @@ struct MirrorView: View {
     @State private var isDraggingLight = false
     @State private var screenFrame: CGRect = .zero
     @State private var dockSlotCenter: CGPoint = .zero
+    @State private var isPickerFullWidth = false
+    @State private var dockBeforeFullWidth: LightDock?
     private let showsControls: Bool
     private let onReplayTutorial: (() -> Void)?
 
@@ -36,18 +38,18 @@ struct MirrorView: View {
                                 softness: viewModel.ringLightSoftness)
                     .ignoresSafeArea()
                 cameraStateOverlay
-                if showsControls {
+                if showsControls, viewModel.cameraState != .failed {
                   VStack(spacing: 12) {
                       Spacer()
                       controls
                           .transition(.opacity)
                   }
                   sideLightButton
-                  settingsButton
                 }
             }
         }
-        .pickerSwipe(pickerSwipe, isEnabled: showsControls && viewModel.permission != .denied && !isDraggingLight)
+        .toolbar { settingsToolbar }
+        .pickerSwipe(pickerSwipe, isEnabled: showsControls && viewModel.permission != .denied && viewModel.cameraState != .failed && !isDraggingLight)
         .sensoryFeedback(.impact(weight: .medium), trigger: lightDock)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { screenFrame = $0 }
         .animation(.easeInOut, value: showsControls)
@@ -82,15 +84,13 @@ struct MirrorView: View {
         if showsControls, viewModel.permission != .denied, let onReplayTutorial {
             ToolbarItem(placement: .topBarTrailing) {
                 SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
-                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement)) {
+                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement),
+                             isBottomAvailable: !isPickerFullWidth) {
                     viewModel.select(.face)
                     viewModel.setLightMode(.off)
                     onReplayTutorial()
                 }
-                Spacer()
             }
-            .padding(.horizontal, 16)
-            .transition(.opacity)
         }
     }
 
@@ -106,7 +106,8 @@ struct MirrorView: View {
                 onLightLiftDrag: liftDragChanged,
                 onLightLiftEnd: liftEnded,
                 lightMoveActions: moveActions(from: .docked),
-                onLightSlotCenter: { dockSlotCenter = $0 }
+                onLightSlotCenter: { dockSlotCenter = $0 },
+                onPickerLayoutChange: pickerLayoutChanged
             )
         }
         .padding(.horizontal, 16)
@@ -142,7 +143,7 @@ struct MirrorView: View {
         let targets: [(dock: LightDock, name: String)] = [(.side(edge: .leading), "left"),
                                                           (.side(edge: .trailing), "right"), (.docked, "bottom")]
         return targets
-            .filter { $0.dock != current }
+            .filter { $0.dock != current && ($0.dock != .docked || !isPickerFullWidth) }
             .map { target in ("Move to \(target.name)", { moveByVoiceOver(to: target.dock, named: target.name, from: current) }) }
     }
 
@@ -159,13 +160,31 @@ struct MirrorView: View {
 
     private func chooseLightPlacement(_ placement: LightPlacement) {
         let target = LightDock(placement)
-        guard target != lightDock else { return }
+        guard target != lightDock, target != .docked || !isPickerFullWidth else { return }
         move(to: target, from: center(of: lightDock))
         announceLightMoved(to: target)
     }
 
     private func setLargerButtons(_ isOn: Bool) {
         withAnimation(.snappy) { viewModel.setLargerButtons(isOn) }
+        if isOn { pickerLayoutChanged(true) }
+    }
+
+    private func pickerLayoutChanged(_ isFull: Bool) {
+        guard isFull != isPickerFullWidth else { return }
+        isPickerFullWidth = isFull
+        if isFull {
+            dockBeforeFullWidth = lightDock
+            if lightDock == .docked {
+                move(to: .side(edge: .leading), from: center(of: .docked))
+                announceLightMoved(to: lightDock)
+            }
+        } else if let previous = dockBeforeFullWidth {
+            dockBeforeFullWidth = nil
+            guard previous != lightDock else { return }
+            move(to: previous, from: center(of: lightDock))
+            announceLightMoved(to: previous)
+        }
     }
 
     private func sideCenter(_ edge: HorizontalEdge) -> CGPoint {
@@ -190,7 +209,7 @@ struct MirrorView: View {
         let drop = CGPoint(x: start.x + translation.width, y: start.y + translation.height)
         let draggedDown = translation.height > 60 && translation.height > abs(translation.width)
         let wantsDock = draggedDown || drop.y > screenFrame.maxY - Self.dockZoneHeight
-        let target: LightDock = wantsDock
+        let target: LightDock = wantsDock && !isPickerFullWidth
             ? .docked
             : .side(edge: drop.x < screenFrame.midX ? .leading : .trailing)
         move(to: target, from: drop)
@@ -200,10 +219,10 @@ struct MirrorView: View {
     private func move(to target: LightDock, from drop: CGPoint) {
         let destination = center(of: target)
         lightDock = target
-        viewModel.setLightPlacement(target.placement)
+        if !isPickerFullWidth { viewModel.setLightPlacement(target.placement) }
         guard !reduceMotion else { return lightDrag = .zero }
         lightDrag = CGSize(width: drop.x - destination.x, height: drop.y - destination.y)
-        DispatchQueue.main.async {
+        Task { @MainActor in
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { lightDrag = .zero }
         }
     }
@@ -230,9 +249,8 @@ struct MirrorView: View {
             CameraFailedView(onRetry: viewModel.retryCamera)
         } else if let status = visibleStatus {
             VStack {
-                MirrorStatusBanner(status: status, onDismiss: viewModel.dismissStatus)
-                    .padding(.leading, Self.sideMargin)
-                    .padding(.trailing, showsControls ? Self.bannerTrailing : Self.sideMargin)
+                MirrorStatusBanner(status: status)
+                    .padding(.horizontal, Self.sideMargin)
                     .transition(.opacity)
                 Spacer()
             }

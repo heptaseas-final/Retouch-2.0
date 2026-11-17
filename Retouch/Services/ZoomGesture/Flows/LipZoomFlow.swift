@@ -2,21 +2,23 @@ import Foundation
 
 nonisolated struct LipsZoomFlow {
     enum Phase: Equatable { case idle, entering, active, releasing }
-    enum Trigger: Equatable { case twoFinger, threeFinger, grip, point }
+    enum Trigger: Equatable { case twoFinger, threeFinger, grip, point, tool }
 
     struct Input {
         var pose2Ready = false
         var pose3Ready = false
         var gripReady = false
         var pointReady = false
+        var toolReady = false
         var fingerNear = false
         var lipsMoving = false
         var handLost = false
     }
 
     var enterDwell = ZoomTuning.lipsEnterDwell
-    var gripDwell = ZoomTuning.gripEnterDwell
+    var gripDwell = ZoomTuning.eyeLipsGripDwell
     var pointDwell = ZoomTuning.fingerPointDwell
+    var toolDwell = ZoomTuning.toolEnterDwell
     var releaseDwell = ZoomTuning.lipsReleaseDwell
     var poseGrace = ZoomTuning.eyeFlowPoseGrace
 
@@ -30,6 +32,8 @@ nonisolated struct LipsZoomFlow {
     private var gripSeen: Date?
     private var pointSince: Date?
     private var pointSeen: Date?
+    private var toolSince: Date?
+    private var toolSeen: Date?
     private var releaseSince: Date?
     private var lostSince: Date?
 
@@ -61,18 +65,21 @@ nonisolated struct LipsZoomFlow {
             pose3Since = Self.track(input.pose3Ready, since: pose3Since, seen: &pose3Seen, now: now, grace: poseGrace)
             gripSince = Self.track(input.gripReady, since: gripSince, seen: &gripSeen, now: now, grace: poseGrace)
             pointSince = Self.track(input.pointReady, since: pointSince, seen: &pointSeen, now: now, grace: poseGrace)
+            toolSince = Self.track(input.toolReady, since: toolSince, seen: &toolSeen, now: now, grace: poseGrace)
 
             var due: [(Trigger, Date)] = []
             if let s = pose2Since, now.timeIntervalSince(s) >= enterDwell { due.append((.twoFinger, s)) }
             if let s = pose3Since, now.timeIntervalSince(s) >= enterDwell { due.append((.threeFinger, s)) }
             if let s = gripSince, now.timeIntervalSince(s) >= gripDwell { due.append((.grip, s)) }
             if let s = pointSince, now.timeIntervalSince(s) >= pointDwell { due.append((.point, s)) }
+            if let s = toolSince, now.timeIntervalSince(s) >= toolDwell { due.append((.tool, s)) }
             if let first = due.min(by: { $0.1 < $1.1 }) {
                 trigger = first.0
                 clearEntryTimers()
                 phase = .active
             } else {
-                phase = (pose2Since != nil || pose3Since != nil || gripSince != nil || pointSince != nil) ? .entering : .idle
+                phase = (pose2Since != nil || pose3Since != nil || gripSince != nil || pointSince != nil
+                         || toolSince != nil) ? .entering : .idle
             }
 
         case .active, .releasing:
@@ -108,6 +115,8 @@ nonisolated struct LipsZoomFlow {
         pose3Since = nil
         gripSince = nil
         pointSince = nil
+        toolSince = nil
+        toolSeen = nil
         pose2Seen = nil
         pose3Seen = nil
         gripSeen = nil
