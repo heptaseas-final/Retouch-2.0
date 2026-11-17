@@ -9,12 +9,12 @@ import SwiftUI
 
 struct LightModeButton: View {
     @Binding var mode: LightMode
-    var onChange: ((LightMode) -> Void)? = nil
+    var onChange: ((LightMode) -> Void)?
     var nextMode: (LightMode) -> LightMode = { $0.next }
 
     var size: CGFloat = 46
-    var onLiftDrag: ((CGSize) -> Void)? = nil
-    var onLiftEnd: ((CGSize) -> Void)? = nil
+    var onLiftDrag: ((CGSize) -> Void)?
+    var onLiftEnd: ((CGSize) -> Void)?
     var moveActions: [(label: String, perform: () -> Void)] = []
     var boltEmphasis: ControlEmphasis = .normal
     var colorEmphasis: ControlEmphasis = .normal

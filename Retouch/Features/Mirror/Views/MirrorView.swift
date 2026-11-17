@@ -31,6 +31,7 @@ struct MirrorView: View {
                 CameraPermissionDeniedView(onOpenSettings: viewModel.openSettings)
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
+                ZoomLevelReadout(viewModel: viewModel)
                 RingLightPanels(level: viewModel.ringLightLevel, color: edgeColor,
                                 maxSideFraction: viewModel.ringLightWidth,
                                 softness: viewModel.ringLightSoftness)
@@ -77,20 +78,6 @@ struct MirrorView: View {
         }
     }
 
-    @ToolbarContentBuilder
-    private var settingsToolbar: some ToolbarContent {
-        if showsControls, viewModel.permission != .denied, let onReplayTutorial {
-            ToolbarItem(placement: .topBarTrailing) {
-                SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
-                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement)) {
-                    viewModel.select(.face)
-                    viewModel.setLightMode(.off)
-                    onReplayTutorial()
-                }
-            }
-        }
-    }
-
     private var controls: some View {
         VStack {
             Spacer()
@@ -115,7 +102,6 @@ struct MirrorView: View {
     }
     private static let sideMargin: CGFloat = 16
     private static let dockZoneHeight: CGFloat = 120
-    private static let bannerTrailing: CGFloat = 82
 
     @ViewBuilder
     private var sideLightButton: some View {
@@ -236,6 +222,21 @@ struct MirrorView: View {
         }
     }
 
+    @ToolbarContentBuilder
+    private var settingsToolbar: some ToolbarContent {
+        if showsControls, viewModel.permission != .denied, let onReplayTutorial {
+            ToolbarItem(placement: .topBarTrailing) {
+                SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
+                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement),
+                             isBottomAvailable: !isPickerFullWidth) {
+                    viewModel.select(.face)
+                    viewModel.setLightMode(.off)
+                    onReplayTutorial()
+                }
+            }
+        }
+    }
+    
     private var visibleStatus: MirrorStatus? {
         guard let status = viewModel.status, showsControls || status == .cameraPaused else { return nil }
         return status

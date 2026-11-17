@@ -63,8 +63,19 @@ final class MirrorRenderer {
             return
         }
         let isLandscape = frame.extent.width > frame.extent.height
-        let image = compose(Self.uprightMirror(frame), size: size, zoom: zoom, pointScale: pointScale,
-                            stabilization: Self.uprightFraction(stabilization, isLandscape: isLandscape))
+        let upright = Self.uprightMirror(frame)
+        let shake = Self.uprightFraction(stabilization, isLandscape: isLandscape)
+        var image = compose(upright, size: size, zoom: zoom, pointScale: pointScale, stabilization: shake)
+        if let fade = zoom.fade {
+            let previous = compose(upright, size: size,
+                                   zoom: ZoomState(scale: fade.fromScale, offset: fade.fromOffset),
+                                   pointScale: pointScale, stabilization: shake)
+            let dissolve = CIFilter.dissolveTransition()
+            dissolve.inputImage = previous
+            dissolve.targetImage = image
+            dissolve.time = Float(fade.progress)
+            image = dissolve.outputImage?.cropped(to: CGRect(origin: .zero, size: size)) ?? image
+        }
 
         if let makeupLook,
            ProcessInfo.processInfo.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue,

@@ -42,7 +42,7 @@ final class CameraService: CameraServicing {
             },
             center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.enterForeground() }
-            },
+            }
         ]
     }
 

@@ -245,6 +245,18 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
             publish(.fullFace)
         }
     }
+    
+    func leaveAutoZoom() {
+        syncQueuedSequences()
+        isGestureEnabled = false
+        headPose = makeHeadPose()
+        pitchRecognizer = makePitch()
+        resolver = makeResolver()
+        clearCachedDetections()
+        manualTarget = .fullFace
+        autoZoomSince = nil
+        sideZoomSince = nil
+    }
 
     func select(_ part: FacePart) {
         guard let target = part.zoomTarget else {

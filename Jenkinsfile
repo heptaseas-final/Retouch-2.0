@@ -41,6 +41,7 @@ pipeline {
                         -project "$PROJECT" \
                         -scheme "$SCHEME" \
                         -destination "$DESTINATION" \
+                        -only-testing:RetouchTests \
                         -derivedDataPath build/DerivedData \
                         -resultBundlePath build/Retouch.xcresult \
                         -parallel-testing-enabled NO \
