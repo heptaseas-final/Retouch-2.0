@@ -227,8 +227,7 @@ struct MirrorView: View {
         if showsControls, viewModel.permission != .denied, let onReplayTutorial {
             ToolbarItem(placement: .topBarTrailing) {
                 SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
-                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement),
-                             isBottomAvailable: !isPickerFullWidth) {
+                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement)) {
                     viewModel.select(.face)
                     viewModel.setLightMode(.off)
                     onReplayTutorial()
