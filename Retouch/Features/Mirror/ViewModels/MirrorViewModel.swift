@@ -8,6 +8,7 @@ final class MirrorViewModel {
     private(set) var lightMode: LightMode = .off
     private(set) var isLargerButtons: Bool
     private(set) var lightPlacement: LightPlacement
+    private(set) var isAnalyticsEnabled: Bool
     private(set) var status: MirrorStatus?
 
     @ObservationIgnored let renderer: MirrorRenderer
@@ -16,18 +17,22 @@ final class MirrorViewModel {
     @ObservationIgnored private let zoom: ZoomServicing
     @ObservationIgnored private let zoomStore: ZoomStore
     @ObservationIgnored private let settings: MirrorSettingsStoring
+    @ObservationIgnored private let analytics: AnalyticsRecording
     @ObservationIgnored private var statusAdvisor = MirrorStatusAdvisor()
 
     init(camera: CameraServicing, lighting: LightingServicing, zoom: ZoomServicing,
-         zoomStore: ZoomStore, renderer: MirrorRenderer, settings: MirrorSettingsStoring) {
+         zoomStore: ZoomStore, renderer: MirrorRenderer, settings: MirrorSettingsStoring,
+         analytics: AnalyticsRecording) {
         self.camera = camera
         self.lighting = lighting
         self.zoom = zoom
         self.zoomStore = zoomStore
         self.renderer = renderer
         self.settings = settings
+        self.analytics = analytics
         isLargerButtons = settings.isLargerButtons
         lightPlacement = settings.lightPlacement
+        isAnalyticsEnabled = analytics.isAnalyticsEnabled
     }
 
     var zoomState: ZoomState { zoomStore.zoomState }
@@ -43,17 +48,20 @@ final class MirrorViewModel {
     func start() async {
         camera.start()
         zoom.start()
+        analytics.appDidBecomeActive()
     }
 
     func refresh() {
         camera.start()
         zoom.start()
+        analytics.appDidBecomeActive()
     }
 
     func stop() {
         lighting.setAuto(true)
         camera.stop()
         zoom.stop()
+        analytics.appDidEnterBackground()
     }
 
     func retryCamera() { camera.retry() }
@@ -61,14 +69,19 @@ final class MirrorViewModel {
     func openSettings() { camera.openSettings() }
 
     func select(_ part: FacePart) {
+        let previous = selectedPart
         selectedPart = part
         zoom.select(part)
+        analytics.partChanged(from: previous, to: part)
     }
 
     func setLightMode(_ mode: LightMode) {
         lightMode = mode
         lighting.setLightMode(mode)
+        analytics.lightModeChanged(to: mode)
     }
+
+    func replayTutorialOpened() { analytics.replayTutorialOpened() }
 
     func setLargerButtons(_ isOn: Bool) {
         isLargerButtons = isOn
@@ -80,6 +93,11 @@ final class MirrorViewModel {
         settings.lightPlacement = placement
     }
 
+    func setAnalyticsEnabled(_ isOn: Bool) {
+        isAnalyticsEnabled = isOn
+        analytics.setAnalyticsEnabled(isOn)
+    }
+
     func monitorStatus() async {
         while !Task.isCancelled {
             refreshStatus(now: ProcessInfo.processInfo.systemUptime)
@@ -89,7 +107,10 @@ final class MirrorViewModel {
 
     func refreshStatus(now: TimeInterval) {
         let next = statusAdvisor.update(statusInput, now: now)
-        if next != status { status = next }
+        if next != status {
+            status = next
+            analytics.statusChanged(to: next, faceLux: lighting.status.faceLux)
+        }
     }
 
     func dismissStatus() {
@@ -116,9 +137,13 @@ final class MirrorViewModel {
 
     func pinchChanged(_ magnification: CGFloat) { zoom.pinchChanged(magnification) }
 
-    func pinchEnded() { zoom.pinchEnded() }
+    func pinchEnded() {
+        zoom.pinchEnded()
+        analytics.pinchEnded(scale: Double(zoomState.scale))
+    }
 
     func cameraStateDidChange(from old: CameraState, to new: CameraState) {
+        analytics.cameraStateChanged(from: old, to: new)
         if new == .running, old != .running {
             zoom.resetSession()
         }

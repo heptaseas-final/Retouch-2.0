@@ -17,6 +17,15 @@ settings:
     CURRENT_PROJECT_VERSION: 41
     
 
+configFiles:
+  Debug: Config/Analytics-Debug.xcconfig
+  Release: Config/Analytics-Release.xcconfig
+
+packages:
+  Mixpanel:
+    url: https://github.com/mixpanel/mixpanel-swift
+    from: 6.4.1
+
 targets:
   Retouch:
     type: application
@@ -26,6 +35,7 @@ targets:
       - path: RetouchWidgetExt/OpenRetouchIntent.swift
     dependencies:
       - target: RetouchWidgetExt
+      - package: Mixpanel
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: bsd.iosda.Retouch
@@ -36,6 +46,7 @@ targets:
 
         # Info.plist
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Config/Retouch-Info.plist
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES

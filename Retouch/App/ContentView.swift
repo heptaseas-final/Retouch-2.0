@@ -12,6 +12,7 @@ struct ContentView: View {
     @AppStorage("hasSeenSplash") private var hasSeenSplash = false
     let mirrorViewModel: MirrorViewModel
     let makeOnboardingSignals: () -> ZoomOnboardingSignals
+    let analytics: AnalyticsRecording
 
     var body: some View {
         Group {
@@ -23,7 +24,7 @@ struct ContentView: View {
                         }
 
                         if !hasCompletedOnboarding, mirrorViewModel.cameraState != .failed, mirrorViewModel.permission != .denied {
-                            OnboardingFlow(signals: makeOnboardingSignals()) {
+                            OnboardingFlow(signals: makeOnboardingSignals(), analytics: analytics) {
                                 withAnimation(.easeInOut) { hasCompletedOnboarding = true }
                             }
                             .transition(.opacity)
@@ -51,5 +52,6 @@ struct ContentView: View {
 #Preview {
     let container = AppContainer()
     return ContentView(mirrorViewModel: container.mirrorViewModel,
-                       makeOnboardingSignals: container.makeOnboardingSignals)
+                       makeOnboardingSignals: container.makeOnboardingSignals,
+                       analytics: container.analytics)
 }

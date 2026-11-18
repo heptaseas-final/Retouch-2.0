@@ -1,0 +1,2 @@
+#include? "Secrets.xcconfig"
+MIXPANEL_TOKEN = $(MIXPANEL_TOKEN_DEV)

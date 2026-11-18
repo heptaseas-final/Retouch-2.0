@@ -86,6 +86,7 @@ struct MirrorView: View {
                 SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
                              lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement),
                              isBottomAvailable: !isPickerFullWidth) {
+                    viewModel.replayTutorialOpened()
                     viewModel.select(.face)
                     viewModel.setLightMode(.off)
                     onReplayTutorial()
