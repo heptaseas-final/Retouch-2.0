@@ -21,7 +21,7 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
     var onStateChange: ((CameraState) -> Void)?
     var frameRate: Int32 = 60
     var prefersAutoFrameRate = false
-    var preferredWidth: Int32 = 1920
+    var preferredWidth: Int32 = 3840
     var maxRestartAttempts = 3
     var preferredStabilization: AVCaptureVideoStabilizationMode = .standard
     

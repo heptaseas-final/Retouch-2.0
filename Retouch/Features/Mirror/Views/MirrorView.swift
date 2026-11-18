@@ -15,8 +15,6 @@ struct MirrorView: View {
     private let showsControls: Bool
     private let onReplayTutorial: (() -> Void)?
 
-    private static let whiteHex: UInt32 = 0xFFFFFF
-
     init(viewModel: MirrorViewModel, showsControls: Bool = true, onReplayTutorial: (() -> Void)? = nil) {
         _viewModel = State(initialValue: viewModel)
         _lightDock = State(initialValue: LightDock(viewModel.lightPlacement))
@@ -32,10 +30,7 @@ struct MirrorView: View {
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
                 ZoomLevelReadout(viewModel: viewModel)
-                RingLightPanels(level: viewModel.ringLightLevel, color: edgeColor,
-                                maxSideFraction: viewModel.ringLightWidth,
-                                softness: viewModel.ringLightSoftness)
-                    .ignoresSafeArea()
+                MirrorGlowLayer(viewModel: viewModel)
                 cameraStateOverlay
                 if showsControls, viewModel.cameraState != .failed {
                   VStack(spacing: 12) {
@@ -189,22 +184,6 @@ struct MirrorView: View {
         Task { @MainActor in
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { lightDrag = .zero }
         }
-    }
-
-    private var edgeColor: Color {
-        switch viewModel.filterColor {
-        case .warm: LightColor.warm.color
-        case .cool: LightColor.cool.color
-        case .natural, nil: autoEdgeColor
-        }
-    }
-
-    private var autoEdgeColor: Color {
-        let zoomProgress = (viewModel.zoomState.scale - 1) / (LightingTuning.autoShiftFullScale - 1)
-        let progress = max(Double(min(max(zoomProgress, 0), 1)), viewModel.closeness)
-        let t = LightingTuning.autoShiftStrength * min(max(progress, 0), 1)
-        let c = LightingTuning.blend(Self.whiteHex, LightingTuning.softBlue, t)
-        return Color(red: c.r, green: c.g, blue: c.b)
     }
 
     @ViewBuilder
