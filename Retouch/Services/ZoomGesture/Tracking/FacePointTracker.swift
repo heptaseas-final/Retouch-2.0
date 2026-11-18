@@ -32,6 +32,14 @@ nonisolated struct FacePointTracker {
         return points
     }
 
+    mutating func reseedSize(face: FaceObservation, converter: CoordinateConverter) {
+        points.width = converter.width(face.width)
+        guard let l = face.leftEye.map(converter.toView),
+              let r = face.rightEye.map(converter.toView) else { return }
+        let cosYaw = CGFloat(max(cos(face.yaw * .pi / 180), ZoomTuning.reseedMinYawCos))
+        points.scale = hypot(l.x - r.x, l.y - r.y) / cosYaw
+    }
+
     private mutating func followFaceBox(face: FaceObservation, converter: CoordinateConverter, now: Date) {
         guard ZoomTuning.coverFollowEnabled else { return }
         let center = converter.toView(face.center)

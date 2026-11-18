@@ -186,8 +186,8 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         }
         scaleLock.lock(); shownScale = currentScale; scaleLock.unlock()
 
-        let maxX = (currentScale - 1) * size.width / 2
-        let maxY = (currentScale - 1) * size.height / 2
+        let maxX = max(currentScale - 1, 0) * size.width / 2
+        let maxY = max(currentScale - 1, 0) * size.height / 2
 
         var goalX: CGFloat = 0
         var goalY: CGFloat = 0

@@ -56,7 +56,7 @@ final class ZoomOnboardingSignals: OnboardingSignalSource {
     }
 
     private func handle(_ tracking: ZoomTracking, _ zoom: ZoomState) {
-        guard tracking.target != .fullFace else {
+        guard tracking.target != .fullFace, tracking.target != .overall else {
             didSendHandNearEye = false
             didSendZoomedIn = false
             return

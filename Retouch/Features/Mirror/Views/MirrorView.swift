@@ -16,14 +16,17 @@ struct MirrorView: View {
     @State private var dockBeforeFullWidth: LightDock?
     private let showsControls: Bool
     private let onReplayTutorial: (() -> Void)?
+    private let clipReview: ClipReviewViewModel?
 
     private static let whiteHex: UInt32 = 0xFFFFFF
 
-    init(viewModel: MirrorViewModel, showsControls: Bool = true, onReplayTutorial: (() -> Void)? = nil) {
+    init(viewModel: MirrorViewModel, showsControls: Bool = true, clipReview: ClipReviewViewModel? = nil,
+         onReplayTutorial: (() -> Void)? = nil) {
         _viewModel = State(initialValue: viewModel)
         _lightDock = State(initialValue: LightDock(viewModel.lightPlacement))
         self.showsControls = showsControls
         self.onReplayTutorial = onReplayTutorial
+        self.clipReview = clipReview
     }
 
     var body: some View {
@@ -45,10 +48,12 @@ struct MirrorView: View {
                           .transition(.opacity)
                   }
                   sideLightButton
+                  if let clipReview { ClipPreviewLayer(viewModel: clipReview) }
                 }
             }
         }
         .toolbar { settingsToolbar }
+        .toolbar(clipReview?.isPreviewing == true ? .hidden : .automatic, for: .navigationBar)
         .pickerSwipe(pickerSwipe, isEnabled: showsControls && viewModel.permission != .denied && viewModel.cameraState != .failed && !isDraggingLight)
         .sensoryFeedback(.impact(weight: .medium), trigger: lightDock)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { screenFrame = $0 }
@@ -98,6 +103,7 @@ struct MirrorView: View {
     private var controls: some View {
         VStack {
             Spacer()
+            if let clipReview { ClipReviewView(viewModel: clipReview) }
             CameraControls(
                 part: Binding(get: { viewModel.selectedPart }, set: viewModel.select),
                 lightMode: Binding(get: { viewModel.lightMode }, set: viewModel.setLightMode),

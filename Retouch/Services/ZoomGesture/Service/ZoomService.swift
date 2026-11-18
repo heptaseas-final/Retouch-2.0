@@ -75,6 +75,9 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     var eyeActivity = EyeActivityRecognizer()
     var eyeInput = EyeZoomFlow.Input()
     var distComp = DistanceCompensator()
+    var armReach = ArmReachRecognizer()
+    var isOverallShowing = false
+    var imageSize: CGSize = .zero
 
     var pinchScale: CGFloat = 1
     var pinchBase: CGFloat = 1
@@ -144,6 +147,7 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         noseFlow = NoseZoomFlow()
         noseInput = NoseZoomFlow.Input()
         distComp = DistanceCompensator()
+        resetOverall()
         clearToolState()
     }
 
