@@ -26,6 +26,7 @@ struct SettingsMenu: View {
                 .font(.title3)
                 .frame(width: 44, height: 44)
                 .background(.ultraThinMaterial, in: Circle())
+                .lightOnGlassSystems()
         }
         .tint(Color.appMagenta)
         .task(id: pendingLargerButtons) { await applyLargerButtonsAfterClose() }

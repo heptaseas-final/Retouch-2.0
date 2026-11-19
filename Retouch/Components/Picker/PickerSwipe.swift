@@ -10,6 +10,7 @@ final class PickerSwipe {
     private(set) var translation: CGFloat = 0
     private(set) var isDragging = false
     private(set) var release: Release?
+    private(set) var isHeldByPicker = false
 
     func update(_ dx: CGFloat) {
         translation = dx
@@ -25,6 +26,11 @@ final class PickerSwipe {
         isDragging = false
         translation = 0
         release = nil
+    }
+
+    func holdForPicker(_ isHeld: Bool) {
+        isHeldByPicker = isHeld
+        if isHeld { cancel() }
     }
 
     func cancel() {
@@ -52,7 +58,7 @@ private struct PickerSwipeGesture: ViewModifier {
                 if axis == nil {
                     axis = abs(value.translation.width) > abs(value.translation.height) ? .horizontal : .vertical
                 }
-                guard axis == .horizontal, !isPinching else { return }
+                guard axis == .horizontal, !isPinching, !swipe.isHeldByPicker else { return }
                 swipe.update(value.translation.width)
             }
             .onEnded { value in
@@ -60,7 +66,7 @@ private struct PickerSwipeGesture: ViewModifier {
                     axis = nil
                     isPinching = false
                 }
-                guard axis == .horizontal, !isPinching else {
+                guard axis == .horizontal, !isPinching, !swipe.isHeldByPicker else {
                     swipe.cancel()
                     return
                 }

@@ -81,4 +81,36 @@ struct MirrorViewModelTests {
         viewModel.cameraStateDidChange(from: .running, to: .running)
         #expect(zoom.resetCount == 1)
     }
+
+    @Test func overallToggleIsForwardedToZoom() {
+        let viewModel = makeViewModel()
+        viewModel.setOverall(true)
+        #expect(viewModel.isOverallOn)
+        viewModel.setOverall(false)
+        #expect(!viewModel.isOverallOn)
+        #expect(zoom.overallValues == [true, false])
+    }
+
+    @Test func pickingAPartTurnsOverallOff() {
+        let viewModel = makeViewModel()
+        viewModel.setOverall(true)
+        viewModel.select(.mouth)
+        #expect(!viewModel.isOverallOn)
+        #expect(zoom.overallValues == [true, false])
+    }
+
+    @Test func pausingStopsOnlyTheCamera() {
+        let viewModel = makeViewModel()
+        viewModel.pauseCamera()
+        #expect(camera.stopCount == 1)
+        #expect(zoom.stopCount == 0)
+    }
+
+    @Test func refreshCanSkipTheCamera() {
+        let viewModel = makeViewModel()
+        viewModel.refresh(startsCamera: false)
+        #expect(camera.startCount == 0)
+        viewModel.refresh()
+        #expect(camera.startCount == 1)
+    }
 }

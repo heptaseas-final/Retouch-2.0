@@ -10,6 +10,7 @@ struct ClipPreview: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isPlaying: Bool?
+    @State private var isConfirmingDelete = false
 
     private var playing: Bool { isPlaying ?? !reduceMotion }
 
@@ -17,10 +18,14 @@ struct ClipPreview: View {
         VStack(spacing: 16) {
             ClipPlayer(url: clip.url, isPlaying: playing)
                 .aspectRatio(RecordingConfig.clipAspectRatio, contentMode: .fit)
+                .overlay(alignment: .bottomTrailing) {
+                    ClipFileTab()
+                        .padding(.trailing, RecordingConfig.fileTabInset)
+                }
                 .clipShape(.rect(cornerRadius: RecordingConfig.previewCornerRadius))
                 .overlay {
                     RoundedRectangle(cornerRadius: RecordingConfig.previewCornerRadius)
-                        .strokeBorder(.white, lineWidth: RecordingConfig.thumbnailBorderWidth)
+                        .strokeBorder(.white, lineWidth: RecordingConfig.previewBorderWidth)
                 }
                 .overlay(alignment: .bottomLeading) {
                     Button(playing ? "Pause" : "Play", systemImage: playing ? "pause.fill" : "play.fill") {
@@ -30,6 +35,12 @@ struct ClipPreview: View {
                     .buttonStyle(ClipActionStyle(isProminent: false, isCircle: true))
                     .padding(12)
                 }
+                .overlay(alignment: .topTrailing) {
+                    Button("Close", systemImage: "xmark", action: onClose)
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(ClipActionStyle(isProminent: false, isCircle: true))
+                        .offset(RecordingConfig.closeButtonOffset)
+                }
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("Clip preview")
 
@@ -38,8 +49,8 @@ struct ClipPreview: View {
             }
 
             HStack(spacing: 12) {
-                Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
-                    .buttonStyle(ClipActionStyle(isProminent: false))
+                Button("Delete", systemImage: "trash", role: .destructive) { isConfirmingDelete = true }
+                    .buttonStyle(ClipActionStyle(isProminent: false, fillsWidth: true))
                 Button(action: onSave) {
                     if isSaving {
                         ProgressView().tint(.white)
@@ -47,12 +58,14 @@ struct ClipPreview: View {
                         Label("Save", systemImage: "square.and.arrow.down")
                     }
                 }
-                .buttonStyle(ClipActionStyle(isProminent: true))
+                .buttonStyle(ClipActionStyle(isProminent: true, fillsWidth: true))
                 .accessibilityLabel("Save to Photos")
-                Button("Close", systemImage: "xmark", action: onClose)
-                    .buttonStyle(ClipActionStyle(isProminent: false))
             }
             .disabled(isSaving)
+        }
+        .alert("Delete video?", isPresented: $isConfirmingDelete) {
+            Button("Delete", role: .destructive, action: onDelete)
+            Button("Cancel", role: .cancel) {}
         }
     }
 }
@@ -60,15 +73,17 @@ struct ClipPreview: View {
 struct ClipActionStyle: ButtonStyle {
     let isProminent: Bool
     var isCircle = false
+    var fillsWidth = false
 
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.bold())
-            .foregroundStyle(isProminent ? .white : .black)
+            .foregroundStyle(isProminent ? Color.white : (isCircle ? Color.appMagenta : Color.black))
             .padding(.horizontal, isCircle ? 0 : 16)
-            .frame(minWidth: RecordingConfig.minTapTarget, minHeight: RecordingConfig.minTapTarget)
+            .frame(minWidth: RecordingConfig.minTapTarget, maxWidth: fillsWidth ? .infinity : nil,
+                   minHeight: RecordingConfig.minTapTarget)
             .background {
                 if isProminent {
                     Capsule().fill(Color.appMagenta)
@@ -85,7 +100,7 @@ struct ClipActionStyle: ButtonStyle {
     ZStack {
         Color.black.opacity(0.6).ignoresSafeArea()
         ClipPreview(clip: RecordedClip(url: URL(filePath: "/tmp/sample.mov"), duration: 3),
-                    message: "Couldn't save the clip. Try again.", isSaving: false,
+                    message: nil, isSaving: false,
                     onDelete: {}, onSave: {}, onClose: {})
             .padding(24)
     }

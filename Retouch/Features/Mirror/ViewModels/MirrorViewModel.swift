@@ -10,6 +10,7 @@ final class MirrorViewModel {
     private(set) var lightPlacement: LightPlacement
     private(set) var isAnalyticsEnabled: Bool
     private(set) var status: MirrorStatus?
+    private(set) var isOverallOn = false
 
     @ObservationIgnored let renderer: MirrorRenderer
     @ObservationIgnored private let camera: CameraServicing
@@ -53,10 +54,14 @@ final class MirrorViewModel {
         analytics.appDidBecomeActive()
     }
 
-    func refresh() {
-        camera.start()
+    func refresh(startsCamera: Bool = true) {
+        if startsCamera { camera.start() }
         zoom.start()
         analytics.appDidBecomeActive()
+    }
+
+    func pauseCamera() {
+        camera.stop()
     }
 
     func stop() {
@@ -73,6 +78,7 @@ final class MirrorViewModel {
     func select(_ part: FacePart) {
         let previous = selectedPart
         selectedPart = part
+        if isOverallOn { setOverall(false) }
         zoom.select(part)
         analytics.partChanged(from: previous, to: part)
     }
@@ -81,6 +87,11 @@ final class MirrorViewModel {
         lightMode = mode
         lighting.setLightMode(mode)
         analytics.lightModeChanged(to: mode)
+    }
+
+    func setOverall(_ isOn: Bool) {
+        isOverallOn = isOn
+        zoom.setOverall(isOn)
     }
 
     func replayTutorialOpened() { analytics.replayTutorialOpened() }

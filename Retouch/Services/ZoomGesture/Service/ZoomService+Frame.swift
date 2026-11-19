@@ -25,8 +25,9 @@ nonisolated extension ZoomService {
                             yawDegrees: Double(lastFace?.yaw ?? .nan),
                             valid: lastFace != nil,
                             now: faceSnap.timestamp.timeIntervalSinceReferenceDate)
-            publish(manualTarget)
-            onTracking?(ZoomTracking(target: manualTarget, face: points, viewSize: viewSize))
+            let target = isManualOverall ? ZoomTarget.overall : manualTarget
+            publish(target)
+            onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize))
             return
         }
 
@@ -114,7 +115,8 @@ nonisolated extension ZoomService {
         if winner != .lips, lipFlow.phase == .releasing { lipFlow.cancel() }
         handTarget = winner == .eye ? eyeFlow.target : nil
 
-        let target: ZoomTarget = updateOverall(face: faceSnap?.value, converter: converter) ? .overall
+        let autoOverall = updateOverall(face: faceSnap?.value, converter: converter)
+        let target: ZoomTarget = autoOverall || isManualOverall ? .overall
             : resolver.resolve(hand: handTarget, lips: winner == .lips, nose: winner == .nose, head: headTarget, covering: covering, headStraight: headPose.isStraight, headQuickRelease: headPose.quickReleased, now: now)
 
         if target == .fullFace || target == .overall { distComp.clearReference() } else { distComp.latchReferenceIfNeeded() }

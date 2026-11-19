@@ -43,7 +43,7 @@ struct ClipTriggerTests {
         #expect(trigger.update(pose: .placedFar, canStart: false) == .none)
     }
 
-    @Test func maxDurationIsTenSeconds() {
-        #expect(RecordingConfig.maxDuration == 10)
+    @Test func maxDurationIsFifteenSeconds() {
+        #expect(RecordingConfig.maxDuration == 15)
     }
 }

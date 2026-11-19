@@ -18,6 +18,7 @@ nonisolated protocol ClipRecordingServicing: AnyObject, Sendable {
     var onEvent: (@Sendable (ClipRecordingEvent) -> Void)? { get set }
     func setEnabled(_ isEnabled: Bool)
     func noteTracking(_ tracking: ZoomTracking)
+    func finishRecording()
     func append(_ frame: CIImage, time: TimeInterval)
     func discard(_ clip: RecordedClip)
     func thumbnail(for clip: RecordedClip) async -> CGImage?
@@ -66,6 +67,16 @@ nonisolated final class ClipRecordingService: ClipRecordingServicing, @unchecked
         case .stop:
             finish()
         }
+    }
+
+    func finishRecording() {
+        let wasRecording = lock.withLock { () -> Bool in
+            guard trigger.isRecording else { return false }
+            trigger.recordingEnded()
+            return true
+        }
+        guard wasRecording else { return }
+        finish()
     }
 
     func append(_ frame: CIImage, time: TimeInterval) {

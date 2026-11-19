@@ -7,7 +7,7 @@ enum ClipNotice: Equatable {
 
     var message: String {
         switch self {
-        case .saved: "Saved to Photos"
+        case .saved: "Video saved to your gallery"
         case .photosDenied: "Allow Retouch to add to Photos in Settings to save clips."
         case .saveFailed: "Couldn't save the clip. Try again."
         }
@@ -53,6 +53,10 @@ final class ClipReviewViewModel {
         isRecording = false
         previewClip = nil
         discardClip()
+    }
+
+    func pauseRecording() {
+        recording.finishRecording()
     }
 
     func openPreview() {
