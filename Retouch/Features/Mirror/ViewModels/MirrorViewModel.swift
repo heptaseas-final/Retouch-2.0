@@ -15,7 +15,7 @@ final class MirrorViewModel {
     @ObservationIgnored private let camera: CameraServicing
     @ObservationIgnored private let lighting: LightingServicing
     @ObservationIgnored private let zoom: ZoomServicing
-    @ObservationIgnored private let zoomStore: ZoomStore
+    @ObservationIgnored let zoomStore: ZoomStore
     @ObservationIgnored private let settings: MirrorSettingsStoring
     @ObservationIgnored private let analytics: AnalyticsRecording
     @ObservationIgnored private var statusAdvisor = MirrorStatusAdvisor()

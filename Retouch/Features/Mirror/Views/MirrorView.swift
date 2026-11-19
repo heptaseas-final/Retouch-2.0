@@ -32,6 +32,7 @@ struct MirrorView: View {
                 CameraPermissionDeniedView(onOpenSettings: viewModel.openSettings)
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
+                ZoomDebugOverlay(store: viewModel.zoomStore, isEnabled: true)
                 ZoomLevelReadout(viewModel: viewModel)
                 MirrorGlowLayer(viewModel: viewModel)
                 cameraStateOverlay

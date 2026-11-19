@@ -94,22 +94,23 @@ nonisolated extension ZoomService {
         eyeIn.activityRight = eyeActivity.rightState
         eyeIn = ZoomReadiness.applying(toolReading, to: eyeIn)
         if lipsShowing { eyeIn.enterDwellFactor *= Self.preemptDwellFactor }
-        eyeFlow.update(eyeIn, now: now)
         var lipIn = lipsInput
         lipIn.lipsMoving = lipMotion.isMoving
         lipIn = ZoomReadiness.applying(toolReading, to: lipIn)
-        lipFlow.update(lipIn, now: now)
         var noseIn = noseInput
         noseIn = ZoomReadiness.applying(toolReading, to: noseIn)
         if eyeShowing || lipsShowing { noseIn.enterDwellFactor = Self.preemptDwellFactor }
-        noseFlow.update(noseIn, now: now)
 
+        applyStraightRelease(eye: &eyeIn, lips: &lipIn, nose: &noseIn)
+        eyeFlow.update(eyeIn, now: now)
+        lipFlow.update(lipIn, now: now)
+        noseFlow.update(noseIn, now: now)
         let ranked: [(owner: FlowOwner, running: Bool, holding: Bool)] = [
             (.nose, noseFlow.isActive, noseFlow.phase == .active),
             (.eye, eyeFlow.isActive, eyeFlow.phase == .active),
             (.lips, lipFlow.isActive, lipFlow.phase == .active)
         ]
-        let winner: FlowOwner? = ranked.first(where: { $0.holding })?.owner
+        let winner: FlowOwner? = newestHolding(ranked.filter { $0.holding }.map(\.owner), now: now)
             ?? ranked.first(where: { $0.running })?.owner
         if winner != .nose, noseFlow.phase == .releasing { noseFlow.cancel() }
         if winner != .eye, eyeFlow.phase == .releasing { eyeFlow.cancel() }
@@ -143,8 +144,18 @@ nonisolated extension ZoomService {
 
         publish(target)
 
+#if DEBUG
+        let debugHands = hands.map {
+            ZoomDebugHand(point: $0.point, checkPoints: $0.checkPoints, hasPose: $0.hasPose,
+                          isHolding: $0.holding, isPoint: $0.isPoint)
+        }
+        let debugTips = lastScan.fingertips.map { converter.toView($0) }
+#else
+        let debugHands: [ZoomDebugHand] = []
+        let debugTips: [CGPoint] = []
+#endif
         onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
-                                 isFaceVisible: lastFace != nil))
+                                 isFaceVisible: lastFace != nil, hands: debugHands, fingertips: debugTips))
     }
 
     func trackMotion(face: FaceObservation?, hand: CGPoint?, at now: Date, faceChecked: Bool = true) {

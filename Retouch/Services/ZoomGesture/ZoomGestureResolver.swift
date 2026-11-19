@@ -4,7 +4,7 @@ nonisolated struct ZoomGestureResolver {
     var exitHold: TimeInterval = ZoomTuning.exitHold
     var switchDwell: TimeInterval = ZoomTuning.resolverSwitchDwell
     var handCooldown: TimeInterval = 0.5
-    var exitCooldown: TimeInterval = 1.5
+    var exitCooldown: TimeInterval = ZoomTuning.resolverExitCooldown
     var coverHold: TimeInterval = ZoomTuning.coverHold
 
     private(set) var target: ZoomTarget = .fullFace

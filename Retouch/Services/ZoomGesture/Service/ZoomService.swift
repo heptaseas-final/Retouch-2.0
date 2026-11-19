@@ -62,8 +62,9 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
 
     var noseFlow = NoseZoomFlow()
     var noseInput = NoseZoomFlow.Input()
-    enum FlowOwner { case eye, lips, nose }
+    enum FlowOwner: CaseIterable { case eye, lips, nose }
     var handTarget: ZoomTarget?
+    var flowEnteredAt: [FlowOwner: Date] = [:]
     var headTarget: ZoomTarget?
     var lastLogicTime = Date.distantPast
     var prevFace: FaceObservation?

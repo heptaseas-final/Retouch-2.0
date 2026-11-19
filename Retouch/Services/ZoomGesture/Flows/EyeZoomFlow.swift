@@ -153,8 +153,7 @@ nonisolated struct EyeZoomFlow {
 
             if (poseThere || gripThere || pointThere || toolSwitches) && !(poseHere || gripHere || pointHere || toolHere) {
                 if switchPending?.side != other { switchPending = (other, now) }
-                let switchNeed = poseThere ? switchDwell
-                    : (gripThere ? gripDwell : (pointThere ? pointDwell : toolSwitchDwell))
+                let switchNeed = toolSwitches && !(poseThere || gripThere || pointThere) ? toolSwitchDwell : switchDwell
                 if let p = switchPending, now.timeIntervalSince(p.since) >= switchNeed {
                     side = other
                     switchPending = nil

@@ -12,11 +12,21 @@ nonisolated struct ZoomFade: Equatable {
     var progress: CGFloat
 }
 
+nonisolated struct ZoomDebugHand: Sendable {
+    var point: CGPoint
+    var checkPoints: [CGPoint]
+    var hasPose: Bool
+    var isHolding: Bool
+    var isPoint: Bool
+}
+
 nonisolated struct ZoomTracking: Sendable {
     var target: ZoomTarget = .fullFace
     var face = FacePoints()
     var viewSize: CGSize = .zero
     var isFaceVisible = false
+    var hands: [ZoomDebugHand] = []
+    var fingertips: [CGPoint] = []
 }
 
 nonisolated enum FaceSide { case left, right }

@@ -26,8 +26,8 @@ nonisolated struct NoseZones {
 
     private func inColumn(_ p: CGPoint, widthScale: CGFloat, hold: Bool) -> Bool {
         guard abs(eyes.s(p) - noseOffset) <= ZoomTuning.noseColumnHalfWidth * widthScale,
-              eyes.t(p) >= ZoomTuning.noseColumnTop else { return false }
-        let belowLips = hold ? eyes.isLipsHoldSide(p) : eyes.isLipsSide(p)
-        return !belowLips && !eyes.inEyeTerritory(p)
+              eyes.t(p) >= ZoomTuning.noseColumnTop,
+              eyes.isAboveLips(p, hold: hold) else { return false }
+        return !eyes.inEyeTerritory(p, margin: hold ? 0 : ZoomTuning.zoneGap)
     }
 }

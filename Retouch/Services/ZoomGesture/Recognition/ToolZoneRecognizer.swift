@@ -63,7 +63,7 @@ nonisolated struct ToolZoneRecognizer {
             if tool.speed >= maxIntentSpeed { reading.fastTool = true }
 
             guard tool.confidence >= ToolDetectionTuning.triggerConfidence,
-                  !zones.isLipsSide(tool.center) else { continue }
+                  zones.isAboveLips(tool.center) else { continue }
             let extra = [nearLeft, nearRight] + (nearNose.map { [$0] } ?? [])
             guard let zone = dominantZone(tool.rect, extra: extra, eyes: zones, nose: brushNose) else { continue }
             reading.isInZone = true

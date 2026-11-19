@@ -80,12 +80,12 @@ struct EyeZoomFlowTests {
 
     @Test func enterDwellsMatchSpec() {
         let flow = EyeZoomFlow()
-        #expect(flow.enterDwell == 0.6)
-        #expect(flow.gripDwell == 0.6)
-        #expect(flow.pointDwell == 0.6)
-        #expect(flow.toolDwell == 0.6)
-        #expect(LipsZoomFlow().enterDwell == 0.6)
-        #expect(LipsZoomFlow().gripDwell == 0.6)
+        #expect(flow.enterDwell == 0.35)
+        #expect(flow.gripDwell == 0.35)
+        #expect(flow.pointDwell == 0.35)
+        #expect(flow.toolDwell == 0.35)
+        #expect(LipsZoomFlow().enterDwell == 0.35)
+        #expect(LipsZoomFlow().gripDwell == 0.35)
     }
 
     @Test func releaseDwellMatchesPmDecision() {
