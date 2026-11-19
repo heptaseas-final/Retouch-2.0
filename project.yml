@@ -34,6 +34,7 @@ targets:
     sources:
       - path: Retouch
       - path: RetouchWidgetExt/OpenRetouchIntent.swift
+      - path: Config/MixpanelConfig.plist
     dependencies:
       - target: RetouchWidgetExt
       - package: Mixpanel
@@ -47,7 +48,6 @@ targets:
 
         # Info.plist
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_FILE: Config/Retouch-Info.plist
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES

@@ -17,7 +17,7 @@ struct AnalyticsPrivacyTests {
 
     @Test("TC-5.2-05 Analytics events carry no image data")
     func analyticsEventsCarryNoImageData() throws {
-        let event = AnalyticsEvent(name: "zoom_changed", count: 1, durationSeconds: 0.2)
+        let event = LegacyAnalyticsEvent(name: "zoom_changed", count: 1, durationSeconds: 0.2)
         let data = try JSONEncoder().encode(event)
         let json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let forbidden = ["image", "video", "frame", "landmark", "pixel", "photo"]
