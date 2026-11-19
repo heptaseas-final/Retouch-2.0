@@ -196,7 +196,11 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     }
 
     func process(_ pixelBuffer: CVPixelBuffer) {
-        let (isAuto, interval) = stateQueue.sync { (isGestureEnabled, pacer.interval(now: Date())) }
+        let frameTime = ProcessInfo.processInfo.systemUptime
+        let (isAuto, interval) = stateQueue.sync { () -> (Bool, TimeInterval) in
+            pacer.noteFrame(at: frameTime)
+            return (isGestureEnabled, pacer.interval(now: Date()))
+        }
         let toolPlan = stateQueue.sync { toolDetectionPlan() }
         faceDetector.submit(pixelBuffer, minInterval: interval)
         if isAuto, !toolPlan.pausesHands { handDetector.submit(pixelBuffer, minInterval: interval) }
