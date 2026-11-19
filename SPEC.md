@@ -1,46 +1,42 @@
 # Spec Document
-
+ 
 # **SPEC.md: Retouch v1** | Team Heptaseas | 17/11/2026 | v2 (aligned with PRD v3.1)
-
+ 
 ## **1. Opportunity Statement**
-
+ 
 People who touch up their makeup on the go need a way to see their face clearly on the phone they already carry, because there is often no mirror nearby and the front camera is dim, shaky and cannot zoom into details.
-
+ 
 ## **2. Persona**
-
+ 
 Betty, 25, office worker in Jakarta, touches up makeup in the car or on transit, often multiple times a day, and frequently forgets her compact mirror.
-
+ 
 - Goal: check her look quickly with one hand free, and feel confident she looks presentable.
 - Frustration: dim and shaky front camera, no zoom into details, and she must fiddle with camera settings while applying makeup.
-
 ## **3. App Statement**
-
+ 
 Retouch is an iPhone app that works as a portable beauty mirror: a true-color mirrored view that adapts its light to the light on your face and zooms in automatically on the eyes or lips when your hand or brush gets close.
-
+ 
 ## **4. Core loop**
-
+ 
 1. Open the app and see the whole face.
 2. Touch up while light adapts and the view auto zooms.
 3. Look straight ahead, tap overall check or move the phone further away for an overall check.
-
 ## **5. MVP features**
-
+ 
 Priorities follow the PRD: P1 must ship in MVP v1, P2 is MVP v2 scope, P3 is v3.
-
+ 
 Epic 1: Full face mirror
-
+ 
 - F1.1 Open full face mirror (P1)
 - F1.2 Camera quality, clear and not grainy (P2)
 - F1.3 Natural color (P2)
-
 Epic 2: Auto lighting
-
+ 
 - F2.1 Auto light setup (P2, built early in v1)
 - F2.2 Manual light adjustment (P1)
 - F2.4 Consistent brightness when the user moves closer (P2)
-
 Epic 3: Zoom Gesture
-
+ 
 - F3.1 Eye zoom (P1)
 - F3.2 Lip zoom (P1)
 - F3.3 Head-turn zoom (P1)
@@ -49,23 +45,20 @@ Epic 3: Zoom Gesture
 - F3.6 Lock and auto-zoom switch (P1)
 - F3.7 Stabilizer (P2)
 - F3.8 Gesture onboarding (P2)
-
 Epic 4: Overall check
-
+ 
 - F4.1 Overall check view (P1)
 - F4.2 Room light check (P1)
 - F4.3 Overall check fallbacks (P1)
-
 Epic 5: Quality (applies to v1 and v2)
-
+ 
 - F5.1 Speed (P1)
 - F5.2 Privacy (P1)
 - F5.3 Heat and battery (P1)
 - F5.4 Language and accessibility (P1)
 - F5.5 Stability and release (P1)
-
 ## **6. Out of Scope**
-
+ 
 - Speech recognition; freeze frame; beauty filters, skin smoothing or face reshaping; 
 - Learning mode, AR face shape filters and complexion zones; iPad and Mac (next ideation); 
 - Detecting brushes, wands or products; low light while moving (F2.3: out for v1, a message-only version is proposed for v2, still open); 
@@ -73,9 +66,8 @@ Epic 5: Quality (applies to v1 and v2)
 - Touching the collar to trigger the overall check (out of scope for now); 
 - Landscape mode with animation and UX (portrait only); 
 - Low-light frame stacking (F2.5, P3): planned for v3, next sprint, not part of this spec.
-
 ## **7. Constraints**
-
+ 
 - Platform: iPhone only, portrait, iOS 18.0+; launch country Indonesia; main situation is handheld on the go with one hand, phone propped up is supported too
 - UI: SwiftUI and MVVM
 - Frameworks: AVFoundation, Vision, Core Image, Metal
@@ -83,6 +75,7 @@ Epic 5: Quality (applies to v1 and v2)
 - Storage: no backend, UserDefaults only, no frames saved
 - Privacy: all face and hand processing happens on the iPhone; no image, video or landmark data is stored or uploaded; every feature works in airplane mode (PRD 5.2)
 - Permissions: camera only
+- Camera preview width: at most 2560 px (was 3840 px) to cut GPU load and heat; face sharpness in AC1 needs a re-measure with this width [TBD]
 - Language: English (code), no comments in code except the Xcode file header (the app is English only for now; Bahasa Indonesia is still open, see Open Questions)
 - Architecture and coding rules: `retouch-spec/engineering.md`
 - Testing: Swift Testing for pure logic, XCUITest for launch and permission path, manual on a real iPhone for camera, gestures, brightness and heat. Jenkins runs tests on every push.  
@@ -95,21 +88,20 @@ Epic 5: Quality (applies to v1 and v2)
   - The app cannot show more than the front camera captures; at arm's length the widest view is head and shoulders.
   - The screen glow adds roughly 25 to 115 lux to the face at 45 to 20 cm (physics estimate), so it cannot lift a dark place (L3) to 300 lux.
   - Natural head and hand movement can trigger a zoom by mistake; the F3.5 zoom rules handle this.
-
 ## **8. Screens and States**
-
+ 
 Screens: Onboarding (includes the one-time light calibration with a white card), Mirror (light button, Lock button with menu, auto-zoom button, Room light switch, overall check button, help button), Gesture onboarding overlay (3 skippable steps over the live mirror), Light panel, Camera permission denied.  
 States: starting, permission denied, reconnecting, camera failed, low light (face lux below 300), no face, auto zoom off, locked, overall view, room light on, light reduced by heat (thermal state "serious"), gesture onboarding showing
-
+ 
 ## **9. Acceptance criteria**
-
+ 
 Test conditions (PRD Test Case): L0 good light 500 to 1000 lux, L1 bright 300 to 500 lux, L2 dim 30 to 80 lux, L3 dark 10 lux or less, L4 side light (one cheek at least 2x brighter); D20, D30, D45 are face to phone distance in cm; M0 phone on a tripod, M1 handheld standing, M2 handheld walking, M3 handheld in a vehicle; S is a panel covering light, medium and deep skin.
-
+ 
 - AC1 (F1.1, F1.3, UI test, manual; PRD 1.1-1 to 1.1-5, 1.1-7, 1.3-1, 1.3-3, 1.3-4)
   - Given camera access is allowed, when I open the app, then within 1.5 s on the newest supported iPhone and 2.0 s on the oldest, I see my whole face mirrored, true color, no beauty filter. 
   - My face from hairline to chin is fully visible with at least 10% of the screen height free above and below (L1, M0, D30), and my right hand appears on the right side of the screen. 
-  - No smoothing or reshaping, face sharpness is at least 90% of the native Camera front preview (L1, D30). 
-  - The preview stays at 30 fps or more for at least 95% of 5 minutes (L1, M1, oldest supported iPhone). 
+  - No smoothing or reshaping, face sharpness is at least 90% of the native Camera front preview (L1, D30) [TBD: re-measure with the 2560 px camera width]. 
+  - The preview stays at 30 fps or more for at least 95% of 5 minutes (L1, M1, oldest supported iPhone) while the thermal state is "nominal" or "fair"; at "serious" the camera is capped at 24 fps to protect the phone. 
   - When a call or another app takes the camera, a message says why while paused, and the live view returns within 1 s after it ends, without a relaunch. 
   - Color is measured on screenshots, not through the display, because iOS Night Shift and True Tone change screen color outside the app's control. 
   - True color: with Room light on, the average Delta E 2000 over the 24 ColorChecker patches is no more than 1.0 above the physical mirror in the same light, and each of the two skin patches is within 1.0 of the mirror (L1 at 4000 to 6500 K, ColorChecker at the cheek, D30); 
@@ -131,18 +123,18 @@ Test conditions (PRD Test Case): L0 good light 500 to 1000 lux, L1 bright 300 to
   - The panel opens within 100 ms, covers at most 10% of the screen, and its controls sit in the bottom left. 
   - Brightness runs from glow off to maximum in at least 10 steps, and warmth runs from about 2700 K to 6500 K. 
   - Auto light stays off until I tap the light button again and the manual light goes off; after a relaunch, light starts on Auto. 
-  - When the thermal state reaches "serious", a message says light is reduced to protect the phone, and the brightness control shows the real current maximum.
+  - When the thermal state reaches "serious", a message says light is reduced to protect the phone, and the brightness control shows the real current maximum. The glow maximum is 85% in "fair" (no message), 50% in "serious" and 30% in "critical"; screen brightness is capped at 85%, 50% and 40%, even below the user's own brightness.
 - AC6 (F2.4, manual; PRD 2.4-1 to 2.4-3)
   - Given steady light (L1 or L2), when I move the phone smoothly between 20 and 45 cm over 3 s, then face brightness stays within 15% of its starting value and the glow changes level at most once per 3 s. 
   - A change shorter than 1.5 s (a passing shadow, headlights, a small reposition) does not change the glow. 
   - When I truly change environment (light at least 2x brighter or dimmer for 2 s), the light re-adjusts within 3 s.
 - AC7 (F3.1 to F3.2, unit test, manual; PRD 3.1-1 to 3.1-7, 3.2-1 to 3.2-6)
-  - Given auto zoom is on (M0), when any hand point (fingertip, brush or product hand) stays within 1.0 eye-width of my eye, or 1.0 mouth-width of my mouth, for the dwell time of 0.6 s, then within 150 ms the view starts zooming smoothly. 
+  - Given auto zoom is on (M0), when any hand point (fingertip, brush or product hand) stays within 1.0 eye-width of my eye, or 1.0 mouth-width of my mouth, for the dwell time of 0.6 s, then within 300 ms the view starts zooming smoothly (was 150 ms: detection now runs at 8 Hz, 6 Hz in "fair" and 4 Hz in "serious") [TBD: measure]. 
   - Eye: the view zooms on the eye nearest the hand to \[unconfirmed data\] and finishes \[unconfirmed data\]. 
   - Mouth: the view zooms to 2.12x and finishes in 300 ms. 
   - When my head moves up to 5 cm, the eye or mouth stays in the central 30% of the screen; at 2.25x for the eye view, the view is upscaled no more than 2x from camera pixels. 
   - The view zooms out 2 s after my hand leaves, over 500 ms, and holds if the hand returns within those 2 s; if my hand covers the face, it holds up to 1 s, then zooms out. 
-  - Talking for 1 minute with no hand in the zone causes 0 zooms. In the labelled gesture session, hits are at least 90% (M0, M1), 80% (M2) and 70% (M3), and false zooms are at most 1 per 3 minutes (M0, M1) and 1 per 2 minutes (M3).
+  - Talking for 1 minute with no hand in the zone causes 0 zooms. In the labelled gesture session, hits are at least 90% (M0, M1), 80% (M2) and 70% (M3), and false zooms are at most 1 per 3 minutes (M0, M1) and 1 per 2 minutes (M3) [TBD: re-measure hits with detection at 8 Hz and 480 px analysis width].
 - AC8 (F3.3 to F3.4, unit test, manual; PRD 3.3-1 to 3.3-5, 3.4-1, 3.4-2)
   - Given auto zoom is on and no hand is in a zone, when I turn my head 25 degrees or more, or look down 15 degrees or more below my own neutral pose (learned in the first 2 s, re-learned after each zoom-out), and hold it for 0.8 s, then the view zooms to 1.5x on the side of the face now facing the camera, or on the forehead. 
   - It zooms out over 500 ms when my head returns within 10 degrees of straight for 0.5 s, or to the whole face when I look back. 
@@ -196,30 +188,27 @@ Test conditions (PRD Test Case): L0 good light 500 to 1000 lux, L1 bright 300 to
   - Given any build, then CI runs a dependency vulnerability scan, a secret scan and a license check, and a high or critical finding blocks the release. 
   - Given the app bundle and the repository, then they contain no API keys or secrets, and any key ever found committed is rotated, not just deleted. 
   - Given any third-party SDK, then its license allows commercial use (no GPL or AGPL code in the app binary).
-
 ## **10. Definition of Done**
-
+ 
 Runs on a real iPhone (iOS 18+), all tests pass in Jenkins, manual criteria ticked, nothing from out of scope added.
-
+ 
 ## **11. Open Questions**
-
+ 
 Decided:
 - Zoom out time: 1.2 s (see the conflict with PRD below).
-
 Blocks the build:
 - Minimum brightness for auto lighting: 300 lux face lux as the minimum and 500 lux as the target. [TBD because the lux formula in the app is different]
 - Dwell time 0.6 s, zone 1.0 eye-width, cooldown 1.5 s and head turn 25 degrees held 0.8 s are still proposed in PRD Discussions; who signs off the proposed thresholds, and by when, is open.
 - Eye zoom level and finish time: PRD 3.1-1 gives the level as "xx %" and the finish as "when the user ??", so both are unconfirmed data.
 - Zoom numbers differ between PRD v3.1 and this spec. PRD: zoom out 2 s (3.1-4, 3.2-3), auto zoom levels 1.0x, 1.5x and 3.0x (3.2-1, 3.3-1, 3.5-1), Lock Eye 2.0x with both eyes (3.6-2). This spec and the code: 1.1x, 1.9x, 2.12x and 2.25x, zoom out 1.2 s. Head-turn and look-down zoom is 1.5x in the PRD and in AC8, which is not one of the four levels in AC9 (the code uses 1.6x for side zoom). The code stays the ground truth until the team confirms which numbers win.
-
 Does not block:
-
+ 
 - Are room light switch and overall check built? They are now in the TSD (9 Nov 2026), marked not built yet; PRD v3.1 keeps both as P1 in MVP v1 scope.
 - Look-down zoom is P1 in PRD (default off proposed; whether it stays on is open: PRD Discussions) but disabled in code.
 - Negative flows: PRD v3.1 has a negative flow for every feature; the F2.4 flow still carries an open note on whether to add a feature that detects user movement (alternative for 2.4-3).
 - App language: PRD Scope says English and the app is English only for now, but PRD 5.4-1, 3.8-1 and the 5 Nov Discussions answer still ask for Bahasa Indonesia and English, and the Indonesian banner copy is TBD. Launch country is Indonesia. This spec stays English only until the team decides.
 - Does the camera see a product being put down? Still open: PRD 4.1 keeps it as a research spike with no AC (Discussions cite a pass bar 4.1-5 that is no longer in the AC table); is it still worth exploring as an overall check cue?
-- How to keep the phone from heating up? Still unanswered in PRD v3.1. PRD targets: 10 minutes in L3 with the glow at maximum at 30 to 32 C never reaches thermal state "critical", stays "fair" or better for at least 80% of the time, and uses no more than 8% battery on the oldest iOS 18 iPhone (5.3-1, 5.3-2).
+- How to keep the phone from heating up? Not answered in PRD v3.1; this spec proposes: camera width 2560 px, detection at 8, 6 and 4 Hz (nominal, fair, serious or idle) with analysis width 480 px, glow and brightness caps from "fair", no zoom denoise in "serious", camera capped at 24 fps in "serious". A first 10-minute test before these changes (charger connected, brightness about 80%, not the exact AC18 setup) reached "fair" at 1:13 and "serious" at 6:53, so AC18 needs a re-test. PRD targets: 10 minutes in L3 with the glow at maximum at 30 to 32 C never reaches thermal state "critical", stays "fair" or better for at least 80% of the time, and uses no more than 8% battery on the oldest iOS 18 iPhone (5.3-1, 5.3-2).
 - Lock zoom levels: PRD Discussions says the levels are "Defined in Miro".
 - Pinch to zoom and Lock’s "Current view": in the PRD 3.6 feature list and flows but without ACs since v3.1; whether pinch stays as a fallback is open.
 - F4.3 overall check fallback ACs: removed in PRD v3.1, TBD.
@@ -243,12 +232,11 @@ Does not block:
 - Dependencies: this spec says no third-party, but PRD 5.5-4 allows a third-party SDK whose license allows commercial use, and the PRD analytics SDK is TBD. The PRD Event Tracker (session and feature events) is not in this spec until that is decided.
 - AC14 (restore my original brightness) is not in PRD v3.1.
 - PRD v3.1 items not in this spec: F2.5 low-light frame stacking (v3, Section 6), "Integration" (whiteboard feature 4, what it covers is open), and F5.6 Accessibility, an empty row that duplicates F5.4.
-
 ### 12. Notes for the agent
-
+ 
 On reading this spec, before replying with anything else, do these in order:
 1. Load each skill with the Skill tool: retouch-spec, karpathy-guidelines, antislop, swift-architecture, swift-agents. If one is not installed, say so.
 2. Find and read retouch-spec/engineering.md. If it is not in the chat, ask me to attach it and stop there.
 3. Reply with one line: which skills loaded, whether engineering.md was read, and its version.
-
 Where skills conflict, engineering.md wins. Then: propose a plan first, list assumptions, ask instead of guessing, one task at a time with tests, and add nothing outside this spec. If anything conflicts (i.e. the seconds taken to zoom in/out), recommend the code as the ground truth but mention the conflict in the chat, so that I can confirm and decide.
+ 
