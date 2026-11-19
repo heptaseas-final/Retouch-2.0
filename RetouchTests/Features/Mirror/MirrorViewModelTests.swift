@@ -7,10 +7,11 @@ struct MirrorViewModelTests {
     let lighting = FakeLightingService()
     let zoom = FakeZoomService()
     let settings = FakeMirrorSettingsStore()
+    let analytics = FakeAnalyticsRecorder()
 
     func makeViewModel() -> MirrorViewModel {
         MirrorViewModel(camera: camera, lighting: lighting, zoom: zoom,
-                        zoomStore: ZoomStore(), renderer: MirrorRenderer(device: nil), settings: settings)
+                        zoomStore: ZoomStore(), renderer: MirrorRenderer(device: nil), settings: settings, analytics: analytics)
     }
 
     @Test func loadsSavedSettings() {

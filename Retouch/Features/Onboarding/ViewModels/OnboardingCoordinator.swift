@@ -23,14 +23,16 @@ final class OnboardingCoordinator {
 
     @ObservationIgnored private let autoPart: FacePart
     @ObservationIgnored private let onFinish: () -> Void
+    @ObservationIgnored private let analytics: OnboardingAnalyticsRecording
     @ObservationIgnored private var delayTask: Task<Void, Never>?
     @ObservationIgnored private var helpTask: Task<Void, Never>?
     @ObservationIgnored private var isArmed = false
     @ObservationIgnored private var hasStarted = false
 
-    init(autoPart: FacePart = .face, onFinish: @escaping () -> Void) {
+    init(autoPart: FacePart = .face, analytics: OnboardingAnalyticsRecording, onFinish: @escaping () -> Void) {
         self.autoPart = autoPart
         self.selectedPart = autoPart
+        self.analytics = analytics
         self.onFinish = onFinish
     }
 
@@ -61,6 +63,8 @@ final class OnboardingCoordinator {
     var isBubbleVisible: Bool { isInstructionVisible || needsDetectionHelp }
 
     func skip() {
+        guard !isFinished else { return }
+        analytics.onboardingSkipped(step: step.analyticsName)
         finish()
     }
 
@@ -143,9 +147,11 @@ final class OnboardingCoordinator {
 
     private func advance() {
         guard let next = step.next else {
+            analytics.onboardingCompleted()
             finish()
             return
         }
+        analytics.onboardingStepCompleted(step: step.analyticsName)
         enter(next)
     }
 

@@ -14,7 +14,8 @@ struct RetouchApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(mirrorViewModel: container.mirrorViewModel,
-                        makeOnboardingSignals: container.makeOnboardingSignals)
+                        makeOnboardingSignals: container.makeOnboardingSignals,
+                        analytics: container.analytics)
         }
     }
 }
