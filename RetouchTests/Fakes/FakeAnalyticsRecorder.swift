@@ -22,9 +22,9 @@ final class FakeAnalyticsRecorder: AnalyticsRecording {
 
     func replayTutorialOpened() { calls.append("replayTutorialOpened") }
 
-    func onboardingStepCompleted(step: String) { calls.append("onboardingStepCompleted") }
+    func onboardingStepCompleted(step: String) { calls.append("onboardingStepCompleted(\(step))") }
 
-    func onboardingSkipped(step: String) { calls.append("onboardingSkipped") }
+    func onboardingSkipped(step: String) { calls.append("onboardingSkipped(\(step))") }
 
     func onboardingCompleted() { calls.append("onboardingCompleted") }
 
