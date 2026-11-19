@@ -261,9 +261,9 @@ final class LightingEngine {
         static func target(for state: ProcessInfo.ThermalState) -> Quality {
             switch state {
             case .nominal: .full
-            case .fair: Quality(sharpen: 0, panelCap: 1, brightnessCap: 1)
-            case .serious: Quality(sharpen: 0, panelCap: 0.7, brightnessCap: 0.6)
-            case .critical: Quality(sharpen: 0, panelCap: 0.3, brightnessCap: 0.5)
+            case .fair: Quality(sharpen: 0, panelCap: 0.85, brightnessCap: 0.85)
+            case .serious: Quality(sharpen: 0, panelCap: 0.5, brightnessCap: 0.5)
+            case .critical: Quality(sharpen: 0, panelCap: 0.3, brightnessCap: 0.4)
             @unknown default: .full
             }
         }

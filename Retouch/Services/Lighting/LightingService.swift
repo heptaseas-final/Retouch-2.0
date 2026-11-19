@@ -171,7 +171,7 @@ final class LightingService: LightingServicing, CameraLifecycleListening {
         let pre = Double(max(config.panelPreRampFraction, 0.01))
         let t = min(max(autoRingLight / pre, 0), 1)
         let target = baseline + (1 - baseline) * t * t * (3 - 2 * t)
-        brightnessController.ramp(to: CGFloat(min(target, max(baseline, brightnessCap))))
+        brightnessController.ramp(to: CGFloat(min(target, brightnessCap)))
     }
 
     private static func roundedPercent(_ value: CGFloat) -> Double {

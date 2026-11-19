@@ -21,7 +21,7 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
     var onStateChange: ((CameraState) -> Void)?
     var frameRate: Int32 = 60
     var prefersAutoFrameRate = false
-    var preferredWidth: Int32 = 3840
+    var preferredWidth: Int32 = 2560
     var maxRestartAttempts = 3
     var preferredStabilization: AVCaptureVideoStabilizationMode = .standard
     
@@ -61,7 +61,8 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
         let shouldCap = state == .serious || state == .critical
         guard shouldCap != isThermalCapped else { return }
         isThermalCapped = shouldCap
-        let fps = shouldCap ? min(selectedFPS, 30) : selectedFPS
+        let lowest = device.activeFormat.videoSupportedFrameRateRanges.map(\.minFrameRate).min() ?? selectedFPS
+        let fps = shouldCap ? max(min(selectedFPS, 24), lowest) : selectedFPS
         let duration = CMTime(seconds: 1.0 / fps, preferredTimescale: 60_000)
         withLock(device) { camera in
             camera.activeVideoMinFrameDuration = duration
@@ -324,6 +325,10 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
             }
         }
         selectedFPS = best.auto ? nil : best.fps
+#if DEBUG
+        let size = CMVideoFormatDescriptionGetDimensions(best.format.formatDescription)
+        print("[Camera] format \(size.width)x\(size.height) @ \(best.fps) fps, auto: \(best.auto)")
+#endif
         isThermalCapped = false
         applyThermalFrameRate()
     }
