@@ -31,7 +31,7 @@ final class MirrorViewModel {
     }
 
     var zoomState: ZoomState { zoomStore.zoomState }
-    var zoomTarget: ZoomTarget { zoomStore.tracking.target }
+    var zoomTarget: ZoomTarget { zoomStore.target }
     var zoomLevel: CGFloat { selectedPart.zoomTarget?.zoomScale ?? zoomState.scale }
     var zoomLevelText: String { "\((zoomLevel * 100).rounded() / 100)" }
     var cameraState: CameraState { camera.state }

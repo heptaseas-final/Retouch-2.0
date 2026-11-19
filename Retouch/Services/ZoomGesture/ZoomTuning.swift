@@ -11,6 +11,10 @@ nonisolated struct ZoomTuning {
     static let idleFaceSpeed = 0.3
     static let idleYawRate = 25.0
     static let envCheckInterval: TimeInterval = 2.0
+    static let strainFps = 27.0
+    static let strainRecoverFps = 29.5
+    static let strainEnterAfter: TimeInterval = 1.5
+    static let strainExitAfter: TimeInterval = 8.0
 
     static let downscaleEnabled = true
     static let analysisWidth: CGFloat = 640

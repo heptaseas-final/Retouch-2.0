@@ -48,7 +48,10 @@ final class LightingService: LightingServicing, CameraLifecycleListening {
             if rounded != appliedBrightness { appliedBrightness = rounded }
         }
         engine.onOutput = { [weak self] in self?.engineDidUpdate($0) }
-        engine.onCloseness = { [weak self] in self?.closeness = $0 }
+        engine.onCloseness = { [weak self] value in
+            guard let self, LightingTuning.closenessNeedsPublish(from: closeness, to: value) else { return }
+            closeness = value
+        }
     }
 
     var isAutoBrightness: Bool { manualBrightness == nil }
