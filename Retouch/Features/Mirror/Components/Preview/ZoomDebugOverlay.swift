@@ -38,6 +38,7 @@ private enum DebugStyle {
     static let handRadius: CGFloat = 8
     static let toolRadius: CGFloat = 7
     static let labelOffset: CGFloat = 16
+    static let modeLabelY: CGFloat = 0.12
     static let eye = Color.cyan
     static let nose = Color.orange
     static let lips = Color.pink
@@ -100,6 +101,14 @@ private extension ZoomDebugOverlay {
         drawAnchors(&context, transform, face)
         drawHands(&context, transform, map, tracking)
         drawTools(&context, transform, map, tracking)
+        drawMode(&context, view: view, mode: tracking.inputMode)
+    }
+
+    func drawMode(_ context: inout GraphicsContext, view: CGSize, mode: InputMode) {
+        let text = mode == .tool ? "mode: alat" : "mode: jari"
+        let color = mode == .tool ? DebugStyle.tool : DebugStyle.handPoint
+        context.draw(Text(text).font(.caption.bold()).foregroundStyle(color),
+                     at: CGPoint(x: view.width / 2, y: view.height * DebugStyle.modeLabelY))
     }
 
     func drawZones(_ context: inout GraphicsContext, view: CGSize, transform: CGAffineTransform,

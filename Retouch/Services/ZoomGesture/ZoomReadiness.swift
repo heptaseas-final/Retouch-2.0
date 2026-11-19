@@ -8,8 +8,6 @@ nonisolated struct ZoomReadiness {
     let maxIntentSpeed: CGFloat
     let locked: FaceZone?
 
-    private var activeHands: [TrackedHand] { hands.filter { $0.hasPose || $0.holding } }
-
     static func applying(_ tools: ToolZoneReading, to input: EyeZoomFlow.Input) -> EyeZoomFlow.Input {
         var result = input
         result.toolLeft = tools.eyeTriggerLeft
@@ -56,16 +54,12 @@ nonisolated struct ZoomReadiness {
             default: break
             }
         }
-        for h in pointingHands {
-            switch map.zone(of: h.point, locked: locked) {
-            case .leftEye: input.pointLeft = true
-            case .rightEye: input.pointRight = true
-            default: break
-            }
+        switch leadZone(map, points) {
+        case .leftEye: input.pointLeft = true
+        case .rightEye: input.pointRight = true
+        default: break
         }
-
-        let tips = ZoomTuning.eyeHoldUsesAllFingertips ? fingertips : []
-        for p in tips + activeHands.map(\.point) {
+        for p in hands.map(\.point) {
             if map.holds(.leftEye, at: p) { input.holdLeft = true }
             if map.holds(.rightEye, at: p) { input.holdRight = true }
         }
@@ -83,11 +77,8 @@ nonisolated struct ZoomReadiness {
             if h.pose3 { input.pose3Ready = true }
             if h.holding { input.gripReady = true }
         }
-        for h in pointingHands where map.zone(of: h.point, locked: locked) == .lips {
-            input.pointReady = true
-        }
-        let tips = fingertips + activeHands.map(\.point)
-        input.fingerNear = tips.contains { map.holds(.lips, at: $0) }
+        input.pointReady = leadZone(map, points) == .lips
+        input.fingerNear = hands.contains { map.holds(.lips, at: $0.point) }
         return input
     }
 
@@ -102,19 +93,21 @@ nonisolated struct ZoomReadiness {
             if h.pose3 { input.pose3Ready = true }
             if h.holding { input.gripReady = true }
         }
-        for h in pointingHands where map.zone(of: h.point, locked: locked) == .nose {
-            input.pointReady = true
-        }
-        let tips = fingertips + activeHands.flatMap(\.checkPoints)
-        input.fingerNear = tips.contains { map.holds(.nose, at: $0) }
+        input.pointReady = leadZone(map, points) == .nose
+        input.fingerNear = hands.contains { map.holds(.nose, at: $0.point) }
         return input
     }
 
-    private var fingertips: [CGPoint] { scan.fingertips.map { converter.toView($0) } }
-
-    private var pointingHands: [TrackedHand] {
-        guard ZoomTuning.fingerPointEnabled else { return [] }
-        return hands.filter { $0.isPoint && $0.speed < maxIntentSpeed }
+    private func leadZone(_ map: FaceZoneMap, _ points: FacePoints) -> FaceZone? {
+        guard ZoomTuning.fingerPointEnabled else { return nil }
+        let inZones = hands
+            .filter { $0.isPoint && $0.speed < maxIntentSpeed }
+            .compactMap { h in map.zone(of: h.point, locked: locked).map { (point: h.point, zone: $0) } }
+        if let locked, inZones.contains(where: { $0.zone == locked }) { return locked }
+        guard let center = points.center else { return inZones.first?.zone }
+        return inZones.min {
+            hypot($0.point.x - center.x, $0.point.y - center.y) < hypot($1.point.x - center.x, $1.point.y - center.y)
+        }?.zone
     }
 
     private func map(_ points: FacePoints, support: Bool) -> FaceZoneMap? {

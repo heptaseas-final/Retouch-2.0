@@ -31,6 +31,7 @@ nonisolated struct ZoomTracking: Sendable {
     var lockedZone: FaceZone?
     var zoneReach: CGFloat = 1
     var lipsReach = CGFloat(ZoomTuning.handEnterDistance)
+    var inputMode: InputMode = .finger
 }
 
 nonisolated enum FaceSide { case left, right }

@@ -39,6 +39,7 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     var lastTools: [TrackedTool] = []
     var lastToolTime = Date.distantPast
     var toolReading = ToolZoneReading()
+    var inputMode = InputModeGate()
 
     var headPose: HeadPoseRecognizer
     var turnAnchor: Double
@@ -69,7 +70,7 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     var prevFaceTime = Date.distantPast
     var handBank = HandTrackBank()
     var hands: [TrackedHand] = []
-    var activeHands: [TrackedHand] { hands.filter { $0.hasPose || $0.holding } }
+    var activeHands: [TrackedHand] { hands }
     var eyeFlow = EyeZoomFlow()
     var eyeActivity = EyeActivityRecognizer()
     var eyeInput = EyeZoomFlow.Input()

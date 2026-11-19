@@ -21,6 +21,7 @@ nonisolated struct HandScan {
     var grips: [GripObservation] = []
     var points: [PointObservation] = []
     var fingertips: [CGPoint] = []
+    var leadTips: [CGPoint] = []
     var handsSeen = 0
     var pinchRatio: CGFloat?
     var pinchRatio2: CGFloat?
