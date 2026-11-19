@@ -28,10 +28,11 @@ struct OnboardingView<Camera: View>: View {
     init(
         signalSource: any OnboardingSignalSource,
         autoPart: FacePart = .face,
+        analytics: OnboardingAnalyticsRecording,
         onFinish: @escaping () -> Void,
         @ViewBuilder camera: @escaping (FacePart, LightMode) -> Camera
     ) {
-        _coordinator = State(initialValue: OnboardingCoordinator(autoPart: autoPart, onFinish: onFinish))
+        _coordinator = State(initialValue: OnboardingCoordinator(autoPart: autoPart, analytics: analytics, onFinish: onFinish))
         self.signalSource = signalSource
         self.camera = camera
     }
@@ -179,9 +180,14 @@ struct OnboardingView<Camera: View>: View {
     final class PreviewSignalSource: OnboardingSignalSource {
         var onSignal: ((OnboardingTrigger) -> Void)?
     }
+    final class PreviewAnalytics: OnboardingAnalyticsRecording {
+        func onboardingStepCompleted(step: String) {}
+        func onboardingSkipped(step: String) {}
+        func onboardingCompleted() {}
+    }
     let source = PreviewSignalSource()
     return ZStack {
-        OnboardingView(signalSource: source, onFinish: {}) { part, light in
+        OnboardingView(signalSource: source, analytics: PreviewAnalytics(), onFinish: {}) { part, light in
             (light.lightColor?.color ?? Color(white: 0.35))
                 .overlay { Text(part.title).font(.largeTitle).foregroundStyle(.black.opacity(0.25)) }
         }

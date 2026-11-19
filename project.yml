@@ -18,6 +18,15 @@ settings:
     VERSIONING_SYSTEM: apple-generic
     
 
+configFiles:
+  Debug: Config/Analytics-Debug.xcconfig
+  Release: Config/Analytics-Release.xcconfig
+
+packages:
+  Mixpanel:
+    url: https://github.com/mixpanel/mixpanel-swift
+    from: 6.4.1
+
 targets:
   Retouch:
     type: application
@@ -25,8 +34,10 @@ targets:
     sources:
       - path: Retouch
       - path: RetouchWidgetExt/OpenRetouchIntent.swift
+      - path: Config/MixpanelConfig.plist
     dependencies:
       - target: RetouchWidgetExt
+      - package: Mixpanel
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: bsd.iosda.Retouch
