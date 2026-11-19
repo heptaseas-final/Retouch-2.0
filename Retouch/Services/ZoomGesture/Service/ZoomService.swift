@@ -75,7 +75,8 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     var eyeActivity = EyeActivityRecognizer()
     var eyeInput = EyeZoomFlow.Input()
     var distComp = DistanceCompensator()
-    var armReach = ArmReachRecognizer()
+    var overallRecognizer = OverallPoseRecognizer()
+    let deviceMotion = DeviceMotionTracker()
     var isOverallShowing = false
     var imageSize: CGSize = .zero
 
@@ -162,9 +163,13 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         seqLock.unlock()
     }
 
-    func start() { DispatchQueue.main.async { [animator] in animator.start() } }
+    func start() {
+        deviceMotion.start()
+        DispatchQueue.main.async { [animator] in animator.start() }
+    }
 
     func stop() {
+        deviceMotion.stop()
         DispatchQueue.main.async { [animator] in animator.stop() }
         stateQueue.async { [self] in
             HeadProfileStore.save(headPose.profile)

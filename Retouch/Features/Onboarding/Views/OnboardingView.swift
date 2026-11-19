@@ -185,11 +185,6 @@ struct OnboardingView<Camera: View>: View {
         func onboardingSkipped(step: String) {}
         func onboardingCompleted() {}
     }
-    final class PreviewAnalytics: OnboardingAnalyticsRecording {
-        func onboardingStepCompleted(step: String) {}
-        func onboardingSkipped(step: String) {}
-        func onboardingCompleted() {}
-    }
     let source = PreviewSignalSource()
     return ZStack {
         OnboardingView(signalSource: source, analytics: PreviewAnalytics(), onFinish: {}) { part, light in

@@ -1,6 +1,5 @@
 import AVFoundation
 import CoreImage
-import QuartzCore
 
 nonisolated struct RecordedClip: Equatable, Identifiable, Sendable {
     let url: URL
@@ -54,11 +53,9 @@ nonisolated final class ClipRecordingService: ClipRecordingServicing, @unchecked
 
     func noteTracking(_ tracking: ZoomTracking) {
         let canStart = ProcessInfo.processInfo.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue
-        let now = CACurrentMediaTime()
         let action = lock.withLock { () -> ClipTrigger.Action in
             guard isEnabled else { return .none }
-            return trigger.update(isOverall: tracking.target == .overall, isFaceVisible: tracking.isFaceVisible,
-                                  canStart: canStart, now: now)
+            return trigger.update(pose: tracking.overallPose, canStart: canStart)
         }
         switch action {
         case .none:

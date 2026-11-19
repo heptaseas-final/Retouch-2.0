@@ -8,7 +8,8 @@ struct RetouchApp: App {
         WindowGroup {
             ContentView(mirrorViewModel: container.mirrorViewModel,
                         makeOnboardingSignals: container.makeOnboardingSignals,
-                        analytics: container.analytics)
+                        analytics: container.analytics,
+                        clipReviewViewModel: container.clipReviewViewModel)
         }
     }
 }

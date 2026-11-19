@@ -16,7 +16,8 @@ struct MirrorView: View {
     private let onReplayTutorial: (() -> Void)?
     private let clipReview: ClipReviewViewModel?
 
-    init(viewModel: MirrorViewModel, showsControls: Bool = true, onReplayTutorial: (() -> Void)? = nil) {
+    init(viewModel: MirrorViewModel, showsControls: Bool = true, clipReview: ClipReviewViewModel? = nil,
+         onReplayTutorial: (() -> Void)? = nil) {
         _viewModel = State(initialValue: viewModel)
         _lightDock = State(initialValue: LightDock(viewModel.lightPlacement))
         self.showsControls = showsControls

@@ -29,6 +29,9 @@ final class AppContainer {
         mirrorViewModel = MirrorViewModel(camera: camera, lighting: lighting, zoom: zoom,
                                           zoomStore: zoomStore, renderer: pipeline.renderer,
                                           settings: MirrorSettingsStore(), analytics: analytics)
+        clipRecording = ClipRecordingService(writer: ClipWriter(commandQueue: pipeline.queue))
+        clipReviewViewModel = ClipReviewViewModel(recording: clipRecording, photos: photoLibrary,
+                                                  camera: camera)
         connectZoom()
         connectClipRecording()
     }

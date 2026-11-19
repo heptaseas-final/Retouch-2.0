@@ -26,8 +26,7 @@ nonisolated extension ZoomService {
                             valid: lastFace != nil,
                             now: faceSnap.timestamp.timeIntervalSinceReferenceDate)
             publish(manualTarget)
-            onTracking?(ZoomTracking(target: manualTarget, face: points, viewSize: viewSize,
-                                     isFaceVisible: lastFace != nil))
+            onTracking?(ZoomTracking(target: manualTarget, face: points, viewSize: viewSize))
             return
         }
 
@@ -143,7 +142,7 @@ nonisolated extension ZoomService {
         publish(target)
 
         onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
-                                 isFaceVisible: lastFace != nil))
+                                 overallPose: isOverallShowing ? overallRecognizer.pose : .none))
     }
 
     func trackMotion(face: FaceObservation?, hand: CGPoint?, at now: Date, faceChecked: Bool = true) {

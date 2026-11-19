@@ -3,10 +3,8 @@ import CoreMedia
 import Foundation
 
 nonisolated enum RecordingConfig {
-    static let maxDuration: TimeInterval = 5.0
+    static let maxDuration: TimeInterval = 10.0
     static let minDuration: TimeInterval = 1.0
-    static let startDelay: TimeInterval = 0.15
-    static let stopDelay: TimeInterval = 0.5
     static let frameInterval: TimeInterval = 1.0 / 30.0
     static let frameIntervalTolerance = 0.9
     static let timescale: CMTimeScale = 600

@@ -16,8 +16,10 @@ nonisolated struct ZoomTracking: Sendable {
     var target: ZoomTarget = .fullFace
     var face = FacePoints()
     var viewSize: CGSize = .zero
-    var isFaceVisible = false
+    var overallPose: OverallPose = .none
 }
+
+nonisolated enum OverallPose: Equatable, Sendable { case none, placedFar, heldHigh }
 
 nonisolated enum FaceSide { case left, right }
 
