@@ -11,8 +11,13 @@ final class MakeupLook {
     private var targetSize = (width: 0, height: 0)
 
     init?(device: MTLDevice) {
-        guard let library = try? device.makeLibrary(source: Self.source, options: nil),
-              let function = library.makeFunction(name: "makeupLook"),
+        let library: MTLLibrary
+        do {
+            library = try device.makeLibrary(source: Self.source, options: nil)
+        } catch {
+            return nil
+        }
+        guard let function = library.makeFunction(name: "makeupLook"),
               let pipeline = try? device.makeComputePipelineState(function: function) else { return nil }
         self.device = device
         self.pipeline = pipeline
@@ -57,7 +62,6 @@ final class MakeupLook {
     #include <metal_stdlib>
     using namespace metal;
 
-    // Display P3 memakai kurva gamma sRGB: decode ke linear, encode kembali.
     static float3 decodeGamma(float3 c) {
         return select(pow((c + 0.055) / 1.055, 2.4), c / 12.92, c <= 0.04045);
     }
@@ -65,7 +69,6 @@ final class MakeupLook {
         return select(1.055 * pow(c, 1.0 / 2.4) - 0.055, c * 12.92, c <= 0.0031308);
     }
 
-    // Linear Display P3 <-> linear sRGB (OKLab didefinisikan dari linear sRGB).
     static float3 p3ToSrgb(float3 c) {
         return float3(dot(c, float3( 1.2249401, -0.2249404, 0.0)),
                       dot(c, float3(-0.0420569,  1.0420571, 0.0)),
@@ -78,7 +81,6 @@ final class MakeupLook {
     }
     static float cbrtSigned(float x) { return sign(x) * pow(abs(x), 1.0 / 3.0); }
 
-    // OKLab (Björn Ottosson): ruang warna perseptual, chroma bisa diubah tanpa menggeser hue.
     static float3 toOklab(float3 c) {
         float l = cbrtSigned(dot(c, float3(0.4122214708, 0.5363325363, 0.0514459929)));
         float m = cbrtSigned(dot(c, float3(0.2119034982, 0.6806995451, 0.1073969566)));
@@ -125,12 +127,8 @@ final class MakeupLook {
         float3 lab = toOklab(p3ToSrgb(decodeGamma(saturate(pixel.rgb))));
         float L = lab.x;
         float C = length(lab.yz);
-        float hue = atan2(lab.z, lab.y);                       
+        float hue = atan2(lab.z, lab.y);
 
-        // 1. Bobot kulit: hue dekat 47.5° (±30° penuh, hilang di ±42°) dan chroma rendah-sedang.
-        //    Rentang 17.5–77.5° mencakup kulit kemerahan/flushed, pinkish, Asia, kuning langsat,
-        //    sawo matang, olive, dan kulit di bawah lampu warm.
-        //    Chroma ≤ 0.17 (hilang di 0.21) = kepekatan kulit, termasuk kulit yang memerah.
         float d = abs(hue - 0.829);
         d = min(d, 6.2831853 - d);
         float skinHue = 1.0 - smoothstep(0.524, 0.733, d);

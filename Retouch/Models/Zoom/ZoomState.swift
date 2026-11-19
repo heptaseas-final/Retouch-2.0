@@ -3,6 +3,13 @@ import CoreGraphics
 nonisolated struct ZoomState: Equatable {
     var scale: CGFloat = 1
     var offset: CGSize = .zero
+    var fade: ZoomFade?
+}
+
+nonisolated struct ZoomFade: Equatable {
+    var fromScale: CGFloat
+    var fromOffset: CGSize
+    var progress: CGFloat
 }
 
 nonisolated struct ZoomTracking: Sendable {

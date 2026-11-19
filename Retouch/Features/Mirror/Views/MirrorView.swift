@@ -12,16 +12,11 @@ struct MirrorView: View {
     @State private var isDraggingLight = false
     @State private var screenFrame: CGRect = .zero
     @State private var dockSlotCenter: CGPoint = .zero
-    @State private var isPickerFullWidth = false
-    @State private var dockBeforeFullWidth: LightDock?
     private let showsControls: Bool
     private let onReplayTutorial: (() -> Void)?
     private let clipReview: ClipReviewViewModel?
 
-    private static let whiteHex: UInt32 = 0xFFFFFF
-
-    init(viewModel: MirrorViewModel, showsControls: Bool = true, clipReview: ClipReviewViewModel? = nil,
-         onReplayTutorial: (() -> Void)? = nil) {
+    init(viewModel: MirrorViewModel, showsControls: Bool = true, onReplayTutorial: (() -> Void)? = nil) {
         _viewModel = State(initialValue: viewModel)
         _lightDock = State(initialValue: LightDock(viewModel.lightPlacement))
         self.showsControls = showsControls
@@ -36,10 +31,8 @@ struct MirrorView: View {
                 CameraPermissionDeniedView(onOpenSettings: viewModel.openSettings)
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
-                RingLightPanels(level: viewModel.ringLightLevel, color: edgeColor,
-                                maxSideFraction: viewModel.ringLightWidth,
-                                softness: viewModel.ringLightSoftness)
-                    .ignoresSafeArea()
+                ZoomLevelReadout(viewModel: viewModel)
+                MirrorGlowLayer(viewModel: viewModel)
                 cameraStateOverlay
                 if showsControls, viewModel.cameraState != .failed {
                   VStack(spacing: 12) {
@@ -84,22 +77,6 @@ struct MirrorView: View {
         }
     }
 
-    @ToolbarContentBuilder
-    private var settingsToolbar: some ToolbarContent {
-        if showsControls, viewModel.permission != .denied, let onReplayTutorial {
-            ToolbarItem(placement: .topBarTrailing) {
-                SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
-                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement),
-                             isBottomAvailable: !isPickerFullWidth) {
-                    viewModel.replayTutorialOpened()
-                    viewModel.select(.face)
-                    viewModel.setLightMode(.off)
-                    onReplayTutorial()
-                }
-            }
-        }
-    }
-
     private var controls: some View {
         VStack {
             Spacer()
@@ -113,8 +90,7 @@ struct MirrorView: View {
                 onLightLiftDrag: liftDragChanged,
                 onLightLiftEnd: liftEnded,
                 lightMoveActions: moveActions(from: .docked),
-                onLightSlotCenter: { dockSlotCenter = $0 },
-                onPickerLayoutChange: pickerLayoutChanged
+                onLightSlotCenter: { dockSlotCenter = $0 }
             )
         }
         .padding(.horizontal, 16)
@@ -126,7 +102,6 @@ struct MirrorView: View {
     }
     private static let sideMargin: CGFloat = 16
     private static let dockZoneHeight: CGFloat = 120
-    private static let bannerTrailing: CGFloat = 82
 
     @ViewBuilder
     private var sideLightButton: some View {
@@ -150,7 +125,7 @@ struct MirrorView: View {
         let targets: [(dock: LightDock, name: String)] = [(.side(edge: .leading), "left"),
                                                           (.side(edge: .trailing), "right"), (.docked, "bottom")]
         return targets
-            .filter { $0.dock != current && ($0.dock != .docked || !isPickerFullWidth) }
+            .filter { $0.dock != current }
             .map { target in ("Move to \(target.name)", { moveByVoiceOver(to: target.dock, named: target.name, from: current) }) }
     }
 
@@ -167,31 +142,13 @@ struct MirrorView: View {
 
     private func chooseLightPlacement(_ placement: LightPlacement) {
         let target = LightDock(placement)
-        guard target != lightDock, target != .docked || !isPickerFullWidth else { return }
+        guard target != lightDock else { return }
         move(to: target, from: center(of: lightDock))
         announceLightMoved(to: target)
     }
 
     private func setLargerButtons(_ isOn: Bool) {
         withAnimation(.snappy) { viewModel.setLargerButtons(isOn) }
-        if isOn { pickerLayoutChanged(true) }
-    }
-
-    private func pickerLayoutChanged(_ isFull: Bool) {
-        guard isFull != isPickerFullWidth else { return }
-        isPickerFullWidth = isFull
-        if isFull {
-            dockBeforeFullWidth = lightDock
-            if lightDock == .docked {
-                move(to: .side(edge: .leading), from: center(of: .docked))
-                announceLightMoved(to: lightDock)
-            }
-        } else if let previous = dockBeforeFullWidth {
-            dockBeforeFullWidth = nil
-            guard previous != lightDock else { return }
-            move(to: previous, from: center(of: lightDock))
-            announceLightMoved(to: previous)
-        }
     }
 
     private func sideCenter(_ edge: HorizontalEdge) -> CGPoint {
@@ -216,7 +173,7 @@ struct MirrorView: View {
         let drop = CGPoint(x: start.x + translation.width, y: start.y + translation.height)
         let draggedDown = translation.height > 60 && translation.height > abs(translation.width)
         let wantsDock = draggedDown || drop.y > screenFrame.maxY - Self.dockZoneHeight
-        let target: LightDock = wantsDock && !isPickerFullWidth
+        let target: LightDock = wantsDock
             ? .docked
             : .side(edge: drop.x < screenFrame.midX ? .leading : .trailing)
         move(to: target, from: drop)
@@ -226,28 +183,12 @@ struct MirrorView: View {
     private func move(to target: LightDock, from drop: CGPoint) {
         let destination = center(of: target)
         lightDock = target
-        if !isPickerFullWidth { viewModel.setLightPlacement(target.placement) }
+        viewModel.setLightPlacement(target.placement)
         guard !reduceMotion else { return lightDrag = .zero }
         lightDrag = CGSize(width: drop.x - destination.x, height: drop.y - destination.y)
         Task { @MainActor in
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { lightDrag = .zero }
         }
-    }
-
-    private var edgeColor: Color {
-        switch viewModel.filterColor {
-        case .warm: LightColor.warm.color
-        case .cool: LightColor.cool.color
-        case .natural, nil: autoEdgeColor
-        }
-    }
-
-    private var autoEdgeColor: Color {
-        let zoomProgress = (viewModel.zoomState.scale - 1) / (LightingTuning.autoShiftFullScale - 1)
-        let progress = max(Double(min(max(zoomProgress, 0), 1)), viewModel.closeness)
-        let t = LightingTuning.autoShiftStrength * min(max(progress, 0), 1)
-        let c = LightingTuning.blend(Self.whiteHex, LightingTuning.softBlue, t)
-        return Color(red: c.r, green: c.g, blue: c.b)
     }
 
     @ViewBuilder
@@ -265,6 +206,20 @@ struct MirrorView: View {
         }
     }
 
+    @ToolbarContentBuilder
+    private var settingsToolbar: some ToolbarContent {
+        if showsControls, viewModel.permission != .denied, let onReplayTutorial {
+            ToolbarItem(placement: .topBarTrailing) {
+                SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
+                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement)) {
+                    viewModel.select(.face)
+                    viewModel.setLightMode(.off)
+                    onReplayTutorial()
+                }
+            }
+        }
+    }
+    
     private var visibleStatus: MirrorStatus? {
         guard let status = viewModel.status, showsControls || status == .cameraPaused else { return nil }
         return status

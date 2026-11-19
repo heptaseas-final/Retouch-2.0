@@ -75,7 +75,7 @@ nonisolated extension ZoomService {
             pitchRecognizer.update(face: faceForHead, learn: learn, covered: covering, now: faceSnap.timestamp)
             let freeze = ZoomTuning.pitchEnabled && ZoomTuning.pitchYawFreezeEnabled
                 && pitchRecognizer.isFrozen(now: faceSnap.timestamp)
-            headTarget = headPose.update(face: faceForHead, learn: learn && !freeze, covered: covering,yawFrozen: freeze, now: faceSnap.timestamp)
+            headTarget = headPose.update(face: faceForHead, learn: learn && !freeze, covered: covering, yawFrozen: freeze, now: faceSnap.timestamp)
             distComp.update(span: Double(points.scale / viewSize.width),
                             yawDegrees: Double(faceForHead?.yaw ?? .nan),
                             valid: !covering && !freeze,

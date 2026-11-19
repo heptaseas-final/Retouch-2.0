@@ -66,7 +66,7 @@ extension RetouchWidgetExtAttributes.ContentState {
     fileprivate static var smiley: RetouchWidgetExtAttributes.ContentState {
         RetouchWidgetExtAttributes.ContentState(emoji: "😀")
      }
-     
+
      fileprivate static var starEyes: RetouchWidgetExtAttributes.ContentState {
          RetouchWidgetExtAttributes.ContentState(emoji: "🤩")
      }

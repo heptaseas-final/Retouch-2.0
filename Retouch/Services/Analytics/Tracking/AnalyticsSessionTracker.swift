@@ -280,7 +280,7 @@ struct AnalyticsSessionTracker {
 
     private static func zoom(for target: ZoomTarget) -> (trigger: AnalyticsZoomTrigger, eyeSide: AnalyticsEyeSide?)? {
         switch target {
-        case .fullFace, .overall: return nil
+        case .fullFace: return nil
         case .leftEye: return (.eye, .left)
         case .rightEye: return (.eye, .right)
         case .lips: return (.lip, nil)

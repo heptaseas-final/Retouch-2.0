@@ -5,6 +5,13 @@ enum LightingTuning {
     static let softBlue: UInt32 = 0xC9DDFF
     static let autoShiftFullScale: CGFloat = 5
     static let autoShiftStrength = 1.0
+    static let closenessPublishStep = 0.01
+
+    static func closenessNeedsPublish(from old: Double, to new: Double) -> Bool {
+        guard new != old else { return false }
+        if new == 0 || new == 1 { return true }
+        return abs(new - old) >= closenessPublishStep
+    }
 
     struct Correction {
         var redness: Float

@@ -6,7 +6,6 @@ struct ContentView: View {
     let mirrorViewModel: MirrorViewModel
     let makeOnboardingSignals: () -> ZoomOnboardingSignals
     let analytics: AnalyticsRecording
-    let clipReviewViewModel: ClipReviewViewModel
 
     var body: some View {
         Group {
@@ -36,6 +35,7 @@ struct ContentView: View {
         }
         .environment(\.isLargerButtons, mirrorViewModel.isLargerButtons)
         .environment(\.colorScheme, .light)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility3)
     }
 
     private var barBackground: Visibility {
@@ -48,6 +48,5 @@ struct ContentView: View {
     let container = AppContainer()
     return ContentView(mirrorViewModel: container.mirrorViewModel,
                        makeOnboardingSignals: container.makeOnboardingSignals,
-                       analytics: container.analytics,
-                       clipReviewViewModel: container.clipReviewViewModel)
+                       analytics: container.analytics)
 }
