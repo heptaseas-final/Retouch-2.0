@@ -14,7 +14,7 @@ nonisolated extension ZoomService {
             isAutoZoom: isGestureEnabled,
             faceVisible: lastFace != nil,
             handSeen: lastScan.handsSeen > 0 || !hands.isEmpty,
-            zoomHolding: eyeFlow.isActive || lipFlow.isActive,
+            zoomHolding: eyeFlow.isActive || lipFlow.isActive || noseFlow.isActive,
             thermalState: info.thermalState,
             isLowPowerMode: info.isLowPowerModeEnabled
         )

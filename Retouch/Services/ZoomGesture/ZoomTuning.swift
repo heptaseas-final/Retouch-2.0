@@ -108,15 +108,12 @@ nonisolated struct ZoomTuning {
     static let eyeGripScaleInner: CGFloat = 1.0
     static let eyeGripScaleY: CGFloat = 1.5
 
-    static var eyeHoldScaleX: CGFloat { max(eyeHoldScale, eyeGripScaleOuter) }
-    static var eyeHoldScaleY: CGFloat { max(eyeHoldScale, eyeGripScaleY) }
-
     static let handMaxGap: TimeInterval = 0.5
     static let maxStep: TimeInterval = 0.35
     static let nominalStep: TimeInterval = 1.0 / 12.0
 
     static let lipsEnterDwell: TimeInterval = 0.6
-    static let lipsReleaseDwell: TimeInterval = 1.2
+    static let lipsReleaseDwell: TimeInterval = 0.4
     static let lipsPose2Max: CGFloat = 0.4
     static let lipMotionBaselineTau = 0.8
     static let lipMotionDevTau = 0.15
@@ -125,7 +122,7 @@ nonisolated struct ZoomTuning {
     static let lipMotionLostGrace: TimeInterval = 0.5
     static let lipsTriggerStretchX: CGFloat = 1.1
     static let lipsTriggerStretchY: CGFloat = 0.7
-    static let lipsHoldScale: CGFloat = 1.3
+    static let lipsHoldScale: CGFloat = 1.1
 
     static let lipsLineOffset: CGFloat = 0
     static let lipsHoldLineTolerance: CGFloat = 0.1
@@ -134,10 +131,10 @@ nonisolated struct ZoomTuning {
     static let eyeTriggerRadiusY: CGFloat = 0.4
     static let eyeZoneDead: CGFloat = 0.09
     static let eyeZoneOffsetX: CGFloat = 0.12
-    static let eyeHoldScale: CGFloat = 1.2
+    static let eyeHoldScale: CGFloat = 1.1
     static let eyeFlowEnterDwell: TimeInterval = 0.6
     static let eyeFlowSwitchDwell: TimeInterval = 0.15
-    static let eyeFlowReleaseDwell: TimeInterval = 1.2
+    static let eyeFlowReleaseDwell: TimeInterval = 0.4
     static let eyeActivityEnter = 0.15
     static let eyeActivityExit = 0.07
     static let eyeTurnWidthRatio = 0.6
@@ -149,23 +146,24 @@ nonisolated struct ZoomTuning {
     static let eyeLearnMaxYaw = 15.0
     static let eyeUnknownCap: TimeInterval = 2.2
     static let eyeFlowPoseGrace: TimeInterval = 0.3
-    static let eyeSoftHoldCap: TimeInterval = 3.0
     static let eyeHoldUsesAllFingertips = true
 
     static let noseEnterDwell: TimeInterval = 0.5
-    static let noseReleaseDwell: TimeInterval = 1.0
-    static let noseTriggerRadiusX: CGFloat = 0.35
-    static let noseTriggerRadiusY: CGFloat = 0.7
-    static let noseHoldScale: CGFloat = 1.3
-    static let noseTopLimit: CGFloat = 0.3
-    static let noseOwnHalfWidth: CGFloat = 0.45
-    static let noseCenterOffsetX: CGFloat = 0
-    static let noseCenterOffsetY: CGFloat = -0.2
+    static let noseReleaseDwell: TimeInterval = 0.4
+    static let noseColumnHalfWidth: CGFloat = 0.3
+    static let noseColumnTop: CGFloat = 0.25
+    static let noseHoldScale: CGFloat = 1.1
+    static let maxTriggerScale: CGFloat = 1.1
     static let fingerPointEnabled = true
     static let toolEnterDwell: TimeInterval = 0.6
     static let fingerPointDwell: TimeInterval = 0.6
     static let nosePointDwell: TimeInterval = fingerPointDwell
-    static let noseLostHoldCap: TimeInterval = 1.5
+    static let noseLostHoldCap: TimeInterval = 0.5
+    static let toolSwitchDwell: TimeInterval = 0.35
+    static let softHoldWindow: TimeInterval = 0.75
+    static let fastReleaseDwell: TimeInterval = 0.15
+    static let reentryWindow: TimeInterval = 1.5
+    static let reentryDwell: TimeInterval = 0.2
 
     static let pinInset: CGFloat = 0.12
     static let panSmoothTime: CGFloat = 0.18
@@ -197,7 +195,7 @@ nonisolated struct ZoomTuning {
     static let handDarkJointConfidence: Float = 0.15
     static let handDarkBaseConfidence: Float = 0.12
 
-    static let handLostHoldCap: TimeInterval = 0.75
+    static let handLostHoldCap: TimeInterval = 0.5
     static let handLostHoldEnabled = true
 
     static let poseKeepEnabled = true

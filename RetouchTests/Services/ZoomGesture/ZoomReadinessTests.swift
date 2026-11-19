@@ -48,4 +48,20 @@ struct ZoomReadinessTests {
         let input = ZoomReadiness.applying(ToolZoneReading(), to: base)
         #expect(input.fingerNear && !input.toolReady)
     }
+
+    @Test func toolReadingFillsNoseInput() {
+        var reading = ToolZoneReading()
+        reading.noseTrigger = true
+        reading.noseHold = true
+        reading.fastTool = true
+        let input = ZoomReadiness.applying(reading, to: NoseZoomFlow.Input())
+        #expect(input.toolReady && input.fingerNear && input.handMovingAway)
+    }
+
+    @Test func toolHoldIsKeptSeparateOnEyeInput() {
+        var reading = ToolZoneReading()
+        reading.eyeHoldLeft = true
+        let input = ZoomReadiness.applying(reading, to: EyeZoomFlow.Input())
+        #expect(input.toolHoldLeft && !input.toolHoldRight)
+    }
 }

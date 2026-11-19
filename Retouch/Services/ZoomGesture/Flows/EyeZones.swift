@@ -58,18 +58,20 @@ nonisolated struct EyeZones {
         return nil
     }
 
-    func holds(_ side: EyeSide, at p: CGPoint) -> Bool {
+    func holds(_ side: EyeSide, at p: CGPoint, grip: Bool = false) -> Bool {
         guard !isLipsSide(p) else { return false }
-        let e = eye(side)
-        let dx = p.x - e.x, dy = p.y - e.y
-        let a = (dx * u.x + dy * u.y) / d
-        let b = (dx * v.x + dy * v.y) / d
-        let rx = ZoomTuning.eyeTriggerRadiusX * ZoomTuning.eyeHoldScaleX
-        let ry = ZoomTuning.eyeTriggerRadiusY * ZoomTuning.eyeHoldScaleY
-        guard hypot(a / rx, b / ry) <= 1 else { return false }
+        let value = grip ? gripValue(p, to: side) : triggerValue(p, to: side)
+        guard value <= ZoomTuning.eyeHoldScale else { return false }
         let x = s(p)
         let dead = ZoomTuning.eyeZoneDead
         return side == .left ? x <= dead : x >= -dead
+    }
+
+    func inEyeTerritory(_ p: CGPoint) -> Bool {
+        guard !isLipsSide(p) else { return false }
+        var widest = self
+        widest.triggerScale = ZoomTuning.maxTriggerScale
+        return widest.gripValue(p, to: .left) <= 1 || widest.gripValue(p, to: .right) <= 1
     }
 
     func gripValue(_ p: CGPoint, to side: EyeSide) -> CGFloat {

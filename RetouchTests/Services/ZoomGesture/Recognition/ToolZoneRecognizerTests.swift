@@ -92,9 +92,44 @@ struct ToolZoneRecognizerTests {
         #expect(read([tool(.brush, farAway)]) == ToolZoneReading())
     }
 
-    @Test func toolOnNoseDoesNotTriggerEye() {
-        let nearNose = CGRect(x: 125, y: 125, width: 30, height: 20)
-        #expect(read([tool(.brush, nearNose)]).eyeTriggerLeft)
-        #expect(!read([tool(.brush, nearNose)], nose: CGPoint(x: 150, y: 150)).eyeTriggerLeft)
+    private let nose = CGPoint(x: 150, y: 145)
+    private let onNose = CGRect(x: 142, y: 137, width: 16, height: 16)
+    private let onBridgeCorner = CGRect(x: 120, y: 115, width: 20, height: 20)
+
+    @Test func brushOnNoseTriggersNoseOnly() {
+        let reading = read([tool(.brush, onNose)], nose: nose)
+        #expect(reading.noseTrigger)
+        #expect(reading.noseHold)
+        #expect(!reading.eyeTriggerLeft)
+        #expect(!reading.eyeTriggerRight)
+        #expect(reading.isInZone)
+    }
+
+    @Test func eyeAndLipToolsNeverTriggerNose() {
+        for label in [ToolDetection.Label.eye, .lip] {
+            let reading = read([tool(label, onNose)], nose: nose)
+            #expect(!reading.noseTrigger)
+            #expect(!reading.noseHold)
+            #expect(!reading.eyeTriggerLeft)
+            #expect(!reading.eyeTriggerRight)
+        }
+    }
+
+    @Test func brushAtInnerEyeCornerBelongsToEye() {
+        let reading = read([tool(.brush, onBridgeCorner)], nose: nose)
+        #expect(reading.eyeTriggerLeft)
+        #expect(!reading.noseTrigger)
+    }
+
+    @Test func largeBrushPicksEyeItMostlyCovers() {
+        let mostlyRight = CGRect(x: 130, y: 80, width: 100, height: 40)
+        let reading = read([tool(.brush, mostlyRight)], nose: nose)
+        #expect(reading.eyeTriggerRight)
+        #expect(!reading.eyeTriggerLeft)
+    }
+
+    @Test func fastToolIsReported() {
+        #expect(read([tool(.brush, atLeftEye, speed: 2)]).fastTool)
+        #expect(!read([tool(.brush, atLeftEye)]).fastTool)
     }
 }

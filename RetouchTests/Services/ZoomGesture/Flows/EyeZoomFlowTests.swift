@@ -88,17 +88,90 @@ struct EyeZoomFlowTests {
         #expect(LipsZoomFlow().gripDwell == 0.6)
     }
 
-    @Test func releaseDwellMatchesSpecDecision() {
-        #expect(ZoomTuning.eyeFlowReleaseDwell == 1.2)
-        #expect(ZoomTuning.lipsReleaseDwell == 1.2)
+    @Test func releaseDwellMatchesPmDecision() {
+        #expect(ZoomTuning.eyeFlowReleaseDwell == 0.4)
+        #expect(ZoomTuning.lipsReleaseDwell == 0.4)
+        #expect(ZoomTuning.noseReleaseDwell == 0.4)
     }
 
-    @Test func toolOnOtherEyeSwitchesAfterDwell() {
+    @Test func toolOnOtherEyeSwitchesAfterToolSwitchDwell() {
         var flow = activeLeft()
         var input = toolInput(right: true)
         input.holdLeft = true
         flow.update(input, now: at(1))
-        flow.update(input, now: at(1 + ZoomTuning.toolEnterDwell + 0.01))
+        flow.update(input, now: at(1 + ZoomTuning.toolSwitchDwell - 0.01))
+        #expect(flow.target == .leftEye)
+        flow.update(input, now: at(1 + ZoomTuning.toolSwitchDwell + 0.01))
         #expect(flow.target == .rightEye)
+    }
+
+    @Test func toolStillOnCurrentEyeBlocksToolSwitch() {
+        var flow = activeLeft()
+        var input = toolInput(right: true)
+        input.holdLeft = true
+        input.toolHoldLeft = true
+        flow.update(input, now: at(1))
+        flow.update(input, now: at(3))
+        #expect(flow.target == .leftEye)
+    }
+
+    @Test func toolSwitchTimerRestartsWhenToolReturns() {
+        var flow = activeLeft()
+        var away = toolInput(right: true)
+        away.holdLeft = true
+        var back = away
+        back.toolHoldLeft = true
+        flow.update(away, now: at(1))
+        flow.update(back, now: at(1.2))
+        flow.update(away, now: at(1.3))
+        flow.update(away, now: at(1.3 + ZoomTuning.toolSwitchDwell - 0.01))
+        #expect(flow.target == .leftEye)
+        flow.update(away, now: at(1.3 + ZoomTuning.toolSwitchDwell + 0.01))
+        #expect(flow.target == .rightEye)
+    }
+
+    @Test func softHoldEndsAfterWindow() {
+        var flow = activeLeft()
+        var held = EyeZoomFlow.Input()
+        held.holdLeft = true
+        flow.update(held, now: at(1))
+        var closing = EyeZoomFlow.Input()
+        closing.activityLeft = .active
+        flow.update(closing, now: at(1 + ZoomTuning.softHoldWindow - 0.05))
+        #expect(flow.phase == .active)
+        flow.update(closing, now: at(1 + ZoomTuning.softHoldWindow + 0.05))
+        #expect(flow.phase == .releasing)
+        flow.update(closing, now: at(1 + ZoomTuning.softHoldWindow + ZoomTuning.eyeFlowReleaseDwell + 0.1))
+        #expect(flow.phase == .idle)
+    }
+
+    @Test func handMovingAwayReleasesFast() {
+        var flow = activeLeft()
+        var input = EyeZoomFlow.Input()
+        input.handMovingAway = true
+        flow.update(input, now: at(2))
+        flow.update(input, now: at(2 + ZoomTuning.fastReleaseDwell + 0.01))
+        #expect(flow.phase == .idle)
+    }
+
+    @Test func quickReentryUsesShortDwell() {
+        var flow = activeLeft()
+        flow.update(EyeZoomFlow.Input(), now: at(2))
+        flow.update(EyeZoomFlow.Input(), now: at(2 + ZoomTuning.eyeFlowReleaseDwell + 0.01))
+        #expect(flow.phase == .idle)
+        let back = 2 + ZoomTuning.eyeFlowReleaseDwell + 0.5
+        flow.update(toolInput(left: true), now: at(back))
+        flow.update(toolInput(left: true), now: at(back + ZoomTuning.reentryDwell + 0.01))
+        #expect(flow.target == .leftEye)
+    }
+
+    @Test func reentryAfterWindowUsesNormalDwell() {
+        var flow = activeLeft()
+        flow.update(EyeZoomFlow.Input(), now: at(2))
+        flow.update(EyeZoomFlow.Input(), now: at(2 + ZoomTuning.eyeFlowReleaseDwell + 0.01))
+        let back = 2 + ZoomTuning.eyeFlowReleaseDwell + ZoomTuning.reentryWindow + 0.5
+        flow.update(toolInput(left: true), now: at(back))
+        flow.update(toolInput(left: true), now: at(back + ZoomTuning.reentryDwell + 0.01))
+        #expect(flow.target == nil)
     }
 }

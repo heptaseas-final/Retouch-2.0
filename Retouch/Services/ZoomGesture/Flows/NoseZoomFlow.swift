@@ -2,24 +2,30 @@ import Foundation
 
 nonisolated struct NoseZoomFlow {
     enum Phase: Equatable { case idle, entering, active, releasing }
-    enum Trigger: Equatable { case twoFinger, threeFinger, grip, point }
+    enum Trigger: Equatable { case twoFinger, threeFinger, grip, point, tool }
 
     struct Input {
         var pose2Ready = false
         var pose3Ready = false
         var gripReady = false
         var pointReady = false
+        var toolReady = false
         var fingerNear = false
         var handLost = false
+        var handMovingAway = false
         var enterDwellFactor: TimeInterval = 1
     }
 
     var enterDwell = ZoomTuning.noseEnterDwell
     var gripDwell = ZoomTuning.gripEnterDwell
     var pointDwell = ZoomTuning.nosePointDwell
+    var toolDwell = ZoomTuning.toolEnterDwell
     var lostHold = ZoomTuning.noseLostHoldCap
     var releaseDwell = ZoomTuning.noseReleaseDwell
+    var fastReleaseDwell = ZoomTuning.fastReleaseDwell
     var poseGrace = ZoomTuning.eyeFlowPoseGrace
+    var reentryWindow = ZoomTuning.reentryWindow
+    var reentryDwell = ZoomTuning.reentryDwell
 
     private(set) var phase: Phase = .idle
     private(set) var trigger: Trigger?
@@ -31,8 +37,11 @@ nonisolated struct NoseZoomFlow {
     private var pose3Seen: Date?
     private var gripSeen: Date?
     private var pointSeen: Date?
+    private var toolSince: Date?
+    private var toolSeen: Date?
     private var releaseSince: Date?
     private var lastNear: Date?
+    private var lastExit: Date?
 
     var isActive: Bool { phase == .active || phase == .releasing }
 
@@ -61,23 +70,29 @@ nonisolated struct NoseZoomFlow {
             pose3Since = Self.track(input.pose3Ready, since: pose3Since, seen: &pose3Seen, now: now, grace: poseGrace)
             gripSince = Self.track(input.gripReady, since: gripSince, seen: &gripSeen, now: now, grace: poseGrace)
             pointSince = Self.track(input.pointReady, since: pointSince, seen: &pointSeen, now: now, grace: poseGrace)
+            toolSince = Self.track(input.toolReady, since: toolSince, seen: &toolSeen, now: now, grace: poseGrace)
 
+            let quick = lastExit.map { now.timeIntervalSince($0) <= reentryWindow } ?? false
+            func need(_ dwell: TimeInterval) -> TimeInterval { quick ? min(dwell, reentryDwell) : dwell }
             var due: [(Trigger, Date)] = []
-            if let s = pose2Since, now.timeIntervalSince(s) >= enterDwell { due.append((.twoFinger, s)) }
-            if let s = pose3Since, now.timeIntervalSince(s) >= enterDwell { due.append((.threeFinger, s)) }
-            if let s = gripSince, now.timeIntervalSince(s) >= gripDwell { due.append((.grip, s)) }
-            if let s = pointSince, now.timeIntervalSince(s) >= pointDwell { due.append((.point, s)) }
+            if let s = pose2Since, now.timeIntervalSince(s) >= need(enterDwell) { due.append((.twoFinger, s)) }
+            if let s = pose3Since, now.timeIntervalSince(s) >= need(enterDwell) { due.append((.threeFinger, s)) }
+            if let s = gripSince, now.timeIntervalSince(s) >= need(gripDwell) { due.append((.grip, s)) }
+            if let s = pointSince, now.timeIntervalSince(s) >= need(pointDwell) { due.append((.point, s)) }
+            if let s = toolSince, now.timeIntervalSince(s) >= need(toolDwell) { due.append((.tool, s)) }
             if let s = pose2Since, now.timeIntervalSince(s) >= enterDwell * input.enterDwellFactor { due.append((.twoFinger, s)) }
             if let s = pose3Since, now.timeIntervalSince(s) >= enterDwell * input.enterDwellFactor { due.append((.threeFinger, s)) }
             if let s = gripSince, now.timeIntervalSince(s) >= gripDwell * input.enterDwellFactor { due.append((.grip, s)) }
             if let s = pointSince, now.timeIntervalSince(s) >= pointDwell * input.enterDwellFactor { due.append((.point, s)) }
+            if let s = toolSince, now.timeIntervalSince(s) >= toolDwell * input.enterDwellFactor { due.append((.tool, s)) }
             if let first = due.min(by: { $0.1 < $1.1 }) {
                 trigger = first.0
                 clearEntryTimers()
                 lastNear = now
                 phase = .active
             } else {
-                phase = (pose2Since != nil || pose3Since != nil || gripSince != nil || pointSince != nil) ? .entering : .idle
+                phase = (pose2Since != nil || pose3Since != nil || gripSince != nil || pointSince != nil
+                         || toolSince != nil) ? .entering : .idle
             }
 
         case .active, .releasing:
@@ -93,7 +108,9 @@ nonisolated struct NoseZoomFlow {
             } else {
                 if releaseSince == nil { releaseSince = now }
                 phase = .releasing
-                if let since = releaseSince, now.timeIntervalSince(since) >= releaseDwell {
+                let releaseNeed = input.handMovingAway ? min(fastReleaseDwell, releaseDwell) : releaseDwell
+                if let since = releaseSince, now.timeIntervalSince(since) >= releaseNeed {
+                    lastExit = now
                     goIdle()
                 }
             }
@@ -112,6 +129,8 @@ nonisolated struct NoseZoomFlow {
         pose3Seen = nil
         gripSeen = nil
         pointSeen = nil
+        toolSince = nil
+        toolSeen = nil
     }
 
     private mutating func goIdle() {

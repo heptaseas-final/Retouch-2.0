@@ -100,6 +100,7 @@ nonisolated extension ZoomService {
         lipIn = ZoomReadiness.applying(toolReading, to: lipIn)
         lipFlow.update(lipIn, now: now)
         var noseIn = noseInput
+        noseIn = ZoomReadiness.applying(toolReading, to: noseIn)
         if eyeShowing || lipsShowing { noseIn.enterDwellFactor = Self.preemptDwellFactor }
         noseFlow.update(noseIn, now: now)
 
