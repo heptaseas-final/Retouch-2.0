@@ -145,15 +145,17 @@ nonisolated extension ZoomService {
         let debugTips = lastScan.fingertips.map { converter.toView($0) }
         let debugTools = lastTools.map { ToolTipLocator.tip(of: $0.rect, face: points) }
         let debugBoxes = lastTools.map(\.rect)
+        let debugLabels = lastTools.map { "\($0.label.rawValue) \(Int($0.confidence * 100))%" }
 #else
         let debugHands: [ZoomDebugHand] = []
         let debugTips: [CGPoint] = []
         let debugTools: [CGPoint] = []
         let debugBoxes: [CGRect] = []
+        let debugLabels: [String] = []
 #endif
         onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
                                  isFaceVisible: lastFace != nil, hands: debugHands, fingertips: debugTips,
-                                 toolTips: debugTools, toolBoxes: debugBoxes, lockedZone: FaceZone(target: target),
+                                 toolTips: debugTools, toolBoxes: debugBoxes, toolLabels: debugLabels, lockedZone: FaceZone(target: target),
                                  zoneReach: zoneReach, lipsReach: zoneLipsReach, inputMode: inputMode.mode))
     }
 

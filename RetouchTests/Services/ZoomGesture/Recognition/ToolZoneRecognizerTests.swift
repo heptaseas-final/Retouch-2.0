@@ -53,14 +53,11 @@ struct ToolZoneRecognizerTests {
         #expect(read([tool(.brush, onNose)]).noseTrigger)
     }
 
-    @Test func toolOutsideItsZonesDoesNothing() {
-        let eyeAtLips = read([tool(.eye, atLips)])
-        #expect(!eyeAtLips.lipsTrigger && !eyeAtLips.lipsHold && !eyeAtLips.isInZone)
-        let lipAtEye = read([tool(.lip, atLeftEye)])
-        #expect(!lipAtEye.eyeTriggerLeft && !lipAtEye.isInZone)
-        for label in [ToolDetection.Label.eye, .lip] {
-            let reading = read([tool(label, onNose)])
-            #expect(!reading.noseTrigger && !reading.noseHold)
+    @Test func everyToolReachesEveryZone() {
+        for label in [ToolDetection.Label.eye, .lip, .brush] {
+            #expect(read([tool(label, atLeftEye)]).eyeTriggerLeft)
+            #expect(read([tool(label, atLips)]).lipsTrigger)
+            #expect(read([tool(label, onNose)]).noseTrigger)
         }
     }
 

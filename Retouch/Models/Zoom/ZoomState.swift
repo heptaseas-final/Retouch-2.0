@@ -29,6 +29,7 @@ nonisolated struct ZoomTracking: Sendable {
     var fingertips: [CGPoint] = []
     var toolTips: [CGPoint] = []
     var toolBoxes: [CGRect] = []
+    var toolLabels: [String] = []
     var lockedZone: FaceZone?
     var zoneReach: CGFloat = 1
     var lipsReach = CGFloat(ZoomTuning.handEnterDistance)

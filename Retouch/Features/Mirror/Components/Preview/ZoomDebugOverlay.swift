@@ -173,9 +173,10 @@ private extension ZoomDebugOverlay {
             context.stroke(Path(box).applying(transform), with: .color(DebugStyle.tool),
                            style: StrokeStyle(lineWidth: DebugStyle.boxLine, dash: DebugStyle.boxDash))
         }
-        for tip in tracking.toolTips {
+        for (index, tip) in tracking.toolTips.enumerated() {
+            let name = index < tracking.toolLabels.count ? tracking.toolLabels[index] + " " : ""
             dot(&context, transform, tip, radius: DebugStyle.toolRadius, color: DebugStyle.tool)
-            label(&context, transform, tip, zoneName(tip, map, tracking.lockedZone), DebugStyle.tool)
+            label(&context, transform, tip, name + zoneName(tip, map, tracking.lockedZone), DebugStyle.tool)
         }
     }
 

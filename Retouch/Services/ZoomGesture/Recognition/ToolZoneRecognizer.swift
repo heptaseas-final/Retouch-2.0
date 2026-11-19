@@ -26,13 +26,12 @@ nonisolated struct ToolZoneRecognizer {
         guard let map = FaceZoneMap(points: points, reach: reach, lipsReach: lipsReach) else { return reading }
         for tool in tools where tool.confidence >= ToolDetectionTuning.minConfidence {
             let tip = ToolTipLocator.tip(of: tool.rect, face: points)
-            let allowed = Self.zones(for: tool.label)
             if tool.speed >= maxIntentSpeed { reading.fastTool = true }
-            for zone in allowed where map.holds(zone, at: tip) {
+            for zone in FaceZone.allCases where map.holds(zone, at: tip) {
                 Self.markHold(zone, in: &reading)
                 if zone == locked { reading.isInZone = true }
             }
-            guard let zone = map.zone(of: tip, locked: locked), allowed.contains(zone) else { continue }
+            guard let zone = map.zone(of: tip, locked: locked) else { continue }
             reading.isInZone = true
             guard tool.confidence >= ToolDetectionTuning.triggerConfidence,
                   tool.speed < maxIntentSpeed else { continue }
@@ -47,14 +46,6 @@ nonisolated struct ToolZoneRecognizer {
 
     private var lipsReach: CGFloat {
         CGFloat(enterDistance) * (support ? ZoomTuning.pitchLipsReach : 1)
-    }
-
-    private static func zones(for label: ToolDetection.Label) -> [FaceZone] {
-        switch label {
-        case .eye: [.leftEye, .rightEye]
-        case .lip: [.lips]
-        case .brush: FaceZone.allCases
-        }
     }
 
     private static func markHold(_ zone: FaceZone, in reading: inout ToolZoneReading) {
