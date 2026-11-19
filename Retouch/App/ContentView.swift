@@ -41,6 +41,7 @@ struct ContentView: View {
         }
         .environment(\.isLargerButtons, mirrorViewModel.isLargerButtons)
         .environment(\.colorScheme, .light)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility3)
     }
 
     private var barBackground: Visibility {

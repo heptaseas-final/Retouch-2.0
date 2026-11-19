@@ -29,6 +29,7 @@ nonisolated extension ZoomService {
             pinchActive = false
             pinchBase = pinchScale < 1.05 ? 1 : pinchScale
             pinchScale = pinchBase
+            if isGestureEnabled { leaveAutoZoom() }
             publish(isGestureEnabled ? resolver.target : manualTarget)
         }
     }

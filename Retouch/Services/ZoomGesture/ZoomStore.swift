@@ -6,7 +6,9 @@ final class ZoomStore {
     typealias TrackingListener = (ZoomTracking, ZoomState) -> Void
 
     private(set) var zoomState = ZoomState()
-    private(set) var tracking = ZoomTracking()
+    private(set) var target: ZoomTarget = .fullFace
+
+    @ObservationIgnored private(set) var tracking = ZoomTracking()
 
     @ObservationIgnored private var listeners: [UUID: TrackingListener] = [:]
 
@@ -28,6 +30,7 @@ final class ZoomStore {
 
     func update(_ value: ZoomTracking) {
         tracking = value
+        if value.target != target { target = value.target }
         notify()
     }
 

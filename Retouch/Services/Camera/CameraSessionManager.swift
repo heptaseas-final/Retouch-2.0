@@ -21,7 +21,7 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
     var onStateChange: ((CameraState) -> Void)?
     var frameRate: Int32 = 60
     var prefersAutoFrameRate = false
-    var preferredWidth: Int32 = 1920
+    var preferredWidth: Int32 = 3840
     var maxRestartAttempts = 3
     var preferredStabilization: AVCaptureVideoStabilizationMode = .standard
     
@@ -120,8 +120,8 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
         if !session.isRunning { session.startRunning() }
         report(session.isRunning ? .running : .failed)
     }
-
-    private func configureColorAndExposure(_ device: AVCaptureDevice){
+    
+    private func configureColorAndExposure(_ device: AVCaptureDevice) {
         withLock(device) { device in
             if device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
                 device.whiteBalanceMode = .continuousAutoWhiteBalance
@@ -279,20 +279,15 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
             if let current = best {
                 if candidate.pixelCount != current.pixelCount {
                     better = candidate.pixelCount > current.pixelCount
-                }
-                else if candidate.fps != current.fps {
+                } else if candidate.fps != current.fps {
                     better = candidate.fps > current.fps
-                }
-                else if candidate.hdr != current.hdr {
+                } else if candidate.hdr != current.hdr {
                     better = candidate.hdr
-                }
-                else if candidate.p3 != current.p3 {
+                } else if candidate.p3 != current.p3 {
                     better = candidate.p3
-                }
-                else if candidate.isBinned != current.isBinned {
+                } else if candidate.isBinned != current.isBinned {
                     better = !candidate.isBinned
-                }
-                else {
+                } else {
                     better = candidate.auto && !current.auto
                 }
             } else {

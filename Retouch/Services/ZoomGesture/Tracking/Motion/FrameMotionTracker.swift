@@ -126,41 +126,67 @@ nonisolated final class FrameMotionTracker {
             let y0 = max(rect.y0 / scale, 2), y1 = min(rect.y1 / scale, reference.height - 2)
             guard x1 - x0 > 4, y1 - y0 > 4 else { return nil }
             let count = Float((x1 - x0) * (y1 - y0))
+            let width = reference.width
+            let targetWidth = target.width
+            let targetHeight = target.height
+            let start = d
+            let rounds = iterations
+            let texture = minTexture
 
-            for _ in 0..<iterations {
-                var sxx: Float = 0, sxy: Float = 0, syy: Float = 0
-                var bx: Float = 0, by: Float = 0
-                for y in y0..<y1 {
-                    for x in x0..<x1 {
-                        let i = y * reference.width + x
-                        let gx = (reference.pixels[i + 1] - reference.pixels[i - 1]) * 0.5
-                        let gy = (reference.pixels[i + reference.width] - reference.pixels[i - reference.width]) * 0.5
-                        let diff = Self.sample(target, Float(x) + d.x, Float(y) + d.y) - reference.pixels[i]
-                        sxx += gx * gx
-                        sxy += gx * gy
-                        syy += gy * gy
-                        bx += gx * diff
-                        by += gy * diff
+            let result: SIMD2<Float>? = reference.pixels.withUnsafeBufferPointer { ref -> SIMD2<Float>? in
+                target.pixels.withUnsafeBufferPointer { tgt -> SIMD2<Float>? in
+                    var sxx: Float = 0, sxy: Float = 0, syy: Float = 0
+                    for y in y0..<y1 {
+                        var i = y * width + x0
+                        for _ in x0..<x1 {
+                            let gx = (ref[i + 1] - ref[i - 1]) * 0.5
+                            let gy = (ref[i + width] - ref[i - width]) * 0.5
+                            sxx += gx * gx
+                            sxy += gx * gy
+                            syy += gy * gy
+                            i += 1
+                        }
                     }
+                    let det = sxx * syy - sxy * sxy
+                    guard det / (count * count) > texture else { return nil }
+
+                    var out = start
+                    for _ in 0..<rounds {
+                        var bx: Float = 0, by: Float = 0
+                        for y in y0..<y1 {
+                            var i = y * width + x0
+                            for x in x0..<x1 {
+                                let gx = (ref[i + 1] - ref[i - 1]) * 0.5
+                                let gy = (ref[i + width] - ref[i - width]) * 0.5
+                                let diff = Self.sample(tgt, targetWidth, targetHeight,
+                                                       Float(x) + out.x, Float(y) + out.y) - ref[i]
+                                bx += gx * diff
+                                by += gy * diff
+                                i += 1
+                            }
+                        }
+                        out.x -= (syy * bx - sxy * by) / det
+                        out.y -= (sxx * by - sxy * bx) / det
+                    }
+                    return out
                 }
-                let det = sxx * syy - sxy * sxy
-                guard det / (count * count) > minTexture else { return nil }
-                d.x -= (syy * bx - sxy * by) / det
-                d.y -= (sxx * by - sxy * bx) / det
             }
+            guard let updated = result else { return nil }
+            d = updated
         }
         return d
     }
 
-    private static func sample(_ level: Level, _ x: Float, _ y: Float) -> Float {
-        let fx = min(max(x, 0), Float(level.width - 1) - 0.001)
-        let fy = min(max(y, 0), Float(level.height - 1) - 0.001)
+    @inline(__always)
+    private static func sample(_ pixels: UnsafeBufferPointer<Float>, _ width: Int, _ height: Int,
+                               _ x: Float, _ y: Float) -> Float {
+        let fx = min(max(x, 0), Float(width - 1) - 0.001)
+        let fy = min(max(y, 0), Float(height - 1) - 0.001)
         let ix = Int(fx), iy = Int(fy)
         let tx = fx - Float(ix), ty = fy - Float(iy)
-        let i = iy * level.width + ix
-        let top = level.pixels[i] + (level.pixels[i + 1] - level.pixels[i]) * tx
-        let bottom = level.pixels[i + level.width]
-            + (level.pixels[i + level.width + 1] - level.pixels[i + level.width]) * tx
+        let i = iy * width + ix
+        let top = pixels[i] + (pixels[i + 1] - pixels[i]) * tx
+        let bottom = pixels[i + width] + (pixels[i + width + 1] - pixels[i + width]) * tx
         return top + (bottom - top) * ty
     }
 
