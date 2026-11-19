@@ -4,8 +4,6 @@
 //
 //  Created by Alif Tito Shiddiq ArRosyid on 19/11/26.
 //
-
-
 import CoreGraphics
 
 nonisolated enum ToolTipLocator {
@@ -15,12 +13,19 @@ nonisolated enum ToolTipLocator {
     }
 
     static func tip(of rect: CGRect, toward anchor: CGPoint) -> CGPoint {
-        let inset = min(rect.width, rect.height) / 2 * ToolDetectionTuning.tipInset
-        let minX = min(rect.minX + inset, rect.midX)
-        let maxX = max(rect.maxX - inset, rect.midX)
-        let minY = min(rect.minY + inset, rect.midY)
-        let maxY = max(rect.maxY - inset, rect.midY)
-        return CGPoint(x: min(max(anchor.x, minX), maxX), y: min(max(anchor.y, minY), maxY))
+        let short = min(rect.width, rect.height)
+        let long = max(rect.width, rect.height)
+        guard short > 0 else { return CGPoint(x: rect.midX, y: rect.midY) }
+        let stretch = (long / short - 1) / (ToolDetectionTuning.tipElongated - 1)
+        let pull = short / 2 * min(max(stretch, ToolDetectionTuning.tipMinPull), 1)
+        let corners = [
+            CGPoint(x: rect.minX + pull, y: rect.minY + pull),
+            CGPoint(x: rect.maxX - pull, y: rect.minY + pull),
+            CGPoint(x: rect.minX + pull, y: rect.maxY - pull),
+            CGPoint(x: rect.maxX - pull, y: rect.maxY - pull)
+        ]
+        func distance(_ p: CGPoint) -> CGFloat { hypot(p.x - anchor.x, p.y - anchor.y) }
+        return corners.min { distance($0) < distance($1) } ?? CGPoint(x: rect.midX, y: rect.midY)
     }
 
     private static func anchor(of face: FacePoints) -> CGPoint? {

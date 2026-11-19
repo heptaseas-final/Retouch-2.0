@@ -9,7 +9,8 @@ nonisolated struct ToolDetectionTuning {
     static let maxResultAge: TimeInterval = 0.5
     static let iouThreshold = 0.5
     static let cropFaceScale: CGFloat = 2.2
-    static let tipInset: CGFloat = 1.0
+    static let tipElongated: CGFloat = 2.0
+    static let tipMinPull: CGFloat = 0.2
     static let faceAreaRadius: CGFloat = 0.75
     static let toolModeEnterStreak = 2
     static let toolModeExitAfter: TimeInterval = 1.5

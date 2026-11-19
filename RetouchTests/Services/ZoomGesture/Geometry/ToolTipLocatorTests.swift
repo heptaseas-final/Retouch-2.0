@@ -4,8 +4,6 @@
 //
 //  Created by Alif Tito Shiddiq ArRosyid on 19/11/26.
 //
-
-
 import CoreGraphics
 import Testing
 @testable import Retouch
@@ -23,13 +21,19 @@ struct ToolTipLocatorTests {
         #expect(ToolTipLocator.tip(of: horizontal, toward: CGPoint(x: -50, y: 10)) == CGPoint(x: 10, y: 10))
     }
 
-    @Test func squareToolUsesItsCenter() {
-        let square = CGRect(x: 0, y: 0, width: 40, height: 40)
-        #expect(ToolTipLocator.tip(of: square, toward: CGPoint(x: 300, y: -300)) == CGPoint(x: 20, y: 20))
+    @Test func diagonalToolUsesTheCornerFacingTheFace() {
+        let diagonal = CGRect(x: 320, y: 480, width: 268, height: 300)
+        let tip = ToolTipLocator.tip(of: diagonal, toward: CGPoint(x: 250, y: 560))
+        #expect(tip.x < 360 && tip.y < 520)
     }
 
-    @Test func anchorInsideToolStaysOnItsAxis() {
-        #expect(ToolTipLocator.tip(of: vertical, toward: CGPoint(x: 4, y: 40)) == CGPoint(x: 10, y: 40))
+    @Test func squareToolStaysNearItsCorner() {
+        let square = CGRect(x: 0, y: 0, width: 40, height: 40)
+        #expect(ToolTipLocator.tip(of: square, toward: CGPoint(x: 300, y: -300)) == CGPoint(x: 36, y: 4))
+    }
+
+    @Test func anchorInsideToolPicksTheNearerEnd() {
+        #expect(ToolTipLocator.tip(of: vertical, toward: CGPoint(x: 4, y: 40)) == CGPoint(x: 10, y: 10))
     }
 
     @Test func faceWithoutCenterFallsBackToEyes() {

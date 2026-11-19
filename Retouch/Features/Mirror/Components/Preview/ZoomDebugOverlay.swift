@@ -37,6 +37,8 @@ private enum DebugStyle {
     static let checkRadius: CGFloat = 4
     static let handRadius: CGFloat = 8
     static let toolRadius: CGFloat = 7
+    static let boxLine: CGFloat = 1.5
+    static let boxDash: [CGFloat] = [6, 4]
     static let labelOffset: CGFloat = 16
     static let modeLabelY: CGFloat = 0.12
     static let eye = Color.cyan
@@ -167,6 +169,10 @@ private extension ZoomDebugOverlay {
 
     func drawTools(_ context: inout GraphicsContext, _ transform: CGAffineTransform, _ map: FaceZoneMap?,
                    _ tracking: ZoomTracking) {
+        for box in tracking.toolBoxes {
+            context.stroke(Path(box).applying(transform), with: .color(DebugStyle.tool),
+                           style: StrokeStyle(lineWidth: DebugStyle.boxLine, dash: DebugStyle.boxDash))
+        }
         for tip in tracking.toolTips {
             dot(&context, transform, tip, radius: DebugStyle.toolRadius, color: DebugStyle.tool)
             label(&context, transform, tip, zoneName(tip, map, tracking.lockedZone), DebugStyle.tool)
