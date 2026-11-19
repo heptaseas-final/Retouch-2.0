@@ -6,7 +6,7 @@ nonisolated struct ZoomReadiness {
     let converter: CoordinateConverter
     let handProfile: HandProfile
     let maxIntentSpeed: CGFloat
-    let noseActive: Bool
+    let locked: FaceZone?
 
     private var activeHands: [TrackedHand] { hands.filter { $0.hasPose || $0.holding } }
 
@@ -38,141 +38,102 @@ nonisolated struct ZoomReadiness {
         return result
     }
 
-    func lips(points: FacePoints, support: Bool) -> LipsZoomFlow.Input {
-        var input = LipsZoomFlow.Input()
-        input.handLost = scan.handsSeen == 0 && hands.isEmpty
-        input.handMovingAway = hands.contains { $0.speed >= maxIntentSpeed }
-        let W = points.width
-        guard W > 0, let lips = points.lips else { return input }
-        let eyes = [points.leftEye, points.rightEye].compactMap { $0 }
-        let zones = EyeZones(points: points)
-        func dist(_ a: CGPoint, _ b: CGPoint) -> CGFloat { hypot(a.x - b.x, a.y - b.y) }
-        func ownedByLips(_ p: CGPoint) -> Bool {
-            if let zones { return zones.isLipsSide(p) }
-            return dist(p, lips) < (eyes.map { dist(p, $0) }.min() ?? .infinity)
-        }
-        func holdOwnedByLips(_ p: CGPoint) -> Bool {
-            if let zones { return zones.isLipsHoldSide(p) }
-            return ownedByLips(p)
-        }
-
-        let axisU = zones?.axisU ?? CGPoint(x: 1, y: 0)
-        let axisV = zones?.axisV ?? CGPoint(x: 0, y: 1)
-        func inOval(_ p: CGPoint, rx: CGFloat, ry: CGFloat) -> Bool {
-            let dx = p.x - lips.x, dy = p.y - lips.y
-            let a = (dx * axisU.x + dy * axisU.y) / W
-            let b = (dx * axisV.x + dy * axisV.y) / W
-            return hypot(a / rx, b / ry) < 1
-        }
-
-        var limit = CGFloat(handProfile.enterDistance)
-        if support { limit *= ZoomTuning.pitchLipsReach }
-        let rx = limit * ZoomTuning.lipsTriggerStretchX
-        let ry = limit * ZoomTuning.lipsTriggerStretchY
-        let holdRx = rx * ZoomTuning.lipsHoldScale
-        let holdRy = ry * ZoomTuning.lipsHoldScale
-        let tips = scan.fingertips.map { converter.toView($0) } + activeHands.map { $0.point }
-        input.fingerNear = tips.contains { holdOwnedByLips($0) && inOval($0, rx: holdRx, ry: holdRy) }
-        for h in hands where (h.hasPose || h.holding) && h.speed < maxIntentSpeed {
-            guard ownedByLips(h.point) else { continue }
-            for p in h.checkPoints where inOval(p, rx: rx, ry: ry) {
-                if h.pose2 { input.pose2Ready = true }
-                if h.pose3 { input.pose3Ready = true }
-                if h.holding { input.gripReady = true }
-                break
-            }
-        }
-        if ZoomTuning.fingerPointEnabled {
-            for h in hands where h.isPoint && h.speed < maxIntentSpeed {
-                if ownedByLips(h.point), inOval(h.point, rx: rx, ry: ry) { input.pointReady = true }
-            }
-        }
-        return input
-    }
-
-    private func noseClaims(_ h: TrackedHand, _ zones: NoseZones) -> Bool {
-        if noseActive {
-            return zones.holds(h.point) || h.checkPoints.contains { zones.holds($0) }
-        }
-        return zones.owns(h.point) && h.checkPoints.contains { zones.inTrigger($0) }
-    }
-
-    func nose(points: FacePoints) -> NoseZoomFlow.Input {
-        var input = NoseZoomFlow.Input()
-        input.handLost = scan.handsSeen == 0 && hands.isEmpty
-        input.handMovingAway = hands.contains { $0.speed >= maxIntentSpeed }
-        guard var zones = NoseZones(points: points) else { return input }
-        zones.triggerScale = min(CGFloat(handProfile.enterDistance / ZoomTuning.handEnterDistance), 1.1)
-
-        for h in hands where (h.hasPose || h.holding) && h.speed < maxIntentSpeed {
-            guard zones.owns(h.point) else { continue }
-            for p in h.checkPoints where zones.inTrigger(p) {
-                if h.pose2 { input.pose2Ready = true }
-                if h.pose3 { input.pose3Ready = true }
-                if h.holding { input.gripReady = true }
-                break
-            }
-        }
-
-        if ZoomTuning.fingerPointEnabled {
-            for h in hands where h.isPoint && h.speed < maxIntentSpeed {
-                if zones.owns(h.point), zones.inTrigger(h.point) { input.pointReady = true }
-            }
-        }
-
-        var tips = scan.fingertips.map { converter.toView($0) }
-        tips += activeHands.flatMap { $0.checkPoints }
-        input.fingerNear = tips.contains { zones.holds($0) }
-        return input
-    }
-
     func eye(points: FacePoints, support: Bool) -> EyeZoomFlow.Input {
         var input = EyeZoomFlow.Input()
         input.handLost = scan.handsSeen == 0 && hands.isEmpty
         input.handMovingAway = hands.contains { $0.speed >= maxIntentSpeed }
-        let W = points.width
-        guard W > 0, var zones = EyeZones(points: points) else { return input }
-        zones.triggerScale = min(CGFloat(handProfile.enterDistance / ZoomTuning.handEnterDistance), 1.1)
-        var noseZones = NoseZones(points: points)
-        noseZones?.triggerScale = zones.triggerScale
+        guard points.width > 0, let map = map(points, support: support) else { return input }
         if support { input.enterDwellFactor = ZoomTuning.pitchEyeDwellFactor }
 
         for h in hands where (h.hasPose || h.holding) && h.speed < maxIntentSpeed {
-
-            if let noseZones, noseClaims(h, noseZones) { continue }
-            if h.hasPose {
-                for p in h.checkPoints {
-                    guard let side = zones.triggerEye(at: p, owner: h.point) else { continue }
-                    if side == .left { input.poseLeft = true } else { input.poseRight = true }
-                    break
-                }
-            }
-            if h.holding {
-                for p in h.checkPoints {
-                    guard let side = zones.gripTriggerEye(at: p, owner: h.point) else { continue }
-                    if side == .left { input.gripLeft = true } else { input.gripRight = true }
-                    break
-                }
+            switch zone(of: h, map) {
+            case .leftEye:
+                if h.hasPose { input.poseLeft = true }
+                if h.holding { input.gripLeft = true }
+            case .rightEye:
+                if h.hasPose { input.poseRight = true }
+                if h.holding { input.gripRight = true }
+            default: break
             }
         }
-
-        if ZoomTuning.fingerPointEnabled {
-            for h in hands where h.isPoint && h.speed < maxIntentSpeed {
-                if let noseZones, noseClaims(h, noseZones) { continue }
-                guard let side = zones.triggerEye(at: h.point, owner: h.point) else { continue }
-                if side == .left { input.pointLeft = true } else { input.pointRight = true }
+        for h in pointingHands {
+            switch map.zone(of: h.point, locked: locked) {
+            case .leftEye: input.pointLeft = true
+            case .rightEye: input.pointRight = true
+            default: break
             }
         }
 
-        let tips = ZoomTuning.eyeHoldUsesAllFingertips ? scan.fingertips.map { converter.toView($0) } : []
-        for p in tips {
-            if zones.holds(.left, at: p) { input.holdLeft = true }
-            if zones.holds(.right, at: p) { input.holdRight = true }
-        }
-        for h in activeHands {
-            if zones.holds(.left, at: h.point, grip: h.holding) { input.holdLeft = true }
-            if zones.holds(.right, at: h.point, grip: h.holding) { input.holdRight = true }
+        let tips = ZoomTuning.eyeHoldUsesAllFingertips ? fingertips : []
+        for p in tips + activeHands.map(\.point) {
+            if map.holds(.leftEye, at: p) { input.holdLeft = true }
+            if map.holds(.rightEye, at: p) { input.holdRight = true }
         }
         return input
+    }
+
+    func lips(points: FacePoints, support: Bool) -> LipsZoomFlow.Input {
+        var input = LipsZoomFlow.Input()
+        input.handLost = scan.handsSeen == 0 && hands.isEmpty
+        input.handMovingAway = hands.contains { $0.speed >= maxIntentSpeed }
+        guard points.width > 0, let map = map(points, support: support) else { return input }
+
+        for h in hands where (h.hasPose || h.holding) && h.speed < maxIntentSpeed && zone(of: h, map) == .lips {
+            if h.pose2 { input.pose2Ready = true }
+            if h.pose3 { input.pose3Ready = true }
+            if h.holding { input.gripReady = true }
+        }
+        for h in pointingHands where map.zone(of: h.point, locked: locked) == .lips {
+            input.pointReady = true
+        }
+        let tips = fingertips + activeHands.map(\.point)
+        input.fingerNear = tips.contains { map.holds(.lips, at: $0) }
+        return input
+    }
+
+    func nose(points: FacePoints, support: Bool) -> NoseZoomFlow.Input {
+        var input = NoseZoomFlow.Input()
+        input.handLost = scan.handsSeen == 0 && hands.isEmpty
+        input.handMovingAway = hands.contains { $0.speed >= maxIntentSpeed }
+        guard points.width > 0, let map = map(points, support: support) else { return input }
+
+        for h in hands where (h.hasPose || h.holding) && h.speed < maxIntentSpeed && zone(of: h, map) == .nose {
+            if h.pose2 { input.pose2Ready = true }
+            if h.pose3 { input.pose3Ready = true }
+            if h.holding { input.gripReady = true }
+        }
+        for h in pointingHands where map.zone(of: h.point, locked: locked) == .nose {
+            input.pointReady = true
+        }
+        let tips = fingertips + activeHands.flatMap(\.checkPoints)
+        input.fingerNear = tips.contains { map.holds(.nose, at: $0) }
+        return input
+    }
+
+    private var fingertips: [CGPoint] { scan.fingertips.map { converter.toView($0) } }
+
+    private var pointingHands: [TrackedHand] {
+        guard ZoomTuning.fingerPointEnabled else { return [] }
+        return hands.filter { $0.isPoint && $0.speed < maxIntentSpeed }
+    }
+
+    private func map(_ points: FacePoints, support: Bool) -> FaceZoneMap? {
+        let reach = min(CGFloat(handProfile.enterDistance / ZoomTuning.handEnterDistance), ZoomTuning.maxTriggerScale)
+        var lipsReach = CGFloat(handProfile.enterDistance)
+        if support { lipsReach *= ZoomTuning.pitchLipsReach }
+        return FaceZoneMap(points: points, reach: reach, lipsReach: lipsReach)
+    }
+
+    private func zone(of hand: TrackedHand, _ map: FaceZoneMap) -> FaceZone? {
+        if let zone = map.zone(of: hand.point, locked: locked) { return zone }
+        var counts: [FaceZone: Int] = [:]
+        for p in hand.checkPoints {
+            if let zone = map.zone(of: p, locked: locked) { counts[zone, default: 0] += 1 }
+        }
+        return FaceZone.allCases.reduce(FaceZone?.none) { best, zone in
+            guard let count = counts[zone] else { return best }
+            guard let best, let bestCount = counts[best] else { return zone }
+            return count > bestCount ? zone : best
+        }
     }
 }

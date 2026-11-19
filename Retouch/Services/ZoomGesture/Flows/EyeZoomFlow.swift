@@ -19,6 +19,7 @@ nonisolated struct EyeZoomFlow {
         var toolHoldLeft = false
         var toolHoldRight = false
         var enterDwellFactor: TimeInterval = 1
+        var enterFloor: TimeInterval = 0
         var handLost = false
         var handMovingAway = false
     }
@@ -109,7 +110,8 @@ nonisolated struct EyeZoomFlow {
             let pointNeed = pointDwell * input.enterDwellFactor
             let gripNeed = gripDwell * input.enterDwellFactor
             func due(_ since: Date?, _ need: TimeInterval, _ side: EyeSide) -> Date? {
-                guard let s = since, now.timeIntervalSince(s) >= dwell(need, for: side, now: now) else { return nil }
+                let required = max(dwell(need, for: side, now: now), input.enterFloor)
+                guard let s = since, now.timeIntervalSince(s) >= required else { return nil }
                 return s
             }
             let dueL = [due(leftSince, need, .left), due(gripLeftSince, gripNeed, .left),
@@ -184,9 +186,12 @@ nonisolated struct EyeZoomFlow {
                 lostOK = false
             }
 
-            let holding = handHold || softOK || unknownOK || lostOK
+            let switching = switchPending != nil
+            let holding = handHold || softOK || unknownOK || lostOK || switching
             if handHold {
                 holdReason = "jari"
+            } else if switching {
+                holdReason = "pindah"
             } else if softOK {
                 holdReason = activity == .turning ? "menoleh" : "mata aktif"
             } else if unknownOK {

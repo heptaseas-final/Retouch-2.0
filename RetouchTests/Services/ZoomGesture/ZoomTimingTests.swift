@@ -28,14 +28,16 @@ struct ZoomTimingTests {
         return flow
     }
 
-    @Test func eyeToEyeSwitchesWithinHalfSecond() {
+    @Test func eyeToEyeSwitchWaitsForZoneLock() {
         var flow = leftActive()
         var input = tool(right: true)
         input.holdLeft = true
         flow.update(input, now: at(1))
+        flow.update(input, now: at(1 + ZoomTuning.toolSwitchDwell - 0.01))
+        #expect(flow.target == .leftEye)
         flow.update(input, now: at(1 + ZoomTuning.toolSwitchDwell + 0.01))
         #expect(flow.target == .rightEye)
-        #expect(ZoomTuning.toolSwitchDwell <= 0.2)
+        #expect(ZoomTuning.toolSwitchDwell == ZoomTuning.zoneSwitchDwell)
     }
 
     @Test func fingerSwitchUsesSwitchDwell() {
@@ -48,12 +50,15 @@ struct ZoomTimingTests {
         #expect(flow.target == .rightEye)
     }
 
-    @Test func eyeToMouthEntersWithinHalfSecond() {
+    @Test func eyeToMouthWaitsForZoneLock() {
         var flow = LipsZoomFlow()
         var input = LipsZoomFlow.Input()
         input.toolReady = true
+        input.enterFloor = ZoomTuning.zoneSwitchDwell
         flow.update(input, now: at(0))
-        flow.update(input, now: at(0.4))
+        flow.update(input, now: at(ZoomTuning.zoneSwitchDwell - 0.01))
+        #expect(flow.phase == .entering)
+        flow.update(input, now: at(ZoomTuning.zoneSwitchDwell + 0.01))
         #expect(flow.phase == .active)
     }
 

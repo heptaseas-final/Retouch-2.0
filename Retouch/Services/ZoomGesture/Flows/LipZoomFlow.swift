@@ -12,6 +12,7 @@ nonisolated struct LipsZoomFlow {
         var toolReady = false
         var fingerNear = false
         var lipsMoving = false
+        var enterFloor: TimeInterval = 0
         var handLost = false
         var handMovingAway = false
     }
@@ -75,7 +76,9 @@ nonisolated struct LipsZoomFlow {
             toolSince = Self.track(input.toolReady, since: toolSince, seen: &toolSeen, now: now, grace: poseGrace)
 
             let quick = lastExit.map { now.timeIntervalSince($0) <= reentryWindow } ?? false
-            func need(_ dwell: TimeInterval) -> TimeInterval { quick ? min(dwell, reentryDwell) : dwell }
+            func need(_ dwell: TimeInterval) -> TimeInterval {
+                max(quick ? min(dwell, reentryDwell) : dwell, input.enterFloor)
+            }
             var due: [(Trigger, Date)] = []
             if let s = pose2Since, now.timeIntervalSince(s) >= need(enterDwell) { due.append((.twoFinger, s)) }
             if let s = pose3Since, now.timeIntervalSince(s) >= need(enterDwell) { due.append((.threeFinger, s)) }

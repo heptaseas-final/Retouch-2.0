@@ -63,10 +63,10 @@ nonisolated extension ZoomService {
             let support = ZoomTuning.pitchEnabled && ZoomTuning.pitchHandSupportEnabled && pitchRecognizer.isLifted
             let readiness = ZoomReadiness(hands: hands, scan: lastScan, converter: converter,
                                           handProfile: handProfile, maxIntentSpeed: handBank.maxIntentSpeed,
-                                          noseActive: noseFlow.isActive)
+                                          locked: FaceZone(target: resolver.target))
             eyeInput = readiness.eye(points: points, support: support)
             lipsInput = readiness.lips(points: points, support: support)
-            noseInput = readiness.nose(points: points)
+            noseInput = readiness.nose(points: points, support: support)
         }
 
         if let faceSnap {
@@ -87,19 +87,15 @@ nonisolated extension ZoomService {
         trackMotion(face: faceSnap != nil ? lastFace : nil, hand: lastHand, at: now,
                     faceChecked: faceSnap != nil)
 
-        let lipsShowing = lipFlow.phase == .active
-        let eyeShowing = eyeFlow.phase == .active
         var eyeIn = eyeInput
         eyeIn.activityLeft = eyeActivity.leftState
         eyeIn.activityRight = eyeActivity.rightState
         eyeIn = ZoomReadiness.applying(toolReading, to: eyeIn)
-        if lipsShowing { eyeIn.enterDwellFactor *= Self.preemptDwellFactor }
         var lipIn = lipsInput
         lipIn.lipsMoving = lipMotion.isMoving
         lipIn = ZoomReadiness.applying(toolReading, to: lipIn)
-        var noseIn = noseInput
-        noseIn = ZoomReadiness.applying(toolReading, to: noseIn)
-        if eyeShowing || lipsShowing { noseIn.enterDwellFactor = Self.preemptDwellFactor }
+        var noseIn = ZoomReadiness.applying(toolReading, to: noseInput)
+        applyZoneLock(eye: &eyeIn, lips: &lipIn, nose: &noseIn)
 
         applyStraightRelease(eye: &eyeIn, lips: &lipIn, nose: &noseIn)
         eyeFlow.update(eyeIn, now: now)
@@ -150,12 +146,16 @@ nonisolated extension ZoomService {
                           isHolding: $0.holding, isPoint: $0.isPoint)
         }
         let debugTips = lastScan.fingertips.map { converter.toView($0) }
+        let debugTools = lastTools.map { ToolTipLocator.tip(of: $0.rect, face: points) }
 #else
         let debugHands: [ZoomDebugHand] = []
         let debugTips: [CGPoint] = []
+        let debugTools: [CGPoint] = []
 #endif
         onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
-                                 isFaceVisible: lastFace != nil, hands: debugHands, fingertips: debugTips))
+                                 isFaceVisible: lastFace != nil, hands: debugHands, fingertips: debugTips,
+                                 toolTips: debugTools, lockedZone: FaceZone(target: target),
+                                 zoneReach: zoneReach, lipsReach: zoneLipsReach))
     }
 
     func trackMotion(face: FaceObservation?, hand: CGPoint?, at now: Date, faceChecked: Bool = true) {

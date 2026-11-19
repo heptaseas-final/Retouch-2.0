@@ -13,7 +13,7 @@ nonisolated struct NoseZoomFlow {
         var fingerNear = false
         var handLost = false
         var handMovingAway = false
-        var enterDwellFactor: TimeInterval = 1
+        var enterFloor: TimeInterval = 0
     }
 
     var enterDwell = ZoomTuning.noseEnterDwell
@@ -73,18 +73,15 @@ nonisolated struct NoseZoomFlow {
             toolSince = Self.track(input.toolReady, since: toolSince, seen: &toolSeen, now: now, grace: poseGrace)
 
             let quick = lastExit.map { now.timeIntervalSince($0) <= reentryWindow } ?? false
-            func need(_ dwell: TimeInterval) -> TimeInterval { quick ? min(dwell, reentryDwell) : dwell }
+            func need(_ dwell: TimeInterval) -> TimeInterval {
+                max(quick ? min(dwell, reentryDwell) : dwell, input.enterFloor)
+            }
             var due: [(Trigger, Date)] = []
             if let s = pose2Since, now.timeIntervalSince(s) >= need(enterDwell) { due.append((.twoFinger, s)) }
             if let s = pose3Since, now.timeIntervalSince(s) >= need(enterDwell) { due.append((.threeFinger, s)) }
             if let s = gripSince, now.timeIntervalSince(s) >= need(gripDwell) { due.append((.grip, s)) }
             if let s = pointSince, now.timeIntervalSince(s) >= need(pointDwell) { due.append((.point, s)) }
             if let s = toolSince, now.timeIntervalSince(s) >= need(toolDwell) { due.append((.tool, s)) }
-            if let s = pose2Since, now.timeIntervalSince(s) >= enterDwell * input.enterDwellFactor { due.append((.twoFinger, s)) }
-            if let s = pose3Since, now.timeIntervalSince(s) >= enterDwell * input.enterDwellFactor { due.append((.threeFinger, s)) }
-            if let s = gripSince, now.timeIntervalSince(s) >= gripDwell * input.enterDwellFactor { due.append((.grip, s)) }
-            if let s = pointSince, now.timeIntervalSince(s) >= pointDwell * input.enterDwellFactor { due.append((.point, s)) }
-            if let s = toolSince, now.timeIntervalSince(s) >= toolDwell * input.enterDwellFactor { due.append((.tool, s)) }
             if let first = due.min(by: { $0.1 < $1.1 }) {
                 trigger = first.0
                 clearEntryTimers()

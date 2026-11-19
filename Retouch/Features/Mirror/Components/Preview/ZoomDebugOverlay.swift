@@ -3,14 +3,16 @@ import SwiftUI
 struct ZoomDebugOverlay: View {
     let store: ZoomStore
     var isEnabled = true
+    @State private var smoother = DebugFaceSmoother()
 
     var body: some View {
         if isEnabled {
-            TimelineView(.animation(minimumInterval: DebugStyle.refreshInterval)) { _ in
+            TimelineView(.animation(minimumInterval: DebugStyle.refreshInterval)) { timeline in
                 let tracking = store.tracking
                 let zoom = store.zoomState
+                let face = smoother.follow(tracking.face, now: timeline.date)
                 Canvas { context, size in
-                    paint(&context, size: size, tracking: tracking, zoom: zoom)
+                    paint(&context, size: size, tracking: tracking, face: face, zoom: zoom)
                 }
             }
             .ignoresSafeArea()
@@ -22,46 +24,66 @@ struct ZoomDebugOverlay: View {
 
 private enum DebugStyle {
     static let refreshInterval = 1.0 / 30
-    static let lineWidth: CGFloat = 1.5
-    static let dash: [CGFloat] = [6, 4]
-    static let ovalSteps = 36
-    static let lineSpan: CGFloat = 1.4
-    static let gapTop: CGFloat = 0.8
-    static let lipsLineFallbackRatio: CGFloat = 0.5
-    static let columnBottomFallback: CGFloat = 2
+    static let followTau = 0.08
+    static let maxStep = 0.25
+    static let cell: CGFloat = 6
+    static let spanX: CGFloat = 0.8
+    static let spanUp: CGFloat = 0.7
+    static let spanDown: CGFloat = 1.0
+    static let fill = 0.22
+    static let lockedFill = 0.4
+    static let anchorRadius: CGFloat = 2
     static let tipRadius: CGFloat = 3
     static let checkRadius: CGFloat = 4
     static let handRadius: CGFloat = 8
+    static let toolRadius: CGFloat = 7
     static let labelOffset: CGFloat = 16
     static let eye = Color.cyan
-    static let grip = Color.mint
-    static let hold = Color.yellow
-    static let lips = Color.pink
     static let nose = Color.orange
-    static let gap = Color.gray
+    static let lips = Color.pink
+    static let anchor = Color.white.opacity(0.8)
     static let tip = Color.white.opacity(0.7)
+    static let tool = Color.yellow
     static let handIdle = Color.white
     static let handPose = Color.green
     static let handGrip = Color.mint
     static let handPoint = Color.red
 }
 
-private struct DebugAxes {
-    let zones: EyeZones
-    let mid: CGPoint
-    let u: CGPoint
-    let v: CGPoint
-    let d: CGFloat
-    let lineT: CGFloat?
-}
+private final class DebugFaceSmoother {
+    private var face = FacePoints()
+    private var time: Date?
 
-private struct DebugScene {
-    let transform: CGAffineTransform
-    let face: FacePoints
+    func follow(_ target: FacePoints, now: Date) -> FacePoints {
+        guard let last = time, face.width > 0, target.width > 0 else {
+            face = target
+            time = now
+            return face
+        }
+        time = now
+        let dt = min(max(now.timeIntervalSince(last), 0), DebugStyle.maxStep)
+        let k = CGFloat(1 - exp(-dt / DebugStyle.followTau))
+        face.leftEye = blend(face.leftEye, target.leftEye, k)
+        face.rightEye = blend(face.rightEye, target.rightEye, k)
+        face.nose = blend(face.nose, target.nose, k)
+        face.lips = blend(face.lips, target.lips, k)
+        face.lipsTop = blend(face.lipsTop, target.lipsTop, k)
+        face.center = blend(face.center, target.center, k)
+        face.width += (target.width - face.width) * k
+        face.scale += (target.scale - face.scale) * k
+        return face
+    }
+
+    private func blend(_ old: CGPoint?, _ new: CGPoint?, _ k: CGFloat) -> CGPoint? {
+        guard let new else { return nil }
+        guard let old else { return new }
+        return CGPoint(x: old.x + (new.x - old.x) * k, y: old.y + (new.y - old.y) * k)
+    }
 }
 
 private extension ZoomDebugOverlay {
-    func paint(_ context: inout GraphicsContext, size: CGSize, tracking: ZoomTracking, zoom: ZoomState) {
+    func paint(_ context: inout GraphicsContext, size: CGSize, tracking: ZoomTracking,
+               face: FacePoints, zoom: ZoomState) {
         let view = tracking.viewSize
         guard view.width > 0, view.height > 0 else { return }
         context.scaleBy(x: size.width / view.width, y: size.height / view.height)
@@ -70,152 +92,83 @@ private extension ZoomDebugOverlay {
         let transform = CGAffineTransform(translationX: center.x + zoom.offset.width, y: center.y + zoom.offset.height)
             .scaledBy(x: scale, y: scale)
             .translatedBy(x: -center.x, y: -center.y)
-        let scene = DebugScene(transform: transform, face: tracking.face)
-        let axes = axes(for: tracking.face)
-        if let axes {
-            drawEyes(&context, scene, axes)
-            drawLips(&context, scene, axes)
-            drawNose(&context, scene, axes)
-            drawGaps(&context, scene, axes)
+        let map = FaceZoneMap(points: face, reach: tracking.zoneReach, lipsReach: tracking.lipsReach)
+        if let map {
+            drawZones(&context, view: view, transform: transform, map: map, face: face,
+                      locked: tracking.lockedZone)
         }
-        drawHands(&context, scene, axes, tracking)
+        drawAnchors(&context, transform, face)
+        drawHands(&context, transform, map, tracking)
+        drawTools(&context, transform, map, tracking)
     }
 
-    func axes(for p: FacePoints) -> DebugAxes? {
-        guard let l = p.leftEye, let r = p.rightEye, let zones = EyeZones(points: p) else { return nil }
-        let mid = CGPoint(x: (l.x + r.x) / 2, y: (l.y + r.y) / 2)
-        var line: CGFloat?
-        if let top = p.lipsTop {
-            line = zones.t(top) + ZoomTuning.lipsLineOffset
-        } else if let lips = p.lips {
-            line = zones.t(lips) * DebugStyle.lipsLineFallbackRatio
+    func drawZones(_ context: inout GraphicsContext, view: CGSize, transform: CGAffineTransform,
+                   map: FaceZoneMap, face: FacePoints, locked: FaceZone?) {
+        guard let anchor = face.center ?? face.nose, face.width > 0 else { return }
+        let w = face.width
+        let source = CGRect(x: anchor.x - w * DebugStyle.spanX, y: anchor.y - w * DebugStyle.spanUp,
+                            width: w * DebugStyle.spanX * 2, height: w * (DebugStyle.spanUp + DebugStyle.spanDown))
+        let area = source.applying(transform).intersection(CGRect(origin: .zero, size: view))
+        guard !area.isNull, !area.isEmpty else { return }
+        let inverse = transform.inverted()
+        let step = DebugStyle.cell
+        var paths: [FaceZone: Path] = [:]
+        var y = area.minY
+        while y < area.maxY {
+            var run: (zone: FaceZone, start: CGFloat)?
+            var x = area.minX
+            while x < area.maxX {
+                let p = CGPoint(x: x + step / 2, y: y + step / 2).applying(inverse)
+                let zone = map.zone(of: p, locked: locked)
+                if run?.zone != zone {
+                    if let run { paths[run.zone, default: Path()].addRect(CGRect(x: run.start, y: y, width: x - run.start, height: step)) }
+                    run = zone.map { (zone: $0, start: x) }
+                }
+                x += step
+            }
+            if let run { paths[run.zone, default: Path()].addRect(CGRect(x: run.start, y: y, width: x - run.start, height: step)) }
+            y += step
         }
-        let lineT = line.flatMap { $0 > 0 ? $0 : nil }
-        return DebugAxes(zones: zones, mid: mid, u: zones.axisU, v: zones.axisV, d: p.scale, lineT: lineT)
-    }
-
-    func place(_ a: DebugAxes, _ s: CGFloat, _ t: CGFloat) -> CGPoint {
-        CGPoint(x: a.mid.x + (a.u.x * s + a.v.x * t) * a.d, y: a.mid.y + (a.u.y * s + a.v.y * t) * a.d)
-    }
-
-    func oval(at c: CGPoint, _ a: DebugAxes, rx: CGFloat, ry: CGFloat,
-              outward: CGFloat = 0, outer: CGFloat = 1, inner: CGFloat = 1,
-              up: CGFloat = 1, down: CGFloat = 1) -> Path {
-        var path = Path()
-        for i in 0...DebugStyle.ovalSteps {
-            let angle = Double(i) / Double(DebugStyle.ovalSteps) * 2 * .pi
-            let cosA = CGFloat(cos(angle)), sinA = CGFloat(sin(angle))
-            let gain = outward == 0 ? 1 : (cosA * outward > 0 ? outer : inner)
-            let gainY = sinA > 0 ? down : up
-            let x = cosA * rx * gain, y = sinA * ry * gainY
-            let point = CGPoint(x: c.x + a.u.x * x + a.v.x * y, y: c.y + a.u.y * x + a.v.y * y)
-            if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
-        }
-        path.closeSubpath()
-        return path
-    }
-
-    func segment(_ from: CGPoint, _ to: CGPoint) -> Path {
-        var path = Path()
-        path.move(to: from)
-        path.addLine(to: to)
-        return path
-    }
-
-    func stroke(_ context: inout GraphicsContext, _ scene: DebugScene, _ path: Path, _ color: Color,
-                dashed: Bool = false) {
-        let style = StrokeStyle(lineWidth: DebugStyle.lineWidth, dash: dashed ? DebugStyle.dash : [])
-        context.stroke(path.applying(scene.transform), with: .color(color), style: style)
-    }
-
-    func drawEyes(_ context: inout GraphicsContext, _ scene: DebugScene, _ a: DebugAxes) {
-        let rx = ZoomTuning.eyeTriggerRadiusX * a.d, ry = ZoomTuning.eyeTriggerRadiusY * a.d
-        let outer = ZoomTuning.eyeShapeOuter, inner = ZoomTuning.eyeShapeInner
-        let up = ZoomTuning.eyeShapeUp, down = ZoomTuning.eyeShapeDown
-        let sides: [(CGPoint?, CGFloat)] = [(scene.face.leftEye, -1), (scene.face.rightEye, 1)]
-        for (eye, outward) in sides {
-            guard let eye else { continue }
-            stroke(&context, scene,
-                   oval(at: eye, a, rx: rx, ry: ry, outward: outward, outer: outer, inner: inner, up: up, down: down),
-                   DebugStyle.eye)
-            stroke(&context, scene,
-                   oval(at: eye, a, rx: rx, ry: ry * ZoomTuning.eyeGripScaleY, outward: outward,
-                        outer: outer * ZoomTuning.eyeGripScaleOuter, inner: inner * ZoomTuning.eyeGripScaleInner,
-                        up: up, down: down),
-                   DebugStyle.grip)
-            stroke(&context, scene,
-                   oval(at: eye, a, rx: rx * ZoomTuning.eyeHoldScale, ry: ry * ZoomTuning.eyeHoldScale,
-                        outward: outward, outer: outer, inner: inner, up: up, down: down),
-                   DebugStyle.hold, dashed: true)
+        for (zone, path) in paths {
+            let opacity = zone == locked ? DebugStyle.lockedFill : DebugStyle.fill
+            context.fill(path, with: .color(color(of: zone).opacity(opacity)))
         }
     }
 
-    func drawLips(_ context: inout GraphicsContext, _ scene: DebugScene, _ a: DebugAxes) {
-        let p = scene.face
-        if let lips = p.lips, p.width > 0 {
-            let limit = CGFloat(ZoomTuning.handEnterDistance)
-            let rx = limit * ZoomTuning.lipsTriggerStretchX * p.width
-            let ry = limit * ZoomTuning.lipsTriggerStretchY * p.width
-            stroke(&context, scene, oval(at: lips, a, rx: rx, ry: ry), DebugStyle.lips)
-            stroke(&context, scene,
-                   oval(at: lips, a, rx: rx * ZoomTuning.lipsHoldScale, ry: ry * ZoomTuning.lipsHoldScale),
-                   DebugStyle.lips, dashed: true)
-        }
-        guard let line = a.lineT else { return }
-        let span = DebugStyle.lineSpan
-        stroke(&context, scene, segment(place(a, -span, line), place(a, span, line)), DebugStyle.lips)
-    }
-
-    func drawNose(_ context: inout GraphicsContext, _ scene: DebugScene, _ a: DebugAxes) {
-        guard let nose = scene.face.nose else { return }
-        let center = a.zones.s(nose)
-        let top = ZoomTuning.noseColumnTop
-        let line = a.lineT ?? DebugStyle.columnBottomFallback
-        let halfGap = a.lineT == nil ? 0 : ZoomTuning.zoneGap / 2
-        let columns: [(CGFloat, CGFloat, Bool)] = [
-            (1, line - halfGap, false),
-            (ZoomTuning.noseHoldScale, line, true)
-        ]
-        for (gain, end, dashed) in columns where end > top {
-            let half = ZoomTuning.noseColumnHalfWidth * gain
-            var path = Path()
-            path.move(to: place(a, center - half, top))
-            path.addLine(to: place(a, center + half, top))
-            path.addLine(to: place(a, center + half, end))
-            path.addLine(to: place(a, center - half, end))
-            path.closeSubpath()
-            stroke(&context, scene, path, DebugStyle.nose, dashed: dashed)
+    func drawAnchors(_ context: inout GraphicsContext, _ transform: CGAffineTransform, _ face: FacePoints) {
+        for p in [face.leftEye, face.rightEye, face.nose, face.lipsTop, face.lips].compactMap({ $0 }) {
+            dot(&context, transform, p, radius: DebugStyle.anchorRadius, color: DebugStyle.anchor)
         }
     }
 
-    func drawGaps(_ context: inout GraphicsContext, _ scene: DebugScene, _ a: DebugAxes) {
-        let half = ZoomTuning.zoneGap / 2
-        let bottom = a.lineT ?? DebugStyle.columnBottomFallback
-        for edge in [-half, half] {
-            stroke(&context, scene,
-                   segment(place(a, edge, -DebugStyle.gapTop), place(a, edge, bottom)),
-                   DebugStyle.gap, dashed: true)
-        }
-        guard let line = a.lineT else { return }
-        let span = DebugStyle.lineSpan
-        for edge in [line - half, line + half] {
-            stroke(&context, scene, segment(place(a, -span, edge), place(a, span, edge)),
-                   DebugStyle.gap, dashed: true)
-        }
-    }
-
-    func drawHands(_ context: inout GraphicsContext, _ scene: DebugScene, _ a: DebugAxes?,
+    func drawHands(_ context: inout GraphicsContext, _ transform: CGAffineTransform, _ map: FaceZoneMap?,
                    _ tracking: ZoomTracking) {
         for tip in tracking.fingertips {
-            dot(&context, scene, tip, radius: DebugStyle.tipRadius, color: DebugStyle.tip)
+            dot(&context, transform, tip, radius: DebugStyle.tipRadius, color: DebugStyle.tip)
         }
         for hand in tracking.hands {
             let color = handColor(hand)
             for p in hand.checkPoints {
-                dot(&context, scene, p, radius: DebugStyle.checkRadius, color: color)
+                dot(&context, transform, p, radius: DebugStyle.checkRadius, color: color)
             }
-            dot(&context, scene, hand.point, radius: DebugStyle.handRadius, color: color)
-            label(&context, scene, hand.point, zoneName(of: hand.point, a, tracking.face), color)
+            dot(&context, transform, hand.point, radius: DebugStyle.handRadius, color: color)
+            label(&context, transform, hand.point, zoneName(hand.point, map, tracking.lockedZone), color)
+        }
+    }
+
+    func drawTools(_ context: inout GraphicsContext, _ transform: CGAffineTransform, _ map: FaceZoneMap?,
+                   _ tracking: ZoomTracking) {
+        for tip in tracking.toolTips {
+            dot(&context, transform, tip, radius: DebugStyle.toolRadius, color: DebugStyle.tool)
+            label(&context, transform, tip, zoneName(tip, map, tracking.lockedZone), DebugStyle.tool)
+        }
+    }
+
+    func color(of zone: FaceZone) -> Color {
+        switch zone {
+        case .leftEye, .rightEye: DebugStyle.eye
+        case .nose: DebugStyle.nose
+        case .lips: DebugStyle.lips
         }
     }
 
@@ -226,36 +179,27 @@ private extension ZoomDebugOverlay {
         return DebugStyle.handIdle
     }
 
-    func dot(_ context: inout GraphicsContext, _ scene: DebugScene, _ p: CGPoint, radius: CGFloat, color: Color) {
-        let c = p.applying(scene.transform)
+    func zoneName(_ p: CGPoint, _ map: FaceZoneMap?, _ locked: FaceZone?) -> String {
+        switch map?.zone(of: p, locked: locked) {
+        case .leftEye: "L"
+        case .rightEye: "R"
+        case .nose: "nose"
+        case .lips: "lips"
+        case nil: "-"
+        }
+    }
+
+    func dot(_ context: inout GraphicsContext, _ transform: CGAffineTransform, _ p: CGPoint,
+             radius: CGFloat, color: Color) {
+        let c = p.applying(transform)
         let rect = CGRect(x: c.x - radius, y: c.y - radius, width: radius * 2, height: radius * 2)
         context.fill(Path(ellipseIn: rect), with: .color(color))
     }
 
-    func label(_ context: inout GraphicsContext, _ scene: DebugScene, _ p: CGPoint, _ text: String, _ color: Color) {
-        let c = p.applying(scene.transform)
-        context.draw(Text(text).font(.caption2.bold()).foregroundColor(color),
+    func label(_ context: inout GraphicsContext, _ transform: CGAffineTransform, _ p: CGPoint,
+               _ text: String, _ color: Color) {
+        let c = p.applying(transform)
+        context.draw(Text(text).font(.caption2.bold()).foregroundStyle(color),
                      at: CGPoint(x: c.x, y: c.y - DebugStyle.labelOffset))
-    }
-
-    func zoneName(of p: CGPoint, _ a: DebugAxes?, _ face: FacePoints) -> String {
-        guard let a else { return "-" }
-        if a.zones.isLipsSide(p) { return inLipsOval(p, a, face) ? "lips" : "gap" }
-        if let side = a.zones.gripTriggerEye(at: p) ?? a.zones.triggerEye(at: p) {
-            return side == .left ? "L" : "R"
-        }
-        if let nose = NoseZones(points: face), nose.inTrigger(p) { return "nose" }
-        return "gap"
-    }
-
-    func inLipsOval(_ p: CGPoint, _ a: DebugAxes, _ face: FacePoints) -> Bool {
-        guard let lips = face.lips, face.width > 0 else { return false }
-        let limit = CGFloat(ZoomTuning.handEnterDistance)
-        let rx = limit * ZoomTuning.lipsTriggerStretchX
-        let ry = limit * ZoomTuning.lipsTriggerStretchY
-        let dx = p.x - lips.x, dy = p.y - lips.y
-        let x = (dx * a.u.x + dy * a.u.y) / face.width
-        let y = (dx * a.v.x + dy * a.v.y) / face.width
-        return hypot(x / rx, y / ry) < 1
     }
 }

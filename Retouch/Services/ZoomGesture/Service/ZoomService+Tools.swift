@@ -35,7 +35,7 @@ nonisolated extension ZoomService {
         toolReading = ToolReadingGate(points: points, tools: lastTools, detectedAt: lastToolTime,
                                       enterDistance: handProfile.enterDistance,
                                       maxIntentSpeed: handBank.maxIntentSpeed,
-                                      noseActive: noseFlow.isActive, support: support).read(now: now)
+                                      locked: FaceZone(target: resolver.target), support: support).read(now: now)
         if toolReading.isInZone {
             pacer.noteMotion(at: now)
             dropHandState()

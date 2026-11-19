@@ -23,8 +23,6 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     }
     var onTracking: (@Sendable (ZoomTracking) -> Void)?
 
-    static let preemptDwellFactor: TimeInterval = 0.4
-
     let animator = ZoomAnimator()
     let faceDetector = FaceLandmarkDetector()
     let handDetector = HandPointDetector()

@@ -105,9 +105,6 @@ nonisolated struct ZoomTuning {
     static let gripEnterDwell: TimeInterval = 0.35
     static let eyeLipsGripDwell: TimeInterval = 0.35
 
-    static let eyeGripScaleOuter: CGFloat = 1.35
-    static let eyeGripScaleInner: CGFloat = 1.0
-    static let eyeGripScaleY: CGFloat = 1.5
 
     static let handMaxGap: TimeInterval = 0.5
     static let maxStep: TimeInterval = 0.35
@@ -123,10 +120,12 @@ nonisolated struct ZoomTuning {
     static let lipMotionLostGrace: TimeInterval = 0.5
     static let lipsTriggerStretchX: CGFloat = 1.1
     static let lipsTriggerStretchY: CGFloat = 0.7
-    static let lipsHoldScale: CGFloat = 1.1
 
     static let lipsLineOffset: CGFloat = 0
-    static let zoneGap: CGFloat = 0.12
+    static let lipsLineFallback: CGFloat = 0.5
+    static let zoneLockScale: CGFloat = 1.15
+    static let zoneLockMargin: CGFloat = 0.15
+    static let zoneSwitchDwell: TimeInterval = 0.75
     static let eyeShapeInner: CGFloat = 0.8
     static let eyeShapeOuter: CGFloat = 1.1
     static let eyeShapeUp: CGFloat = 0.9
@@ -135,9 +134,8 @@ nonisolated struct ZoomTuning {
     static let eyeTriggerRadiusX: CGFloat = 0.5
     static let eyeTriggerRadiusY: CGFloat = 0.4
     static let eyeZoneOffsetX: CGFloat = 0.12
-    static let eyeHoldScale: CGFloat = 1.1
     static let eyeFlowEnterDwell: TimeInterval = 0.35
-    static let eyeFlowSwitchDwell: TimeInterval = 0.15
+    static let eyeFlowSwitchDwell: TimeInterval = zoneSwitchDwell
     static let eyeFlowReleaseDwell: TimeInterval = 0.4
     static let eyeActivityEnter = 0.15
     static let eyeActivityExit = 0.07
@@ -156,14 +154,13 @@ nonisolated struct ZoomTuning {
     static let noseReleaseDwell: TimeInterval = 0.4
     static let noseColumnHalfWidth: CGFloat = 0.3
     static let noseColumnTop: CGFloat = 0.25
-    static let noseHoldScale: CGFloat = 1.1
     static let maxTriggerScale: CGFloat = 1.1
     static let fingerPointEnabled = true
     static let toolEnterDwell: TimeInterval = 0.35
     static let fingerPointDwell: TimeInterval = 0.35
     static let nosePointDwell: TimeInterval = fingerPointDwell
     static let noseLostHoldCap: TimeInterval = 0.5
-    static let toolSwitchDwell: TimeInterval = 0.15
+    static let toolSwitchDwell: TimeInterval = zoneSwitchDwell
     static let softHoldWindow: TimeInterval = 0.3
     static let fastReleaseDwell: TimeInterval = 0.15
     static let reentryWindow: TimeInterval = 1.5
