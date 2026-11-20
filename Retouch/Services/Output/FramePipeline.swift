@@ -6,10 +6,11 @@ import VideoToolbox
 final class FramePipeline {
     let renderer: MirrorRenderer
     let vision = FrameForwarder()
+    var onOutputFrame: ((CIImage, TimeInterval) -> Void)?
 
     private let lighting: LightingEngine
     private let enhancer: FrameEnhancer?
-    private let queue: MTLCommandQueue?
+    let queue: MTLCommandQueue?
     private let fallbackColorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
     private let visionScaler = VisionDownscaler(width: 1280)
     private let stabilizer = FusedStabilizer()
@@ -31,7 +32,11 @@ final class FramePipeline {
         guard renderer.isReady, let queue, let commandBuffer = queue.makeCommandBuffer() else { return }
         let zoom = renderer.zoom
         lighting.zoomScale = Float(zoom.scale)
-        parameters.addZoomDenoise(scale: Float(zoom.scale))
+        
+        if ProcessInfo.processInfo.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue {
+            parameters.addZoomDenoise(scale: Float(zoom.scale))
+        }
+        
         let source = CIImage(cvPixelBuffer: frame.pixelBuffer)
         let colorSpace = source.colorSpace ?? fallbackColorSpace
         let enhanced = parameters.needsProcessing
@@ -51,6 +56,7 @@ final class FramePipeline {
         let stabilize = ZoomTuning.trackEnabled && zoom.scale > 1.001
         let shake = stabilizer.update(scaled, time: frame.time, scale: Double(zoom.scale), active: stabilize)
         renderer.render(output, zoom: zoom, stabilization: shake, commandBuffer: commandBuffer)
+        onOutputFrame?(output, frame.time)
     }
 }
 

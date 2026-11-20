@@ -5,3 +5,4 @@ DerivedData/
 build/
 *.xcodeproj/
 .a11y-audit/
+Config/Secrets.xcconfig

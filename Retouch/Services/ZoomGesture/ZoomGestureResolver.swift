@@ -4,7 +4,7 @@ nonisolated struct ZoomGestureResolver {
     var exitHold: TimeInterval = ZoomTuning.exitHold
     var switchDwell: TimeInterval = ZoomTuning.resolverSwitchDwell
     var handCooldown: TimeInterval = 0.5
-    var exitCooldown: TimeInterval = 1.0
+    var exitCooldown: TimeInterval = ZoomTuning.resolverExitCooldown
     var coverHold: TimeInterval = ZoomTuning.coverHold
 
     private(set) var target: ZoomTarget = .fullFace
@@ -17,8 +17,7 @@ nonisolated struct ZoomGestureResolver {
 
     init(exitHold: TimeInterval = ZoomTuning.exitHold) { self.exitHold = exitHold }
 
-    mutating func resolve(hand: ZoomTarget?, lips: Bool, nose: Bool = false, head: ZoomTarget?, covering: Bool, headStraight: Bool, headQuickRelease: Bool = false, now: Date) -> ZoomTarget
-    {
+    mutating func resolve(hand: ZoomTarget?, lips: Bool, nose: Bool = false, head: ZoomTarget?, covering: Bool, headStraight: Bool, headQuickRelease: Bool = false, now: Date) -> ZoomTarget {
         let handCandidate: ZoomTarget? = nose ? .nose : (hand ?? (lips ? .lips : nil))
         if handCandidate != nil { lastHandSeen = now }
         let handDriven = Self.isHandTarget(target)
@@ -94,9 +93,7 @@ nonisolated struct ZoomGestureResolver {
     }
 
     private static func isEye(_ t: ZoomTarget) -> Bool { t == .leftEye || t == .rightEye }
-    private static func isHandTarget(_ t: ZoomTarget) -> Bool { isEye(t) || t == .lips || t == .nose }
-
-    func idleTime(now: Date) -> TimeInterval {
-        target == .fullFace ? 0 : now.timeIntervalSince(lastActive)
+    private static func isHandTarget(_ t: ZoomTarget) -> Bool {
+        isEye(t) || t == .lips || t == .nose || t == .cheek(.left) || t == .cheek(.right)
     }
 }

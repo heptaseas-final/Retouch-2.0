@@ -44,6 +44,7 @@ enum MirrorStatus: CaseIterable, Hashable {
         switch self {
         case .enoughLight: MirrorStatusConfig.enoughLightTime
         case .faceTooWide: MirrorStatusConfig.faceTooWideTime
+        case .notEnoughLight, .moveCloserInLowLight, .tooFar: MirrorStatusConfig.errorTime
         default: nil
         }
     }
@@ -62,6 +63,7 @@ enum MirrorStatusConfig {
     static let dwell: TimeInterval = 1.5
     static let enoughLightTime: TimeInterval = 2
     static let faceTooWideTime: TimeInterval = 3
+    static let errorTime: TimeInterval = 4.5
     static let lowLux = 300.0
     static let enoughLux = 330.0
     static let closeEnoughRatio = 0.66

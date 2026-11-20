@@ -48,7 +48,10 @@ final class LightingService: LightingServicing, CameraLifecycleListening {
             if rounded != appliedBrightness { appliedBrightness = rounded }
         }
         engine.onOutput = { [weak self] in self?.engineDidUpdate($0) }
-        engine.onCloseness = { [weak self] in self?.closeness = $0 }
+        engine.onCloseness = { [weak self] value in
+            guard let self, LightingTuning.closenessNeedsPublish(from: closeness, to: value) else { return }
+            closeness = value
+        }
     }
 
     var isAutoBrightness: Bool { manualBrightness == nil }
@@ -148,7 +151,7 @@ final class LightingService: LightingServicing, CameraLifecycleListening {
     private func applyBrightness() {
         guard isAppActive else { return }
         if let manualBrightness {
-            brightnessController.set(manualBrightness)
+            brightnessController.ramp(to: manualBrightness)
             let baseline = Double(brightnessController.baseline)
             let level = baseline >= 0.98
                 ? (manualBrightness >= 0.98 ? 1 : 0)
@@ -168,7 +171,7 @@ final class LightingService: LightingServicing, CameraLifecycleListening {
         let pre = Double(max(config.panelPreRampFraction, 0.01))
         let t = min(max(autoRingLight / pre, 0), 1)
         let target = baseline + (1 - baseline) * t * t * (3 - 2 * t)
-        brightnessController.ramp(to: CGFloat(min(target, max(baseline, brightnessCap))))
+        brightnessController.ramp(to: CGFloat(min(target, brightnessCap)))
     }
 
     private static func roundedPercent(_ value: CGFloat) -> Double {

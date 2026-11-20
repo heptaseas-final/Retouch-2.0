@@ -48,7 +48,7 @@ Retouch/
     Onboarding/        Views/ ViewModels/ Components/
   Services/
     Camera/ Lighting/ Output/
-    ZoomGesture/       Detection/ Recognition/ Flows/ Tracking/ Geometry/ Profiles/
+    ZoomGesture/       Detection/ Recognition/ Flows/ Tracking/ Geometry/ Profiles/ Service/
   Resources/
 RetouchTests/          mirrors Retouch/, plus Fakes/
 RetouchUITests/        launch and permission path only
@@ -128,7 +128,7 @@ Hotspots (everyone edits them, so edit minimally):
 | `App/AppContainer.swift` | Append-only: one line per service, one factory method per ViewModel. Never reorder. Ask who owns it |
 | `App/ContentView.swift` | Append-only: one route per feature |
 | `Features/Mirror/ViewModels/MirrorViewModel.swift` | Smallest diff. If it passes 300 lines, propose a split |
-| `Services/ZoomGesture/ZoomService.swift`, `ZoomService+*.swift` | Smallest diff. New behavior goes in its own file |
+| `Services/ZoomGesture/Service/ZoomService.swift`, `Service/ZoomService+*.swift` | Smallest diff. New behavior goes in its own file |
 | `*Config.swift`, `ZoomTuning.swift` | State old and new value and which acceptance criterion it affects |
 | `project.yml`, build settings | Do not edit without asking |
 

@@ -20,7 +20,6 @@ nonisolated final class HandPointDetector: @unchecked Sendable {
     private var sequence = 0
     private var doneCount = 0
     private var windowStart = CACurrentMediaTime()
-    private var rate = 0
     private var generation = 0
     private struct PoseMemory {
         var wrist: CGPoint
@@ -41,8 +40,6 @@ nonisolated final class HandPointDetector: @unchecked Sendable {
     }
 
     var latest: HandScan { lock.withLock { cache } }
-    var detectionsPerSecond: Int { lock.withLock { rate } }
-    var enhancementEV: Double { ZoomTuning.handLowLightEnabled ? lowLight.currentEV : 0 }
 
     func submit(_ pixelBuffer: CVPixelBuffer, minInterval: TimeInterval = 0) {
         let mediaNow = CACurrentMediaTime()
@@ -68,7 +65,6 @@ nonisolated final class HandPointDetector: @unchecked Sendable {
                 doneCount += 1
                 let now = CACurrentMediaTime()
                 if now - windowStart >= 1 {
-                    rate = doneCount
                     doneCount = 0
                     windowStart = now
                 }
@@ -131,6 +127,16 @@ nonisolated final class HandPointDetector: @unchecked Sendable {
             return (CGPoint(x: g.x + (g.x - w.x) / len * r, y: g.y + (g.y - w.y) / len * r), g, "Pn")
         }
 
+        func leadTip(_ obs: VNHumanHandPoseObservation) -> CGPoint? {
+            let tips = fingerJoints.compactMap { f -> CGPoint? in
+                guard let p = try? obs.recognizedPoint(f.tip), p.confidence >= jointMin else { return nil }
+                return scaled(p.location)
+            }
+            guard let wr = try? obs.recognizedPoint(.wrist), wr.confidence >= jointMin * 0.5 else { return tips.first }
+            let w = scaled(wr.location)
+            return tips.max { dist($0, w) < dist($1, w) }
+        }
+
         for obs in results {
             for joint in tipJoints {
                 if let p = try? obs.recognizedPoint(joint), p.confidence >= jointMin {
@@ -138,6 +144,7 @@ nonisolated final class HandPointDetector: @unchecked Sendable {
                                                    y: min(max(p.location.y, 0), 1)))
                 }
             }
+            if let lead = leadTip(obs) { scan.leadTips.append(unscaled(lead)) }
 
             var ptWrist: CGPoint?
             var ptSize: CGFloat = 0
@@ -226,8 +233,7 @@ nonisolated final class HandPointDetector: @unchecked Sendable {
                     guard mcpLen > handSize * 0.3 else { continue }
                     let ext = dist(wS, scaled(tp.location)) / mcpLen
                     known += 1
-                    if ext <= curlMax { curled += 1 }
-                    else if ext >= straightMin { straight += 1 }
+                    if ext <= curlMax { curled += 1 } else if ext >= straightMin { straight += 1 }
                 }
                 let thumbGap = min(dist(tS, iS), mS.map { dist(tS, $0) } ?? .infinity) / handSize
                 return conf2 >= jH && known >= 3 && straight == 0

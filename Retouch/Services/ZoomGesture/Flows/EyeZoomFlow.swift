@@ -12,19 +12,31 @@ nonisolated struct EyeZoomFlow {
         var gripRight = false
         var pointLeft = false
         var pointRight = false
+        var toolLeft = false
+        var toolRight = false
         var activityLeft: EyeActivity = .idle
         var activityRight: EyeActivity = .idle
+        var toolHoldLeft = false
+        var toolHoldRight = false
         var enterDwellFactor: TimeInterval = 1
+        var enterFloor: TimeInterval = 0
         var handLost = false
+        var handMovingAway = false
     }
 
     var enterDwell = ZoomTuning.eyeFlowEnterDwell
-    var gripDwell = ZoomTuning.gripEnterDwell
+    var gripDwell = ZoomTuning.eyeLipsGripDwell
     var pointDwell = ZoomTuning.fingerPointDwell
+    var toolDwell = ZoomTuning.toolEnterDwell
     var switchDwell = ZoomTuning.eyeFlowSwitchDwell
+    var toolSwitchDwell = ZoomTuning.toolSwitchDwell
     var releaseDwell = ZoomTuning.eyeFlowReleaseDwell
+    var fastReleaseDwell = ZoomTuning.fastReleaseDwell
     var poseGrace = ZoomTuning.eyeFlowPoseGrace
-    var softHoldCap = ZoomTuning.eyeSoftHoldCap
+    var softHoldWindow = ZoomTuning.softHoldWindow
+    var holdGrace = ZoomTuning.holdGrace
+    var reentryWindow = ZoomTuning.reentryWindow
+    var reentryDwell = ZoomTuning.reentryDwell
 
     private(set) var phase: Phase = .idle
     private(set) var side: EyeSide?
@@ -41,10 +53,15 @@ nonisolated struct EyeZoomFlow {
     private var pointRightSince: Date?
     private var pointLeftSeen: Date?
     private var pointRightSeen: Date?
+    private var toolLeftSince: Date?
+    private var toolRightSince: Date?
+    private var toolLeftSeen: Date?
+    private var toolRightSeen: Date?
     private var switchPending: (side: EyeSide, since: Date)?
     private var releaseSince: Date?
-    private var softSince: Date?
+    private var lastHeld: Date?
     private var lostSince: Date?
+    private var lastExit: (side: EyeSide, at: Date)?
 
     var isActive: Bool { phase == .active || phase == .releasing }
 
@@ -86,25 +103,35 @@ nonisolated struct EyeZoomFlow {
                                             now: now, grace: poseGrace)
             pointRightSince = Self.trackPose(input.pointRight, since: pointRightSince, seen: &pointRightSeen,
                                              now: now, grace: poseGrace)
+            toolLeftSince = Self.trackPose(input.toolLeft, since: toolLeftSince, seen: &toolLeftSeen,
+                                           now: now, grace: poseGrace)
+            toolRightSince = Self.trackPose(input.toolRight, since: toolRightSince, seen: &toolRightSeen,
+                                            now: now, grace: poseGrace)
             let need = enterDwell * input.enterDwellFactor
             let pointNeed = pointDwell * input.enterDwellFactor
             let gripNeed = gripDwell * input.enterDwellFactor
-            func due(_ since: Date?, _ need: TimeInterval) -> Date? {
-                guard let s = since, now.timeIntervalSince(s) >= need else { return nil }
+            func due(_ since: Date?, _ need: TimeInterval, _ side: EyeSide) -> Date? {
+                let required = max(dwell(need, for: side, now: now), input.enterFloor)
+                guard let s = since, now.timeIntervalSince(s) >= required else { return nil }
                 return s
             }
-            let dueL = [due(leftSince, need), due(gripLeftSince, gripNeed), due(pointLeftSince, pointNeed)].compactMap { $0 }.min()
-            let dueR = [due(rightSince, need), due(gripRightSince, gripNeed), due(pointRightSince, pointNeed)].compactMap { $0 }.min()
+            let dueL = [due(leftSince, need, .left), due(gripLeftSince, gripNeed, .left),
+                        due(pointLeftSince, pointNeed, .left), due(toolLeftSince, toolDwell, .left)]
+                .compactMap { $0 }.min()
+            let dueR = [due(rightSince, need, .right), due(gripRightSince, gripNeed, .right),
+                        due(pointRightSince, pointNeed, .right), due(toolRightSince, toolDwell, .right)]
+                .compactMap { $0 }.min()
             if dueL != nil || dueR != nil {
                 if let l = dueL, let r = dueR {
                     side = l <= r ? .left : .right
                 } else {
                     side = dueL != nil ? .left : .right
                 }
-                begin()
+                begin(at: now)
             } else {
                 phase = (leftSince != nil || rightSince != nil || gripLeftSince != nil || gripRightSince != nil
-                         || pointLeftSince != nil || pointRightSince != nil)
+                         || pointLeftSince != nil || pointRightSince != nil
+                         || toolLeftSince != nil || toolRightSince != nil)
                     ? .entering : .idle
             }
 
@@ -122,14 +149,19 @@ nonisolated struct EyeZoomFlow {
             let pointHere = current == .left ? input.pointLeft : input.pointRight
             let pointThere = other == .left ? input.pointLeft : input.pointRight
 
-            if (poseThere || gripThere || pointThere) && !(poseHere || gripHere || pointHere) {
+            let toolHere = current == .left ? input.toolLeft : input.toolRight
+            let toolThere = other == .left ? input.toolLeft : input.toolRight
+            let toolHoldHere = current == .left ? input.toolHoldLeft : input.toolHoldRight
+            let toolSwitches = toolThere && !toolHoldHere
+
+            if (poseThere || gripThere || pointThere || toolSwitches) && !(poseHere || gripHere || pointHere || toolHere) {
                 if switchPending?.side != other { switchPending = (other, now) }
-                let switchNeed = poseThere ? switchDwell : (gripThere ? gripDwell : pointDwell)
+                let switchNeed = toolSwitches && !(poseThere || gripThere || pointThere) ? toolSwitchDwell : switchDwell
                 if let p = switchPending, now.timeIntervalSince(p.since) >= switchNeed {
                     side = other
                     switchPending = nil
                     releaseSince = nil
-                    softSince = nil
+                    lastHeld = now
                     phase = .active
                     return target
                 }
@@ -140,13 +172,12 @@ nonisolated struct EyeZoomFlow {
             let handHold = current == .left ? input.holdLeft : input.holdRight
             let activity = current == .left ? input.activityLeft : input.activityRight
 
+            if handHold { lastHeld = now }
+            let recentlyHeld = lastHeld.map { now.timeIntervalSince($0) <= softHoldWindow } ?? false
             let soft = activity == .active || activity == .turning
-            if handHold || !soft {
-                softSince = nil
-            } else if softSince == nil {
-                softSince = now
-            }
-            let softOK = soft && (softHoldCap <= 0 || (softSince.map { now.timeIntervalSince($0) < softHoldCap } ?? true))
+            let graceOK = lastHeld.map { now.timeIntervalSince($0) <= holdGrace } ?? false
+            let softOK = soft && recentlyHeld
+            let unknownOK = activity == .unknown && recentlyHeld
 
             let lostOK: Bool
             if input.handLost && !handHold {
@@ -157,15 +188,20 @@ nonisolated struct EyeZoomFlow {
                 lostOK = false
             }
 
-            let holding = handHold || softOK || activity == .unknown || lostOK
+            let switching = switchPending != nil
+            let holding = handHold || graceOK || softOK || unknownOK || lostOK || switching
             if handHold {
                 holdReason = "jari"
+            } else if switching {
+                holdReason = "pindah"
             } else if softOK {
                 holdReason = activity == .turning ? "menoleh" : "mata aktif"
-            } else if activity == .unknown {
+            } else if unknownOK {
                 holdReason = "data hilang"
             } else if lostOK {
                 holdReason = "tangan hilang"
+            } else if graceOK {
+                holdReason = "jeda"
             } else {
                 holdReason = "-"
             }
@@ -176,7 +212,9 @@ nonisolated struct EyeZoomFlow {
             } else {
                 if releaseSince == nil { releaseSince = now }
                 phase = .releasing
-                if let since = releaseSince, now.timeIntervalSince(since) >= releaseDwell {
+                let releaseNeed = input.handMovingAway ? min(fastReleaseDwell, releaseDwell) : releaseDwell
+                if let since = releaseSince, now.timeIntervalSince(since) >= releaseNeed {
+                    lastExit = (current, now)
                     goIdle()
                 }
             }
@@ -199,14 +237,25 @@ nonisolated struct EyeZoomFlow {
         pointRightSince = nil
         pointLeftSeen = nil
         pointRightSeen = nil
+        toolLeftSince = nil
+        toolRightSince = nil
+        toolLeftSeen = nil
+        toolRightSeen = nil
     }
 
-    private mutating func begin() {
+    private func dwell(_ need: TimeInterval, for side: EyeSide, now: Date) -> TimeInterval {
+        guard let exit = lastExit, exit.side == side,
+              now.timeIntervalSince(exit.at) <= reentryWindow else { return need }
+        return min(need, reentryDwell)
+    }
+
+    private mutating func begin(at now: Date) {
         phase = .active
         clearTimers()
         switchPending = nil
         releaseSince = nil
-        softSince = nil
+        lastHeld = now
+        lostSince = nil
     }
 
     private mutating func goIdle() {
@@ -216,6 +265,7 @@ nonisolated struct EyeZoomFlow {
         clearTimers()
         switchPending = nil
         releaseSince = nil
-        softSince = nil
+        lastHeld = nil
+        lostSince = nil
     }
 }

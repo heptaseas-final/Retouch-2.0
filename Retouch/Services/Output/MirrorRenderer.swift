@@ -17,6 +17,9 @@ final class MirrorRenderer {
     private let context: CIContext?
     private let makeupLook: MakeupLook?
     private let colorSpace = CGColorSpace(name: CGColorSpace.displayP3)!
+    private static let emptyColor = CIColor(red: 0xF5 / 255, green: 0xEC / 255, blue: 0xEF / 255, alpha: 1,
+                                            colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!)
+        ?? CIColor(red: 0xF5 / 255, green: 0xEC / 255, blue: 0xEF / 255)
 
     private let lock = NSLock()
     private var layer: CAMetalLayer?
@@ -63,8 +66,19 @@ final class MirrorRenderer {
             return
         }
         let isLandscape = frame.extent.width > frame.extent.height
-        let image = compose(Self.uprightMirror(frame), size: size, zoom: zoom, pointScale: pointScale,
-                            stabilization: Self.uprightFraction(stabilization, isLandscape: isLandscape))
+        let upright = Self.uprightMirror(frame)
+        let shake = Self.uprightFraction(stabilization, isLandscape: isLandscape)
+        var image = compose(upright, size: size, zoom: zoom, pointScale: pointScale, stabilization: shake)
+        if let fade = zoom.fade {
+            let previous = compose(upright, size: size,
+                                   zoom: ZoomState(scale: fade.fromScale, offset: fade.fromOffset),
+                                   pointScale: pointScale, stabilization: shake)
+            let dissolve = CIFilter.dissolveTransition()
+            dissolve.inputImage = previous
+            dissolve.targetImage = image
+            dissolve.time = Float(fade.progress)
+            image = dissolve.outputImage?.cropped(to: CGRect(origin: .zero, size: size)) ?? image
+        }
 
         if let makeupLook,
            ProcessInfo.processInfo.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue,
@@ -110,7 +124,7 @@ final class MirrorRenderer {
                          stabilization: CGSize) -> CIImage {
         let extent = frame.extent
         let outputRect = CGRect(origin: .zero, size: size)
-        let black = CIImage(color: .black).cropped(to: outputRect)
+        let empty = CIImage(color: Self.emptyColor).cropped(to: outputRect)
 
         let fill = max(size.width / extent.width, size.height / extent.height)
         let total = fill * max(zoom.scale, 0.01)
@@ -126,7 +140,7 @@ final class MirrorRenderer {
         let visible = CGRect(x: center.x - origin.x / total, y: center.y - origin.y / total,
                              width: size.width / total, height: size.height / total)
         let source = visible.insetBy(dx: -4, dy: -4).intersection(extent)
-        guard !source.isNull, !source.isEmpty else { return black }
+        guard !source.isNull, !source.isEmpty else { return empty }
 
         var image = frame.cropped(to: source)
             .transformed(by: CGAffineTransform(translationX: -source.minX, y: -source.minY))
@@ -143,7 +157,7 @@ final class MirrorRenderer {
         let placed = CGPoint(x: (source.minX - center.x) * total + origin.x,
                              y: (source.minY - center.y) * total + origin.y)
         return image.transformed(by: CGAffineTransform(translationX: placed.x, y: placed.y))
-            .composited(over: black)
+            .composited(over: empty)
             .cropped(to: outputRect)
     }
 

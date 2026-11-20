@@ -1,0 +1,280 @@
+import CoreGraphics
+import Foundation
+
+nonisolated extension ZoomService {
+    func update(faceSnap: DetectionSnapshot<FaceObservation?>?,
+                        handSnap: DetectionSnapshot<HandScan>?,
+                        toolSnap: DetectionSnapshot<ToolScan>? = nil,
+                        imageSize: CGSize) {
+        guard viewSize.width > 0, viewSize.height > 0 else { return }
+        let converter = CoordinateConverter(imageSize: imageSize, viewSize: viewSize)
+        self.imageSize = imageSize
+
+        let now = max(max(faceSnap?.timestamp ?? .distantPast, handSnap?.timestamp ?? .distantPast,
+                          toolSnap?.timestamp ?? .distantPast),
+                      lastLogicTime)
+        lastLogicTime = now
+
+        guard isGestureEnabled else {
+            guard let faceSnap else { return }
+            lastFace = faceSnap.value
+            let points = faceTracker.update(face: lastFace, covering: false, converter: converter,
+                                            now: faceSnap.timestamp)
+            trackMotion(face: lastFace, hand: nil, at: faceSnap.timestamp)
+            distComp.update(span: Double(points.scale / viewSize.width),
+                            yawDegrees: Double(lastFace?.yaw ?? .nan),
+                            valid: lastFace != nil,
+                            now: faceSnap.timestamp.timeIntervalSinceReferenceDate)
+            let target = isManualOverall ? ZoomTarget.overall : manualTarget
+            publish(target)
+            onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
+                                     isFaceVisible: lastFace != nil))
+            return
+        }
+
+        let H = viewSize.height
+
+        if let handSnap {
+            gripVerifier.note(fingertips: handSnap.value.fingertips.map { converter.toView($0) },
+                              grips: handSnap.value.grips.map {
+                                  ToolGripPose(grip: converter.toView($0.grip), tip: converter.toView($0.tip))
+                              },
+                              handsSeen: handSnap.value.handsSeen, at: handSnap.timestamp)
+        }
+        let toolDrives = toolDrivesInput(now: now)
+        if let handSnap, !toolDrives {
+            lastScan = handSnap.value
+            if ZoomTuning.handSeenBoostsRate, lastScan.handsSeen > 0 {
+                pacer.noteMotion(at: handSnap.timestamp)
+            }
+            let leadCandidates = lastScan.leadTips.map {
+                HandTrackBank.Candidate(tip: converter.toView($0), pose2: false, pose3: false,
+                                        mode: "L", isPoint: true)
+            }
+            hands = handBank.update(leadCandidates, faceWidth: faceTracker.points.width, viewHeight: H, now: handSnap.timestamp)
+            lastHand = nearestHandPoint(faceTracker.points)
+        }
+        let covering = isCovering(points: faceTracker.points)
+
+        var points = faceTracker.points
+        if let faceSnap {
+            lastFace = faceSnap.value
+            points = faceTracker.update(face: lastFace, covering: covering, anchored: zonesAnchored,
+                                        converter: converter, now: faceSnap.timestamp)
+        }
+        points.layout = layoutGate.update(points: points, isFrozen: zonesAnchored, now: now)
+        refreshTools(snap: toolSnap, converter: converter, points: points, now: now)
+        updateInputMode(now: now)
+
+        if handSnap != nil, !toolDrives {
+            let support = ZoomTuning.pitchEnabled && ZoomTuning.pitchHandSupportEnabled && pitchRecognizer.isLifted
+            let readiness = ZoomReadiness(hands: hands, scan: lastScan, converter: converter,
+                                          maxIntentSpeed: handBank.maxIntentSpeed,
+                                          locked: FaceZone(target: resolver.target))
+            eyeInput = readiness.eye(points: points, support: support)
+            lipsInput = readiness.lips(points: points)
+            noseInput = readiness.nose(points: points)
+            cheekInput = readiness.cheek(points: points)
+        }
+
+        if let faceSnap {
+            let learn = !zonesAnchored
+            let faceForHead = covering ? nil : faceSnap.value
+            pitchRecognizer.update(face: faceForHead, learn: learn, covered: covering, now: faceSnap.timestamp)
+            let freeze = ZoomTuning.pitchEnabled && ZoomTuning.pitchYawFreezeEnabled
+                && pitchRecognizer.isFrozen(now: faceSnap.timestamp)
+            let poseTarget = headPose.update(face: faceForHead, learn: learn && !freeze, covered: covering, yawFrozen: freeze, now: faceSnap.timestamp)
+            headTarget = FaceZoneConfig.layoutDrivesHeadZoom ? layoutHeadTarget(points.layout) : poseTarget
+            distComp.update(span: Double(points.scale / viewSize.width),
+                            yawDegrees: Double(faceForHead?.yaw ?? .nan),
+                            valid: !covering && !freeze,
+                            now: faceSnap.timestamp.timeIntervalSinceReferenceDate)
+            lipMotion.update(face: faceForHead, ignore: freeze, now: faceSnap.timestamp)
+            eyeActivity.update(face: faceForHead, learn: learn && !covering, ignore: freeze,
+                               now: faceSnap.timestamp)
+        }
+        trackMotion(face: faceSnap != nil ? lastFace : nil, hand: lastHand, at: now,
+                    faceChecked: faceSnap != nil)
+
+        let tools = toolDrives ? toolReading : ToolZoneReading()
+        var eyeIn = eyeInput
+        eyeIn.activityLeft = eyeActivity.leftState
+        eyeIn.activityRight = eyeActivity.rightState
+        eyeIn = ZoomReadiness.applying(tools, to: eyeIn)
+        var lipIn = lipsInput
+        lipIn.lipsMoving = lipMotion.isMoving
+        lipIn = ZoomReadiness.applying(tools, to: lipIn)
+        var noseIn = ZoomReadiness.applying(tools, to: noseInput)
+        var cheekIn = ZoomReadiness.applying(tools, to: cheekInput)
+        applyZoneLock(eye: &eyeIn, lips: &lipIn, nose: &noseIn, cheek: &cheekIn)
+
+        applyStraightRelease(eye: &eyeIn, lips: &lipIn, nose: &noseIn, cheek: &cheekIn)
+        eyeFlow.update(eyeIn, now: now)
+        lipFlow.update(lipIn, now: now)
+        noseFlow.update(noseIn, now: now)
+        cheekFlow.update(cheekIn, now: now)
+        let ranked: [(owner: FlowOwner, running: Bool, holding: Bool)] = [
+            (.nose, noseFlow.isActive, noseFlow.phase == .active),
+            (.eye, eyeFlow.isActive, eyeFlow.phase == .active),
+            (.lips, lipFlow.isActive, lipFlow.phase == .active),
+            (.cheek, cheekFlow.isActive, cheekFlow.phase == .active)
+        ]
+        let winner: FlowOwner? = newestHolding(ranked.filter { $0.holding }.map(\.owner), now: now)
+            ?? ranked.first(where: { $0.running })?.owner
+        if winner != .nose, noseFlow.phase == .releasing { noseFlow.cancel() }
+        if winner != .eye, eyeFlow.phase == .releasing { eyeFlow.cancel() }
+        if winner != .lips, lipFlow.phase == .releasing { lipFlow.cancel() }
+        if winner != .cheek, cheekFlow.phase == .releasing { cheekFlow.cancel() }
+        handTarget = winner == .eye ? eyeFlow.target : (winner == .cheek ? cheekFlow.target : nil)
+
+        let autoOverall = updateOverall(face: faceSnap?.value, converter: converter)
+        let target: ZoomTarget = autoOverall || isManualOverall ? .overall
+            : resolver.resolve(hand: handTarget, lips: winner == .lips, nose: winner == .nose, head: headTarget, covering: covering, headStraight: isHeadStraight(points.layout), headQuickRelease: headPose.quickReleased, now: now)
+
+        if target == .fullFace || target == .overall { distComp.clearReference() } else { distComp.latchReferenceIfNeeded() }
+
+        let handDriven = target == .leftEye || target == .rightEye || target == .lips || target == .nose
+            || target == .cheek(.left) || target == .cheek(.right)
+        if handDriven, autoZoomSince == nil { autoZoomSince = now }
+        if !handDriven, autoZoomSince != nil {
+            autoZoomSince = nil
+            lastAutoZoomEnd = now
+        }
+
+        var isSide = false
+        if case .faceSide = target { isSide = true }
+        if isSide, sideZoomSince == nil {
+            sideZoomSince = now
+            lastSideZoomStart = now
+        }
+        if !isSide, sideZoomSince != nil {
+            sideZoomSince = nil
+            lastSideZoomEnd = now
+        }
+
+        saveProfileIfNeeded(now: now)
+
+        publish(target)
+
+#if DEBUG
+        let debugHands = hands.map {
+            ZoomDebugHand(point: $0.point, checkPoints: $0.checkPoints, hasPose: $0.hasPose,
+                          isHolding: $0.holding, isPoint: $0.isPoint)
+        }
+        let debugTips = lastScan.fingertips.map { converter.toView($0) }
+        let debugTools = lastTools.map { ToolTipLocator.tip(of: $0, face: points) }
+        let debugBoxes = lastTools.map(\.rect)
+        let debugLabels = lastTools.map { "\($0.label.rawValue) \(Int($0.confidence * 100))%" }
+#else
+        let debugHands: [ZoomDebugHand] = []
+        let debugTips: [CGPoint] = []
+        let debugTools: [CGPoint] = []
+        let debugBoxes: [CGRect] = []
+        let debugLabels: [String] = []
+#endif
+        onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
+                                 isFaceVisible: lastFace != nil, hands: debugHands, fingertips: debugTips,
+                                 toolTips: debugTools, toolBoxes: debugBoxes, toolLabels: debugLabels, lockedZone: FaceZone(target: target),
+                                 zoneReach: zoneReach, lipsReach: zoneLipsReach,
+                                 inputMode: toolDrives ? .tool : .finger,
+                                 overallPose: isOverallShowing ? overallRecognizer.pose : .none))
+    }
+
+    func trackMotion(face: FaceObservation?, hand: CGPoint?, at now: Date, faceChecked: Bool = true) {
+        if hand != nil { pacer.noteMotion(at: now) }
+        guard faceChecked else { return }
+        guard let f = face else {
+            prevFace = nil
+            return
+        }
+        if let p = prevFace {
+            let dt = max(now.timeIntervalSince(prevFaceTime), 0.001)
+            let move = hypot(f.center.x - p.center.x, f.center.y - p.center.y) / max(f.width, 0.01) / dt
+            let yawMove = (f.yaw.isFinite && p.yaw.isFinite) ? abs(f.yaw - p.yaw) / dt : 0
+            if move > ZoomTuning.idleFaceSpeed || yawMove > ZoomTuning.idleYawRate {
+                pacer.noteMotion(at: now)
+            }
+        }
+        prevFace = f
+        prevFaceTime = now
+    }
+
+    func isCovering(points: FacePoints) -> Bool {
+        let W = points.width
+        guard W > 0 else { return false }
+        let anchors = points.handTargets.map { $0.1 }
+        let near = activeHands.contains { h in
+            anchors.contains { hypot(h.point.x - $0.x, h.point.y - $0.y) / W < ZoomTuning.coverDistance }
+        }
+        return near || (lipFlow.isActive && lipsInput.fingerNear) || (noseFlow.isActive && noseInput.fingerNear)
+            || (cheekFlow.isActive && (cheekInput.nearLeft || cheekInput.nearRight))
+    }
+
+    func nearestHandPoint(_ points: FacePoints) -> CGPoint? {
+        let anchors = points.handTargets.map { $0.1 }
+        guard !anchors.isEmpty else { return hands.first?.point }
+        func nearest(_ h: TrackedHand) -> CGFloat {
+            anchors.map { hypot(h.point.x - $0.x, h.point.y - $0.y) }.min() ?? .infinity
+        }
+        return hands.min { nearest($0) < nearest($1) }?.point
+    }
+
+    func publish(_ target: ZoomTarget) {
+        if pinchScale > 1.01 {
+            send(scale: pinchScale, focus: .pinch)
+            return
+        }
+        if target == .overall {
+            publishOverall()
+            return
+        }
+        guard let focus = focusPoint(for: target, faceTracker.points) else {
+            send(scale: 1, focus: .center)
+            return
+        }
+        let factor = target != .fullFace ? distComp.factor : 1
+        let finalScale = max(1, min(target.zoomScale * factor, ZoomTuning.distMaxScale))
+        send(scale: finalScale, focus: .target(target, focus, manual: !isGestureEnabled))
+    }
+
+    func focusPoint(for target: ZoomTarget, _ p: FacePoints) -> CGPoint? {
+        switch target {
+        case .fullFace, .overall: return nil
+        case .leftEye: return p.leftEye
+        case .rightEye: return p.rightEye
+        case .lips: return p.lips
+        case .nose: return p.nose
+        case .faceSide(let side): return sideFocus(side, p)
+        case .cheek(let side): return cheekFocus(side, p)
+        }
+    }
+
+    func sideFocus(_ side: FaceSide, _ p: FacePoints) -> CGPoint? {
+        guard let c = p.center else { return nil }
+        let k = ZoomTuning.sideFocusStrength
+        guard let eye = side == .left ? p.leftEye : p.rightEye else {
+            let dx = p.width * 0.08 * k
+            return CGPoint(x: side == .left ? c.x - dx : c.x + dx, y: c.y)
+        }
+        var focus = CGPoint(x: c.x + (eye.x - c.x) * k, y: c.y + (eye.y - c.y) * k)
+
+        if let l = p.leftEye, let r = p.rightEye {
+            let len = hypot(r.x - l.x, r.y - l.y)
+            if len > 0 {
+                let ux = (r.x - l.x) / len, uy = (r.y - l.y) / len
+                let sign: CGFloat = side == .left ? -1 : 1
+                let out = p.scale * ZoomTuning.sideFocusOutward
+                focus.x += sign * ux * out
+                focus.y += sign * uy * out
+                let drop = p.scale * ZoomTuning.sideFocusDrop
+                focus.x += -uy * drop
+                focus.y += ux * drop
+            }
+        }
+        return focus
+    }
+
+    func send(scale: CGFloat, focus: ZoomAnimator.Focus) {
+        DispatchQueue.main.async { [animator] in animator.setGoal(scale: scale, focus: focus) }
+    }
+}

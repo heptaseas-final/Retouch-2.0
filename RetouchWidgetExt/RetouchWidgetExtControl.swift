@@ -15,10 +15,10 @@ struct RetouchWidgetExtControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {
             ControlWidgetButton(action: OpenRetouchIntent()) {
-                Label("Retouch", systemImage: "face.smiling")
+                Label("Retouch", image: "MirrorIcon")
             }
         }
         .displayName("Open Retouch")
-        .description("Open Retouch directly from your lock screen.")
+        .description("Open Retouch directly from your lock screen!")
     }
 }

@@ -13,9 +13,19 @@ settings:
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
-    MARKETING_VERSION: 2.0
+    MARKETING_VERSION: 2.1
     CURRENT_PROJECT_VERSION: 1
+    VERSIONING_SYSTEM: apple-generic
     
+
+configFiles:
+  Debug: Config/Analytics-Debug.xcconfig
+  Release: Config/Analytics-Release.xcconfig
+
+packages:
+  Mixpanel:
+    url: https://github.com/mixpanel/mixpanel-swift
+    from: 6.4.1
 
 targets:
   Retouch:
@@ -24,8 +34,10 @@ targets:
     sources:
       - path: Retouch
       - path: RetouchWidgetExt/OpenRetouchIntent.swift
+      - path: Config/MixpanelConfig.plist
     dependencies:
       - target: RetouchWidgetExt
+      - package: Mixpanel
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: bsd.iosda.Retouch
@@ -36,12 +48,14 @@ targets:
 
         # Info.plist
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Config/Retouch-Info.plist
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_CFBundleDisplayName: "Retouch"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_NSCameraUsageDescription: "Camera is used to show your face as a mirror and to detect hand gestures for zoom."
+        INFOPLIST_KEY_NSCameraUsageDescription: "Retouch uses the front camera to show your face as a mirror. Your video stays on your iPhone and is never uploaded."
+        INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "Retouch saves your highlights to Photos only when you tap Save."
         # INFOPLIST_KEY_NSMicrophoneUsageDescription: "Microphone is used to listen to your 'next' and 'previous' voice commands."
         # INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Speech recognition is used to understand your voice commands."
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait

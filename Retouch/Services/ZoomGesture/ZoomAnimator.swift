@@ -32,6 +32,8 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     private var lastFilteredFocus: CGPoint = .zero
 
     private var currentScale: CGFloat = 1
+    private var scaleVelocity: CGFloat = 0
+    private var easesScale = false
     private var panX: CGFloat = 0
     private var panY: CGFloat = 0
     private var velX: CGFloat = 0
@@ -42,10 +44,14 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     private var cutGate = ZoomCutGate(stableDelay: ZoomTuning.reducedMotionStableDelay)
     private var lastGoalWasManual = false
     private var snapPending = false
+    private var fadeOrigin: ZoomFade?
+    private var fadeStartedAt: TimeInterval = 0
 
     func reset() {
         goalScale = 1
         currentScale = 1
+        scaleVelocity = 0
+        easesScale = false
         panX = 0
         panY = 0
         velX = 0
@@ -58,6 +64,7 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         focusFilterY.reset()
         cutGate.reset()
         snapPending = false
+        fadeOrigin = nil
         scaleLock.lock(); shownScale = 1; scaleLock.unlock()
         lastState = ZoomState()
         onChange?(lastState)
@@ -71,6 +78,9 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     func start() {
         guard link == nil else { return }
         let l = CADisplayLink(target: self, selector: #selector(tick(_:)))
+        if UITestMode.isActive {
+            l.preferredFrameRateRange = CAFrameRateRange(minimum: 5, maximum: 10)
+        }
         l.add(to: .main, forMode: .common)
         link = l
     }
@@ -84,6 +94,14 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
 
     func setGoal(scale: CGFloat, focus: Focus) {
         if reducesMotion, !acceptsCut(to: focus) { return }
+        let oldMode = mode
+        defer {
+            easesScale = ZoomScaleEasing.easesAfterGoal(wasEasing: easesScale,
+                                                        wasOverall: oldMode == .target(.overall),
+                                                        isOverall: mode == .target(.overall),
+                                                        modeChanged: mode != oldMode)
+            if !easesScale { scaleVelocity = 0 }
+        }
         goalScale = scale
         switch focus {
         case .center:
@@ -119,7 +137,13 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
 
             if isNew {
                 mode = .target(target)
-                pinned = (manual || viewSize.width <= 0) ? nil : screenPosition(of: point)
+                if manual || viewSize.width <= 0 {
+                    pinned = nil
+                } else {
+                    var spot = screenPosition(of: point)
+                    spot.x += (viewSize.width / 2 - spot.x) * ZoomTuning.pinCenterPullX
+                    pinned = spot
+                }
             }
             lockedFocus = point
         }
@@ -178,16 +202,27 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         let dt = min(max(CGFloat(link.targetTimestamp - link.timestamp), 1.0 / 120.0), 0.05)
 
         let snaps = reducesMotion && snapPending
+        if snaps {
+            fadeOrigin = ZoomFade(fromScale: lastState.scale, fromOffset: lastState.offset, progress: 0)
+            fadeStartedAt = CACurrentMediaTime()
+        }
         if snaps || (reducesMotion && mode == .pinch) {
             currentScale = goalScale
+        } else if easesScale {
+            currentScale = ZoomScaleEasing.easedStep(current: currentScale, goal: goalScale, velocity: &scaleVelocity,
+                                                     smoothTime: ZoomTuning.overallScaleSmoothTime, dt: dt)
+            if ZoomScaleEasing.isSettled(current: currentScale, goal: goalScale, velocity: scaleVelocity) {
+                easesScale = false
+                scaleVelocity = 0
+            }
         } else {
             let tau = goalScale > currentScale ? zoomInTau : zoomOutTau
             currentScale += (goalScale - currentScale) * (1 - exp(-dt / tau))
         }
         scaleLock.lock(); shownScale = currentScale; scaleLock.unlock()
 
-        let maxX = (currentScale - 1) * size.width / 2
-        let maxY = (currentScale - 1) * size.height / 2
+        let maxX = max(currentScale - 1, 0) * size.width / 2
+        let maxY = max(currentScale - 1, 0) * size.height / 2
 
         var goalX: CGFloat = 0
         var goalY: CGFloat = 0
@@ -211,10 +246,23 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
             panY = Self.smoothDamp(panY, goalY, &velY, smoothTime: ZoomTuning.panSmoothTime, dt: dt)
         }
 
+        var fade: ZoomFade?
+        if var origin = fadeOrigin {
+            let elapsed = CACurrentMediaTime() - fadeStartedAt
+            let progress = ZoomTransition.style(reduceMotion: reducesMotion).fadeProgress(elapsed: elapsed)
+            if progress < 1 {
+                origin.progress = CGFloat(progress)
+                fade = origin
+            } else {
+                fadeOrigin = nil
+            }
+        }
+
         if abs(lastState.scale - currentScale) > 0.0005
             || abs(lastState.offset.width - panX) > 0.05
-            || abs(lastState.offset.height - panY) > 0.05 {
-            lastState = ZoomState(scale: currentScale, offset: CGSize(width: panX, height: panY))
+            || abs(lastState.offset.height - panY) > 0.05
+            || fade != lastState.fade {
+            lastState = ZoomState(scale: currentScale, offset: CGSize(width: panX, height: panY), fade: fade)
             onChange?(lastState)
         }
     }

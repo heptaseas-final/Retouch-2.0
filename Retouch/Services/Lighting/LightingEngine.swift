@@ -41,6 +41,7 @@ final class LightingEngine {
     private var smoothedLogLux: Float?
     private var panel: Float = 0
     private var isPanelOn = false
+    private var wasManual = false
     private var quality = Quality.full
     private var published: LightingOutput?
     private var measuredFPS: Double = 0
@@ -146,13 +147,15 @@ final class LightingEngine {
     private func updatePanel(roomLux: Float?, manual: Double?, dt: Float) {
         if let manual {
             panel = Float(manual)
+            wasManual = true
             return
         }
         let threshold = config.ringLightStartLux * (isPanelOn ? 1.25 : 1)
         let target = darkness(roomLux: roomLux, threshold: threshold) * quality.panelCap
         isPanelOn = target > 0.02
-        let tau = Float(config.ringLightFadeTime) * (target > panel ? 1 : 2)
-        panel += (target - panel) * (1 - exp(-dt / tau))
+        panel = PanelFade.next(panel: panel, target: target, dt: dt,
+                               fadeTime: Float(config.ringLightFadeTime), isLeavingManual: wasManual)
+        wasManual = false
     }
 
     private func noiseLevel(iso: Float) -> Float {
@@ -261,9 +264,9 @@ final class LightingEngine {
         static func target(for state: ProcessInfo.ThermalState) -> Quality {
             switch state {
             case .nominal: .full
-            case .fair: Quality(sharpen: 0, panelCap: 1, brightnessCap: 1)
-            case .serious: Quality(sharpen: 0, panelCap: 0.7, brightnessCap: 0.6)
-            case .critical: Quality(sharpen: 0, panelCap: 0.3, brightnessCap: 0.5)
+            case .fair: Quality(sharpen: 0, panelCap: 0.85, brightnessCap: 0.85)
+            case .serious: Quality(sharpen: 0, panelCap: 0.5, brightnessCap: 0.5)
+            case .critical: Quality(sharpen: 0, panelCap: 0.3, brightnessCap: 0.4)
             @unknown default: .full
             }
         }
