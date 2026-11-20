@@ -45,7 +45,7 @@ struct ToolReadingGateTests {
     }
 
     @Test func confidenceBelowTriggerOnlyHolds() {
-        let reading = gate(confidence: 0.45).read(now: detectedAt)
+        let reading = gate(confidence: 0.6).read(now: detectedAt)
         #expect(!reading.eyeTriggerLeft)
         #expect(reading.eyeHoldLeft)
     }

@@ -19,6 +19,7 @@ struct InputModeGateTests {
     private func toolMode() -> InputModeGate {
         var gate = InputModeGate()
         gate.note(.strong, at: at(0))
+        gate.note(.strong, at: at(0.05))
         gate.note(.strong, at: at(0.1))
         gate.update(zoomActive: false, now: at(0.1))
         return gate
@@ -34,7 +35,7 @@ struct InputModeGateTests {
         #expect(gate.update(zoomActive: false, now: at(0)) == .finger)
     }
 
-    @Test func twoDetectionsInARowEnterToolMode() {
+    @Test func threeDetectionsInARowEnterToolMode() {
         #expect(toolMode().mode == .tool)
     }
 
@@ -69,6 +70,7 @@ struct InputModeGateTests {
     @Test func activeZoomLocksFingerMode() {
         var gate = InputModeGate()
         gate.note(.strong, at: at(0))
+        gate.note(.strong, at: at(0.05))
         gate.note(.strong, at: at(0.1))
         #expect(gate.update(zoomActive: true, now: at(0.1)) == .finger)
         #expect(gate.update(zoomActive: false, now: at(0.3)) == .tool)
@@ -83,6 +85,7 @@ struct InputModeGateTests {
     @Test func staleStreakDoesNotEnterToolModeLater() {
         var gate = InputModeGate()
         gate.note(.strong, at: at(0))
+        gate.note(.strong, at: at(0.05))
         gate.note(.strong, at: at(0.1))
         gate.update(zoomActive: true, now: at(0.1))
         #expect(gate.update(zoomActive: false, now: at(0.1 + ToolDetectionTuning.toolModeExitAfter + 0.1)) == .finger)
@@ -112,7 +115,7 @@ struct InputModeGateTests {
         let onFace = CGRect(x: 90, y: 90, width: 20, height: 20)
         let farAway = CGRect(x: 800, y: 800, width: 20, height: 20)
         #expect(InputModeGate.presence(of: [tool(onFace, confidence: 0.8)], face: face()) == .strong)
-        #expect(InputModeGate.presence(of: [tool(onFace, confidence: 0.4)], face: face()) == .weak)
+        #expect(InputModeGate.presence(of: [tool(onFace, confidence: 0.6)], face: face()) == .weak)
         #expect(InputModeGate.presence(of: [tool(onFace, confidence: 0.2)], face: face()) == .none)
         #expect(InputModeGate.presence(of: [tool(farAway, confidence: 0.9)], face: face()) == .none)
         #expect(InputModeGate.presence(of: [], face: face()) == .none)
