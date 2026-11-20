@@ -66,7 +66,6 @@ struct HorizontalPicker<Item: Hashable>: View {
                 }
                 .frame(width: lensWidth, height: lensHeight)
 
-            PickerLens(width: lensWidth, height: lensHeight)
 
             labels(track: track, x: x, height: currentHeight, span: openWidth, font: font,
                    color: ControlPalette.text(colorScheme), tappable: true)
