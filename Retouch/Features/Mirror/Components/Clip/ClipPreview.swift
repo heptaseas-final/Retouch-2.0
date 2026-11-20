@@ -49,13 +49,13 @@ struct ClipPreview: View {
             }
 
             HStack(spacing: 12) {
-                Button("Delete", systemImage: "trash", role: .destructive) { isConfirmingDelete = true }
+                Button("Delete", role: .destructive) { isConfirmingDelete = true }
                     .buttonStyle(ClipActionStyle(isProminent: false, fillsWidth: true))
                 Button(action: onSave) {
                     if isSaving {
                         ProgressView().tint(.white)
                     } else {
-                        Label("Save", systemImage: "square.and.arrow.down")
+                        Text("Save")
                     }
                 }
                 .buttonStyle(ClipActionStyle(isProminent: true, fillsWidth: true))

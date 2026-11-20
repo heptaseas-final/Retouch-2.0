@@ -46,6 +46,7 @@ struct MirrorView: View {
             }
         }
         .toolbar { settingsToolbar }
+        .toolbarColorScheme(.light, for: .navigationBar)
         .toolbar(clipReview?.isPreviewing == true ? .hidden : .automatic, for: .navigationBar)
         .pickerSwipe(pickerSwipe, isEnabled: showsControls && viewModel.permission != .denied && viewModel.cameraState != .failed && !isDraggingLight)
         .sensoryFeedback(.impact(weight: .medium), trigger: lightDock)

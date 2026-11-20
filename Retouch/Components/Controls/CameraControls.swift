@@ -40,6 +40,7 @@ struct CameraControls: View {
     var onLightSlotCenter: ((CGPoint) -> Void)?
     var onPickerLayoutChange: ((Bool) -> Void)?
     var isOverallOn: Binding<Bool>?
+    var isOverallEnabled = true
     var expandsPicker = false
 
     var expandedHeight: CGFloat = 66
@@ -119,6 +120,8 @@ struct CameraControls: View {
             ZStack {
                 if let isOverallOn {
                     OverallViewButton(isOn: isOverallOn, size: height)
+                        .disabled(!isOverallEnabled)
+                        .opacity(isOverallEnabled ? 1 : 0.5)
                         .offset(x: isPickerMoving ? slideDistance : 0)
                         .opacity(isPickerMoving ? 0 : 1)
                 } else {

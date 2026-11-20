@@ -1,6 +1,8 @@
 import SwiftUI
 
 private struct MirrorBarStyle: ViewModifier {
+    let isOverall: Bool
+
     func body(content: Content) -> some View {
         if #available(iOS 26, *) {
             content
@@ -16,7 +18,7 @@ private struct MirrorBarStyle: ViewModifier {
 }
 
 extension View {
-    func mirrorBarStyle() -> some View {
-        modifier(MirrorBarStyle())
+    func mirrorBarStyle(isOverall: Bool) -> some View {
+        modifier(MirrorBarStyle(isOverall: isOverall))
     }
 }

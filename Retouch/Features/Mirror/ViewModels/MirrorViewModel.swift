@@ -93,7 +93,7 @@ final class MirrorViewModel {
         isOverallOn = isOn
         zoom.setOverall(isOn)
     }
-
+    
     func glowLevelDidChange(_ level: Double) {
         shownGlowLevel = GlowFrame.lightOpacity(level: level)
     }
