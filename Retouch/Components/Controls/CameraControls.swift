@@ -39,6 +39,9 @@ struct CameraControls: View {
     var lightMoveActions: [(label: String, perform: () -> Void)] = []
     var onLightSlotCenter: ((CGPoint) -> Void)?
     var onPickerLayoutChange: ((Bool) -> Void)?
+    var isOverallOn: Binding<Bool>?
+    var isOverallEnabled = true
+    var expandsPicker = false
 
     var expandedHeight: CGFloat = 66
     var pickerWidth: CGFloat = 233
@@ -73,6 +76,10 @@ struct CameraControls: View {
         return min(pickerWidth, availableWidth - 2 * (columnSpacing + minSideColumn))
     }
 
+    private var isPickerMoving: Bool { expandsPicker && (swipe.isDragging || swipe.isHeldByPicker) }
+
+    private var slideDistance: CGFloat { height + columnSpacing * 2 }
+
     private var pickerFont: UIFont { PickerMetrics.font(for: effectiveTypeSize, isBold: legibilityWeight == .bold) }
 
     private var pickerExpandedHeight: CGFloat {
@@ -90,6 +97,8 @@ struct CameraControls: View {
                                     colorEmphasis: lightButtonEmphasis == .dimmed ? .normal : lightColorEmphasis)
                         .emphasis(lightButtonEmphasis)
                         .offset(lightOffset)
+                        .offset(x: isPickerMoving ? -slideDistance : 0)
+                        .opacity(isPickerMoving ? 0 : 1)
                         .transition(.identity)
                 } else {
                     Color.clear
@@ -108,17 +117,32 @@ struct CameraControls: View {
 
             picker(width: fittedPickerWidth)
 
-            Color.clear
-                .frame(maxWidth: .infinity, maxHeight: pickerExpandedHeight)
+            ZStack {
+                if let isOverallOn {
+                    OverallViewButton(isOn: isOverallOn, size: height)
+                        .disabled(!isOverallEnabled)
+                        .opacity(isOverallEnabled ? 1 : 0.5)
+                        .offset(x: isPickerMoving ? slideDistance : 0)
+                        .opacity(isPickerMoving ? 0 : 1)
+                } else {
+                    Color.clear
+                        .frame(width: height, height: height)
+                }
+            }
+            .padding(.bottom, (pickerExpandedHeight - height) / 2)
+            .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
+        .animation(.snappy, value: isPickerMoving)
         .largerButtonsTypeSize(isLargerButtons)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
     }
 
     private func picker(width: CGFloat) -> some View {
         HorizontalPicker(items: FacePart.allCases, selection: $part, swipe: swipe, width: width,
-                         padding: pickerSlotPadding, height: height, expandedHeight: expandedHeight, title: pickerTitle)
+                         padding: pickerSlotPadding, height: height, expandedHeight: expandedHeight,
+                         expandedWidth: expandsPicker && availableWidth > 0 ? availableWidth : nil,
+                         title: pickerTitle)
             .accessibilityHint(pickerEmphasis.guide ?? "")
             .emphasis(pickerEmphasis)
             .frame(width: width, height: pickerExpandedHeight)

@@ -21,7 +21,7 @@ struct ToolReadingGateTests {
     private func gate(confidence: Float = 0.8, tools: [TrackedTool]? = nil) -> ToolReadingGate {
         let list = tools ?? [TrackedTool(label: .brush, confidence: confidence, rect: atLeftEye, speed: 0)]
         return ToolReadingGate(points: makePoints(), tools: list, detectedAt: detectedAt,
-                               enterDistance: 0.38, maxIntentSpeed: 1.2, noseActive: false, support: false)
+                               enterDistance: 0.38, maxIntentSpeed: 1.2, locked: nil, support: false)
     }
 
     @Test func freshResultTriggers() {

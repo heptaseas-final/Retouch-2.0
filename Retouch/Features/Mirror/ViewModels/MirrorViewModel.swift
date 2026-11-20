@@ -12,12 +12,14 @@ final class MirrorViewModel {
     private(set) var status: MirrorStatus?
     private(set) var isShortcutPromptVisible = false
     private(set) var isShortcutGuideVisible = false
+    private(set) var isOverallOn = false
+    private(set) var shownGlowLevel = 0.0
 
     @ObservationIgnored let renderer: MirrorRenderer
     @ObservationIgnored private let camera: CameraServicing
     @ObservationIgnored private let lighting: LightingServicing
     @ObservationIgnored private let zoom: ZoomServicing
-    @ObservationIgnored private let zoomStore: ZoomStore
+    @ObservationIgnored let zoomStore: ZoomStore
     @ObservationIgnored private let settings: MirrorSettingsStoring
     @ObservationIgnored private let analytics: AnalyticsRecording
     @ObservationIgnored private var statusAdvisor = MirrorStatusAdvisor()
@@ -51,10 +53,9 @@ final class MirrorViewModel {
     var cameraState: CameraState { camera.state }
     var permission: CameraPermissionStatus { cameraState == .permissionDenied ? .denied : .granted }
     var ringLightLevel: Double { UITestMode.forcesGlowMaximum ? 1 : lighting.ringLightLevel }
-    var ringLightWidth: CGFloat { CGFloat(lighting.config.ringLightWidth) }
-    var ringLightSoftness: Double { lighting.config.ringLightSoftness }
     var filterColor: ManualColorChoice? { lighting.filterColor }
-    var closeness: Double { lighting.closeness }
+    var glowProgress: CGFloat { GlowFrame.glowProgress(level: shownGlowLevel) }
+    var glowOpacity: Double { GlowFrame.lightOpacity(level: shownGlowLevel) }
 
     func start() async {
         camera.start()
@@ -63,13 +64,17 @@ final class MirrorViewModel {
         recordAppOpen()
     }
 
-    func refresh() {
-        camera.start()
+    func refresh(startsCamera: Bool = true) {
+        if startsCamera { camera.start() }
         zoom.start()
         analytics.appDidBecomeActive()
         guard isInBackground else { return }
         isInBackground = false
         recordAppOpen()
+    }
+
+    func pauseCamera() {
+        camera.stop()
     }
 
     func stop() {
@@ -142,6 +147,7 @@ final class MirrorViewModel {
     func select(_ part: FacePart) {
         let previous = selectedPart
         selectedPart = part
+        if isOverallOn { setOverall(false) }
         zoom.select(part)
         analytics.partChanged(from: previous, to: part)
     }
@@ -150,6 +156,15 @@ final class MirrorViewModel {
         lightMode = mode
         lighting.setLightMode(mode)
         analytics.lightModeChanged(to: mode)
+    }
+
+    func setOverall(_ isOn: Bool) {
+        isOverallOn = isOn
+        zoom.setOverall(isOn)
+    }
+    
+    func glowLevelDidChange(_ level: Double) {
+        shownGlowLevel = GlowFrame.lightOpacity(level: level)
     }
 
     func replayTutorialOpened() { analytics.replayTutorialOpened() }

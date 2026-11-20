@@ -50,6 +50,32 @@ struct LipsZoomFlowTests {
         #expect(flow.phase == .idle)
     }
 
+    @Test func talkingHoldsUntilMouthIsStill() {
+        var flow = activeFlow()
+        var near = LipsZoomFlow.Input()
+        near.fingerNear = true
+        flow.update(near, now: at(1))
+        var talking = LipsZoomFlow.Input()
+        talking.lipsMoving = true
+        flow.update(talking, now: at(1.5))
+        flow.update(talking, now: at(3))
+        #expect(flow.phase == .active)
+        let still = 3 + ZoomTuning.lipsStillDwell + 0.05
+        flow.update(LipsZoomFlow.Input(), now: at(still))
+        #expect(flow.phase == .releasing)
+        flow.update(LipsZoomFlow.Input(), now: at(still + ZoomTuning.fastReleaseDwell + 0.01))
+        #expect(flow.phase == .idle)
+    }
+
+    @Test func handMovingAwayReleasesFast() {
+        var flow = activeFlow()
+        var input = LipsZoomFlow.Input()
+        input.handMovingAway = true
+        flow.update(input, now: at(2))
+        flow.update(input, now: at(2 + ZoomTuning.fastReleaseDwell + 0.01))
+        #expect(flow.phase == .idle)
+    }
+
     @Test func handPathKeepsItsOwnDwell() {
         var flow = LipsZoomFlow()
         var input = LipsZoomFlow.Input()

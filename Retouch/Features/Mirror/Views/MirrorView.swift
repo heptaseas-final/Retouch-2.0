@@ -14,12 +14,15 @@ struct MirrorView: View {
     @State private var dockSlotCenter: CGPoint = .zero
     private let showsControls: Bool
     private let onReplayTutorial: (() -> Void)?
+    private let clipReview: ClipReviewViewModel?
 
-    init(viewModel: MirrorViewModel, showsControls: Bool = true, onReplayTutorial: (() -> Void)? = nil) {
+    init(viewModel: MirrorViewModel, showsControls: Bool = true, clipReview: ClipReviewViewModel? = nil,
+         onReplayTutorial: (() -> Void)? = nil) {
         _viewModel = State(initialValue: viewModel)
         _lightDock = State(initialValue: LightDock(viewModel.lightPlacement))
         self.showsControls = showsControls
         self.onReplayTutorial = onReplayTutorial
+        self.clipReview = clipReview
     }
 
     var body: some View {
@@ -30,10 +33,6 @@ struct MirrorView: View {
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
                 MirrorGlowLayer(viewModel: viewModel)
-                RingLightPanels(level: viewModel.ringLightLevel, color: MirrorGlowLayer(viewModel: viewModel).edgeColor,
-                                maxSideFraction: viewModel.ringLightWidth,
-                                softness: viewModel.ringLightSoftness)
-                    .ignoresSafeArea()
                 cameraStateOverlay
                 if showsControls, viewModel.cameraState != .failed {
                   VStack(spacing: 12) {
@@ -42,10 +41,13 @@ struct MirrorView: View {
                           .transition(.opacity)
                   }
                   sideLightButton
+                  if let clipReview { ClipPreviewLayer(viewModel: clipReview) }
                 }
             }
         }
         .toolbar { settingsToolbar }
+        .toolbarColorScheme(.light, for: .navigationBar)
+        .toolbar(clipReview?.isPreviewing == true ? .hidden : .automatic, for: .navigationBar)
         .pickerSwipe(pickerSwipe, isEnabled: showsControls && viewModel.permission != .denied && viewModel.cameraState != .failed && !isDraggingLight)
         .sensoryFeedback(.impact(weight: .medium), trigger: lightDock)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { screenFrame = $0 }
@@ -53,9 +55,10 @@ struct MirrorView: View {
         .task { await viewModel.start() }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
-            case .active: viewModel.refresh()
+            case .active: viewModel.refresh(startsCamera: clipReview?.isPreviewing != true)
+            case .inactive: viewModel.pauseCamera()
             case .background: viewModel.stop()
-            default: break
+            @unknown default: break
             }
         }
         .onChange(of: viewModel.cameraState) { old, new in
@@ -72,6 +75,7 @@ struct MirrorView: View {
                                     set: { if !$0 { viewModel.closeShortcutGuide() } })) {
             ShortcutGuideSheet(onClose: viewModel.closeShortcutGuide)
         }
+        .syncsGlowLevel(with: viewModel)
     }
 
     private func announceCameraState(_ state: CameraState) {
@@ -84,6 +88,7 @@ struct MirrorView: View {
     private var controls: some View {
         VStack {
             Spacer()
+            if let clipReview { ClipReviewView(viewModel: clipReview) }
             CameraControls(
                 part: Binding(get: { viewModel.selectedPart }, set: viewModel.select),
                 lightMode: Binding(get: { viewModel.lightMode }, set: viewModel.setLightMode),
@@ -93,7 +98,9 @@ struct MirrorView: View {
                 onLightLiftDrag: liftDragChanged,
                 onLightLiftEnd: liftEnded,
                 lightMoveActions: moveActions(from: .docked),
-                onLightSlotCenter: { dockSlotCenter = $0 }
+                onLightSlotCenter: { dockSlotCenter = $0 },
+                isOverallOn: Binding(get: { viewModel.isOverallOn }, set: viewModel.setOverall),
+                expandsPicker: true
             )
         }
         .padding(.horizontal, 16)
@@ -211,6 +218,11 @@ struct MirrorView: View {
 
     @ToolbarContentBuilder
     private var settingsToolbar: some ToolbarContent {
+        if showsControls, let clipReview {
+            ToolbarItem(placement: .principal) {
+                ClipSavedToast(viewModel: clipReview)
+            }
+        }
         if showsControls, viewModel.permission != .denied, let onReplayTutorial {
             ToolbarItem(placement: .topBarTrailing) {
                 SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
