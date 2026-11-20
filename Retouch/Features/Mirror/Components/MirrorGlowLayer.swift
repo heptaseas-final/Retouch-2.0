@@ -4,7 +4,6 @@
 //
 //  Created by Davin P on 18/11/26.
 //
-
 import SwiftUI
 
 struct MirrorGlowLayer: View {
@@ -24,7 +23,7 @@ struct MirrorGlowLayer: View {
         return Color(red: c.r, green: c.g, blue: c.b)
     }()
 
-    private var edgeColor: Color {
+    var edgeColor: Color {
         switch viewModel.filterColor {
         case .warm: LightColor.warm.color
         case .cool: LightColor.cool.color

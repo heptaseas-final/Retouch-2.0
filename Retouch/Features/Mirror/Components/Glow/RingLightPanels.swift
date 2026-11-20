@@ -16,7 +16,6 @@ struct RingLightPanels: View {
             .opacity(opacity)
             .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
             .allowsHitTesting(false)
-            .accessibilityElement()
-            .accessibilityLabel("Glow")
+            .accessibilityHidden(true)
     }
 }
