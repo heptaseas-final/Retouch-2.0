@@ -15,6 +15,9 @@ protocol AnalyticsRecording: OnboardingAnalyticsRecording {
     func pinchEnded(scale: Double)
     func statusChanged(to status: MirrorStatus?, faceLux: Double?)
     func replayTutorialOpened()
+    func shortcutPromptShown()
+    func shortcutGuideOpened(fromPrompt: Bool)
+    func shortcutPromptDismissedForever()
     var isAnalyticsEnabled: Bool { get }
     func setAnalyticsEnabled(_ isEnabled: Bool)
 }
@@ -97,6 +100,18 @@ final class AnalyticsRecorder: AnalyticsRecording {
 
     func replayTutorialOpened() {
         service.track(.replayTutorialOpened)
+    }
+
+    func shortcutPromptShown() {
+        service.track(.shortcutPromptShown)
+    }
+
+    func shortcutGuideOpened(fromPrompt: Bool) {
+        service.track(.shortcutGuideOpened(source: fromPrompt ? .prompt : .settings))
+    }
+
+    func shortcutPromptDismissedForever() {
+        service.track(.shortcutPromptDismissedForever)
     }
 
     var isAnalyticsEnabled: Bool { service.isEnabled }

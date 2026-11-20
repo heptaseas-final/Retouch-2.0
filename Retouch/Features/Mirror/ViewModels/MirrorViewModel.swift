@@ -10,6 +10,8 @@ final class MirrorViewModel {
     private(set) var lightPlacement: LightPlacement
     private(set) var isAnalyticsEnabled: Bool
     private(set) var status: MirrorStatus?
+    private(set) var isShortcutPromptVisible = false
+    private(set) var isShortcutGuideVisible = false
 
     @ObservationIgnored let renderer: MirrorRenderer
     @ObservationIgnored private let camera: CameraServicing
@@ -19,10 +21,16 @@ final class MirrorViewModel {
     @ObservationIgnored private let settings: MirrorSettingsStoring
     @ObservationIgnored private let analytics: AnalyticsRecording
     @ObservationIgnored private var statusAdvisor = MirrorStatusAdvisor()
+    @ObservationIgnored private let shortcutPrompt: ShortcutPromptServicing
+    @ObservationIgnored private var isInBackground = false
+    @ObservationIgnored private var isControlsVisible = false
+    @ObservationIgnored private var faceSeenSince: TimeInterval?
+    @ObservationIgnored private var isGuidePending = false
+    @ObservationIgnored private var controlStateTask: Task<Void, Never>?
 
     init(camera: CameraServicing, lighting: LightingServicing, zoom: ZoomServicing,
          zoomStore: ZoomStore, renderer: MirrorRenderer, settings: MirrorSettingsStoring,
-         analytics: AnalyticsRecording) {
+         analytics: AnalyticsRecording, shortcutPrompt: ShortcutPromptServicing) {
         self.camera = camera
         self.lighting = lighting
         self.zoom = zoom
@@ -30,6 +38,7 @@ final class MirrorViewModel {
         self.renderer = renderer
         self.settings = settings
         self.analytics = analytics
+        self.shortcutPrompt = shortcutPrompt
         isLargerButtons = settings.isLargerButtons
         lightPlacement = settings.lightPlacement
         isAnalyticsEnabled = analytics.isAnalyticsEnabled
@@ -51,12 +60,16 @@ final class MirrorViewModel {
         camera.start()
         zoom.start()
         analytics.appDidBecomeActive()
+        recordAppOpen()
     }
 
     func refresh() {
         camera.start()
         zoom.start()
         analytics.appDidBecomeActive()
+        guard isInBackground else { return }
+        isInBackground = false
+        recordAppOpen()
     }
 
     func stop() {
@@ -64,6 +77,62 @@ final class MirrorViewModel {
         camera.stop()
         zoom.stop()
         analytics.appDidEnterBackground()
+        isInBackground = true
+        isShortcutPromptVisible = false
+        isGuidePending = false
+    }
+
+    func setControlsVisible(_ isVisible: Bool) {
+        isControlsVisible = isVisible
+        if !isVisible { isShortcutPromptVisible = false }
+    }
+
+    func showShortcutGuide(fromPrompt: Bool) {
+        analytics.shortcutGuideOpened(fromPrompt: fromPrompt)
+        guard fromPrompt, isShortcutPromptVisible else {
+            isShortcutGuideVisible = true
+            return
+        }
+        isGuidePending = true
+        isShortcutPromptVisible = false
+    }
+
+    func shortcutPromptDidDisappear() {
+        guard isGuidePending else { return }
+        isGuidePending = false
+        isShortcutGuideVisible = true
+    }
+
+    func closeShortcutGuide() { isShortcutGuideVisible = false }
+
+    func snoozeShortcutPrompt() { isShortcutPromptVisible = false }
+
+    func dismissShortcutPromptForever() {
+        isShortcutPromptVisible = false
+        shortcutPrompt.dismissForever()
+        analytics.shortcutPromptDismissedForever()
+    }
+
+    private func recordAppOpen() {
+        shortcutPrompt.recordOpen()
+        controlStateTask?.cancel()
+        controlStateTask = Task { [weak self] in await self?.shortcutPrompt.refreshControlState() }
+    }
+
+    private func updateShortcutPrompt(now: TimeInterval) {
+        if lighting.status.faceLux == nil {
+            faceSeenSince = nil
+        } else if faceSeenSince == nil {
+            faceSeenSince = now
+        }
+        guard !isShortcutPromptVisible, !isShortcutGuideVisible else { return }
+        let context = ShortcutPromptContext(isControlsVisible: isControlsVisible && permission == .granted,
+                                            hasStatus: status != nil,
+                                            faceSeenSeconds: faceSeenSince.map { now - $0 } ?? 0)
+        guard shortcutPrompt.shouldShow(context) else { return }
+        shortcutPrompt.markShown()
+        isShortcutPromptVisible = true
+        analytics.shortcutPromptShown()
     }
 
     func retryCamera() { camera.retry() }
@@ -109,11 +178,15 @@ final class MirrorViewModel {
     }
 
     func refreshStatus(now: TimeInterval) {
-        let next = statusAdvisor.update(statusInput, now: now)
-        if next != status {
-            status = next
-            analytics.statusChanged(to: next, faceLux: lighting.status.faceLux)
+        if isShortcutPromptVisible, cameraState == .reconnecting { snoozeShortcutPrompt() }
+        if !isShortcutPromptVisible {
+            let next = statusAdvisor.update(statusInput, now: now)
+            if next != status {
+                status = next
+                analytics.statusChanged(to: next, faceLux: lighting.status.faceLux)
+            }
         }
+        updateShortcutPrompt(now: now)
     }
 
     func dismissStatus() {
