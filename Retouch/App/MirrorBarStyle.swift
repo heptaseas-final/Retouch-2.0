@@ -8,7 +8,7 @@ private struct MirrorBarStyle: ViewModifier {
             content
                 .toolbarBackground(Color.clear, for: .navigationBar)
                 .toolbarBackgroundVisibility(.visible, for: .navigationBar)
-                .toolbarColorScheme(isOverall ? .light : .dark, for: .navigationBar)
+                .toolbarColorScheme(.light, for: .navigationBar)
         } else {
             content
                 .toolbarBackground(.ultraThinMaterial, for: .navigationBar)

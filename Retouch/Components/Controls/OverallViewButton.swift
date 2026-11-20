@@ -15,13 +15,17 @@ struct OverallViewButton: View {
                 .font(.system(size: circleSize * 0.4, weight: .semibold))
                 .foregroundStyle(isOn ? Color.white : Color.appMagenta)
                 .contentTransition(.symbolEffect(.replace))
-                .frame(width: circleSize, height: circleSize)
-                .background(isOn ? Color.appMagenta : Color.clear, in: Circle())
+                .frame(width: size, height: size)
+                .background {
+                    if isOn {
+                        Circle().fill(Color.appMagenta)
+                    } else {
+                        Color.clear.controlGlass()
+                    }
+                }
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .padding(inset)
-        .controlGlass()
         .frame(width: size, height: size)
         .sensoryFeedback(.impact(weight: .light), trigger: isOn)
         .accessibilityInputLabels([Text("Overall view"), Text("Overall"), Text("Zoom out")])

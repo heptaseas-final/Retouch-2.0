@@ -24,10 +24,12 @@ struct SettingsMenu: View {
             Label("Settings", systemImage: "gearshape.fill")
                 .labelStyle(.iconOnly)
                 .font(.title3)
+                .foregroundStyle(Color.appMagenta)
                 .frame(width: 44, height: 44)
-                .background(.ultraThinMaterial, in: Circle())
+                .controlGlass()
                 .lightOnGlassSystems()
         }
+        .environment(\.colorScheme, .light)
         .tint(Color.appMagenta)
         .task(id: pendingLargerButtons) { await applyLargerButtonsAfterClose() }
     }

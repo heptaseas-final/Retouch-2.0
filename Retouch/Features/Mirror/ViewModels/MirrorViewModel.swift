@@ -11,6 +11,7 @@ final class MirrorViewModel {
     private(set) var isAnalyticsEnabled: Bool
     private(set) var status: MirrorStatus?
     private(set) var isOverallOn = false
+    private(set) var shownGlowLevel = 0.0
 
     @ObservationIgnored let renderer: MirrorRenderer
     @ObservationIgnored private let camera: CameraServicing
@@ -91,6 +92,10 @@ final class MirrorViewModel {
     func setOverall(_ isOn: Bool) {
         isOverallOn = isOn
         zoom.setOverall(isOn)
+    }
+    
+    func glowLevelDidChange(_ level: Double) {
+        shownGlowLevel = GlowFrame.lightOpacity(level: level)
     }
 
     func replayTutorialOpened() { analytics.replayTutorialOpened() }
