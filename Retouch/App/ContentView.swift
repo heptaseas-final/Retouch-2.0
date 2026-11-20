@@ -26,7 +26,7 @@ struct ContentView: View {
                         }
                     }
                     .navigationBarTitleDisplayMode(.inline)
-                    .mirrorBarStyle(isOverall: mirrorViewModel.zoomTarget == .overall)
+                    .mirrorBarStyle()
                 }
             } else {
                 SplashView { withAnimation(.easeInOut) { hasSeenSplash = true } }

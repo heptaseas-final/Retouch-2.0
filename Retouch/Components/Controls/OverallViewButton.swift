@@ -10,17 +10,16 @@ struct OverallViewButton: View {
 
     var body: some View {
         Button { withAnimation(.snappy) { isOn.toggle() } } label: {
-            Label("Overall view", systemImage: isOn ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+            Label("Overall view", systemImage: isOn ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
                 .labelStyle(.iconOnly)
                 .font(.system(size: circleSize * 0.4, weight: .semibold))
                 .foregroundStyle(isOn ? Color.white : Color.appMagenta)
                 .contentTransition(.symbolEffect(.replace))
-                .frame(width: circleSize, height: circleSize)
+                .frame(width: size, height: size)
                 .background(isOn ? Color.appMagenta : Color.clear, in: Circle())
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .padding(inset)
         .controlGlass()
         .frame(width: size, height: size)
         .sensoryFeedback(.impact(weight: .light), trigger: isOn)

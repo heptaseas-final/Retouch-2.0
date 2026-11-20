@@ -11,6 +11,7 @@ final class MirrorViewModel {
     private(set) var isAnalyticsEnabled: Bool
     private(set) var status: MirrorStatus?
     private(set) var isOverallOn = false
+    private(set) var shownGlowLevel = 0.0
 
     @ObservationIgnored let renderer: MirrorRenderer
     @ObservationIgnored private let camera: CameraServicing
@@ -43,10 +44,9 @@ final class MirrorViewModel {
     var cameraState: CameraState { camera.state }
     var permission: CameraPermissionStatus { cameraState == .permissionDenied ? .denied : .granted }
     var ringLightLevel: Double { UITestMode.forcesGlowMaximum ? 1 : lighting.ringLightLevel }
-    var ringLightWidth: CGFloat { CGFloat(lighting.config.ringLightWidth) }
-    var ringLightSoftness: Double { lighting.config.ringLightSoftness }
     var filterColor: ManualColorChoice? { lighting.filterColor }
-    var closeness: Double { lighting.closeness }
+    var glowProgress: CGFloat { GlowFrame.glowProgress(level: shownGlowLevel) }
+    var glowOpacity: Double { GlowFrame.lightOpacity(level: shownGlowLevel) }
 
     func start() async {
         camera.start()
@@ -92,6 +92,10 @@ final class MirrorViewModel {
     func setOverall(_ isOn: Bool) {
         isOverallOn = isOn
         zoom.setOverall(isOn)
+    }
+
+    func glowLevelDidChange(_ level: Double) {
+        shownGlowLevel = GlowFrame.lightOpacity(level: level)
     }
 
     func replayTutorialOpened() { analytics.replayTutorialOpened() }

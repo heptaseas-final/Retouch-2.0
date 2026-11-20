@@ -32,7 +32,6 @@ struct MirrorView: View {
                 CameraPermissionDeniedView(onOpenSettings: viewModel.openSettings)
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
-                ZoomLevelReadout(viewModel: viewModel)
                 MirrorGlowLayer(viewModel: viewModel)
                 cameraStateOverlay
                 if showsControls, viewModel.cameraState != .failed {
@@ -69,6 +68,12 @@ struct MirrorView: View {
         .animation(.easeInOut, value: visibleStatus)
         .onChange(of: visibleStatus) { _, status in
             if let status { AccessibilityNotification.Announcement(status.message).post() }
+        }
+        .onChange(of: viewModel.ringLightLevel, initial: true) { _, level in
+            let ramp = GlowFrame.rampDuration(from: viewModel.shownGlowLevel, to: level)
+            withAnimation(.smooth(duration: ramp)) {
+                viewModel.glowLevelDidChange(level)
+            }
         }
     }
 
