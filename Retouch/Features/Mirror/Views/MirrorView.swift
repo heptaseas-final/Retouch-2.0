@@ -33,8 +33,11 @@ struct MirrorView: View {
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
                 ZoomDebugOverlay(store: viewModel.zoomStore, isEnabled: true)
-                ZoomLevelReadout(viewModel: viewModel)
                 MirrorGlowLayer(viewModel: viewModel)
+                RingLightPanels(level: viewModel.ringLightLevel, color: MirrorGlowLayer(viewModel: viewModel).edgeColor,
+                                maxSideFraction: viewModel.ringLightWidth,
+                                softness: viewModel.ringLightSoftness)
+                    .ignoresSafeArea()
                 cameraStateOverlay
                 if showsControls, viewModel.cameraState != .failed {
                   VStack(spacing: 12) {
