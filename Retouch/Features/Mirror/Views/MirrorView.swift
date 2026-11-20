@@ -30,7 +30,7 @@ struct MirrorView: View {
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
                 MirrorGlowLayer(viewModel: viewModel)
-                RingLightPanels(level: viewModel.ringLightLevel, color: edgeColor,
+                RingLightPanels(level: viewModel.ringLightLevel, color: MirrorGlowLayer(viewModel: viewModel).edgeColor,
                                 maxSideFraction: viewModel.ringLightWidth,
                                 softness: viewModel.ringLightSoftness)
                     .ignoresSafeArea()
