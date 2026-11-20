@@ -7,7 +7,7 @@ nonisolated struct ToolReadingGate {
     let detectedAt: Date
     let enterDistance: Double
     let maxIntentSpeed: CGFloat
-    let noseActive: Bool
+    let locked: FaceZone?
     let support: Bool
 
     func read(now: Date) -> ToolZoneReading {
@@ -16,7 +16,7 @@ nonisolated struct ToolReadingGate {
             return ToolZoneReading()
         }
         return ToolZoneRecognizer(points: points, tools: tools, enterDistance: enterDistance,
-                                  maxIntentSpeed: maxIntentSpeed, noseActive: noseActive,
+                                  maxIntentSpeed: maxIntentSpeed, locked: locked,
                                   support: support).read()
     }
 }

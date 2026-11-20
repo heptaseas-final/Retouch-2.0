@@ -24,8 +24,6 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     }
     var onTracking: (@Sendable (ZoomTracking) -> Void)?
 
-    static let preemptDwellFactor: TimeInterval = 0.4
-
     let animator = ZoomAnimator()
     let faceDetector = FaceLandmarkDetector()
     let handDetector = HandPointDetector()
@@ -38,10 +36,14 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     var queuedToolSeq = 0
 
     var toolTracker = ToolBoxTracker()
+    var gripVerifier = ToolGripVerifier()
+    var toolLatch = ToolLatch()
+    var toolsFromPose = false
     var toolSchedule = ToolDetectionSchedule()
     var lastTools: [TrackedTool] = []
     var lastToolTime = Date.distantPast
     var toolReading = ToolZoneReading()
+    var inputMode = InputModeGate()
 
     var headPose: HeadPoseRecognizer
     var turnAnchor: Double
@@ -63,15 +65,19 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
 
     var noseFlow = NoseZoomFlow()
     var noseInput = NoseZoomFlow.Input()
-    enum FlowOwner { case eye, lips, nose }
+    var cheekFlow = CheekZoomFlow()
+    var cheekInput = CheekZoomFlow.Input()
+    var layoutGate = FaceLayoutGate()
+    enum FlowOwner: CaseIterable { case eye, lips, nose, cheek }
     var handTarget: ZoomTarget?
+    var flowEnteredAt: [FlowOwner: Date] = [:]
     var headTarget: ZoomTarget?
     var lastLogicTime = Date.distantPast
     var prevFace: FaceObservation?
     var prevFaceTime = Date.distantPast
     var handBank = HandTrackBank()
     var hands: [TrackedHand] = []
-    var activeHands: [TrackedHand] { hands.filter { $0.hasPose || $0.holding } }
+    var activeHands: [TrackedHand] { hands }
     var eyeFlow = EyeZoomFlow()
     var eyeActivity = EyeActivityRecognizer()
     var eyeInput = EyeZoomFlow.Input()
@@ -149,6 +155,9 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         eyeInput = EyeZoomFlow.Input()
         noseFlow = NoseZoomFlow()
         noseInput = NoseZoomFlow.Input()
+        cheekFlow = CheekZoomFlow()
+        cheekInput = CheekZoomFlow.Input()
+        layoutGate.reset()
         distComp = DistanceCompensator()
         resetOverall()
         clearToolState()
@@ -214,7 +223,7 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         }
         let toolPlan = stateQueue.sync { toolDetectionPlan() }
         faceDetector.submit(pixelBuffer, minInterval: interval)
-        if isAuto, !toolPlan.pausesHands { handDetector.submit(pixelBuffer, minInterval: interval) }
+        if isAuto { handDetector.submit(pixelBuffer, minInterval: interval) }
         if isAuto, let toolInterval = toolPlan.interval {
             toolDetector.submit(pixelBuffer, face: faceDetector.snapshot.value, minInterval: toolInterval)
         }

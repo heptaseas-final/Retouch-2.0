@@ -7,13 +7,18 @@ nonisolated struct FacePointTracker {
     var maxScaleYaw = 30.0
     private(set) var points = FacePoints()
     private var lastTime: Date?
-    private var coverRef: (points: FacePoints, center: CGPoint, width: CGFloat)?
+    private var lostSince: Date?
+    private var coverRef: (points: FacePoints, center: CGPoint, width: CGFloat, yaw: Double)?
 
-    mutating func update(face: FaceObservation?, covering: Bool, converter: CoordinateConverter,
-                         now: Date) -> FacePoints {
-        guard let face else { return points }
-        if covering {
-            followFaceBox(face: face, converter: converter, now: now)
+    mutating func update(face: FaceObservation?, covering: Bool, anchored: Bool = false,
+                         converter: CoordinateConverter, now: Date) -> FacePoints {
+        guard let face else {
+            dropIfFaceGone(covering: covering, now: now)
+            return points
+        }
+        lostSince = nil
+        if covering || holdsAnchor(face: face, anchored: anchored) {
+            followFaceBox(face: face, learnLive: !covering, converter: converter, now: now)
             return points
         }
         coverRef = nil
@@ -32,6 +37,18 @@ nonisolated struct FacePointTracker {
         return points
     }
 
+    private mutating func dropIfFaceGone(covering: Bool, now: Date) {
+        guard points.center != nil || points.width > 0 else { return }
+        let since = lostSince ?? now
+        lostSince = since
+        let limit = covering ? ZoomTuning.faceLostClearCovering : ZoomTuning.faceLostClear
+        guard now.timeIntervalSince(since) >= limit else { return }
+        points = FacePoints()
+        coverRef = nil
+        lastTime = nil
+        lostSince = nil
+    }
+
     mutating func reseedSize(face: FaceObservation, converter: CoordinateConverter) {
         points.width = converter.width(face.width)
         guard let l = face.leftEye.map(converter.toView),
@@ -40,13 +57,20 @@ nonisolated struct FacePointTracker {
         points.scale = hypot(l.x - r.x, l.y - r.y) / cosYaw
     }
 
-    private mutating func followFaceBox(face: FaceObservation, converter: CoordinateConverter, now: Date) {
+    private func holdsAnchor(face: FaceObservation, anchored: Bool) -> Bool {
+        guard anchored, ZoomTuning.coverFollowEnabled else { return false }
+        guard let ref = coverRef else { return true }
+        return abs(face.yaw - ref.yaw) <= ZoomTuning.anchorYawLimit
+    }
+
+    private mutating func followFaceBox(face: FaceObservation, learnLive: Bool, converter: CoordinateConverter,
+                                        now: Date) {
         guard ZoomTuning.coverFollowEnabled else { return }
         let center = converter.toView(face.center)
         let width = converter.width(face.width)
         guard width > 0 else { return }
         guard let ref = coverRef else {
-            coverRef = (points, center, width)
+            coverRef = (points, center, width, face.yaw)
             lastTime = now
             return
         }
@@ -61,19 +85,37 @@ nonisolated struct FacePointTracker {
         if !(abs(face.yaw) < maxScaleYaw) { k = 1 }
         k = min(max(k, ZoomTuning.coverFollowMinScale), ZoomTuning.coverFollowMaxScale)
 
+        var layout = ref.points
+        if learnLive {
+            let blend = CGFloat(1 - exp(-dt / Double(ZoomTuning.anchorBlendTau)))
+            func back(_ p: CGPoint?) -> CGPoint? {
+                guard let p, k > 0 else { return nil }
+                let live = converter.toView(p)
+                return CGPoint(x: ref.center.x + (live.x - center.x) / k, y: ref.center.y + (live.y - center.y) / k)
+            }
+            var learned = ref.points
+            learned.leftEye = smooth(learned.leftEye, back(face.leftEye), blend)
+            learned.rightEye = smooth(learned.rightEye, back(face.rightEye), blend)
+            learned.lips = smooth(learned.lips, back(face.lips), blend)
+            learned.lipsTop = smooth(learned.lipsTop, back(face.lipsTop), blend)
+            learned.nose = smooth(learned.nose, back(face.nose), blend)
+            layout = learned
+            coverRef = (learned, ref.center, ref.width, ref.yaw)
+        }
+
         func moved(_ p: CGPoint?) -> CGPoint? {
             guard let p else { return nil }
             return CGPoint(x: center.x + (p.x - ref.center.x) * k,
                            y: center.y + (p.y - ref.center.y) * k)
         }
-        points.leftEye = smooth(points.leftEye, moved(ref.points.leftEye), alpha)
-        points.rightEye = smooth(points.rightEye, moved(ref.points.rightEye), alpha)
-        points.lips = smooth(points.lips, moved(ref.points.lips), alpha)
-        points.lipsTop = smooth(points.lipsTop, moved(ref.points.lipsTop), alpha)
-        points.nose = smooth(points.nose, moved(ref.points.nose), alpha)
-        points.center = smooth(points.center, moved(ref.points.center), alpha)
-        points.width += (ref.points.width * k - points.width) * alpha
-        points.scale += (ref.points.scale * k - points.scale) * alpha
+        points.leftEye = smooth(points.leftEye, moved(layout.leftEye), alpha)
+        points.rightEye = smooth(points.rightEye, moved(layout.rightEye), alpha)
+        points.lips = smooth(points.lips, moved(layout.lips), alpha)
+        points.lipsTop = smooth(points.lipsTop, moved(layout.lipsTop), alpha)
+        points.nose = smooth(points.nose, moved(layout.nose), alpha)
+        points.center = smooth(points.center, moved(layout.center), alpha)
+        points.width += (layout.width * k - points.width) * alpha
+        points.scale += (layout.scale * k - points.scale) * alpha
     }
 
     private mutating func learnWidth(face: FaceObservation, converter: CoordinateConverter, dt: TimeInterval) {

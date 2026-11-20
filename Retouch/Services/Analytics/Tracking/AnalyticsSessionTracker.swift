@@ -285,7 +285,7 @@ struct AnalyticsSessionTracker {
         case .rightEye: return (.eye, .right)
         case .lips: return (.lip, nil)
         case .nose: return (.nose, nil)
-        case .faceSide: return (.headTurn, nil)
+        case .faceSide, .cheek: return (.headTurn, nil)
         }
     }
 
