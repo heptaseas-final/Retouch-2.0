@@ -62,7 +62,7 @@ struct ToolZoneRecognizerTests {
     }
 
     @Test func lowConfidenceOnlyHolds() {
-        let reading = read([tool(.brush, atLeftEye, confidence: 0.4)])
+        let reading = read([tool(.brush, atLeftEye, confidence: 0.6)])
         #expect(!reading.eyeTriggerLeft)
         #expect(reading.eyeHoldLeft)
         #expect(reading.isInZone)

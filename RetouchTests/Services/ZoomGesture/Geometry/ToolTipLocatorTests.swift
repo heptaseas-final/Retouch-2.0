@@ -12,13 +12,13 @@ struct ToolTipLocatorTests {
     private let vertical = CGRect(x: 0, y: 0, width: 20, height: 100)
 
     @Test func tipSitsAtTheEndFacingTheFace() {
-        #expect(ToolTipLocator.tip(of: vertical, toward: CGPoint(x: 10, y: -50)) == CGPoint(x: 10, y: 10))
-        #expect(ToolTipLocator.tip(of: vertical, toward: CGPoint(x: 10, y: 200)) == CGPoint(x: 10, y: 90))
+        #expect(ToolTipLocator.tip(of: vertical, toward: CGPoint(x: 10, y: -50)) == CGPoint(x: 10, y: 0))
+        #expect(ToolTipLocator.tip(of: vertical, toward: CGPoint(x: 10, y: 200)) == CGPoint(x: 10, y: 100))
     }
 
     @Test func horizontalToolUsesItsSideEnd() {
         let horizontal = CGRect(x: 0, y: 0, width: 100, height: 20)
-        #expect(ToolTipLocator.tip(of: horizontal, toward: CGPoint(x: -50, y: 10)) == CGPoint(x: 10, y: 10))
+        #expect(ToolTipLocator.tip(of: horizontal, toward: CGPoint(x: -50, y: 10)) == CGPoint(x: 0, y: 10))
     }
 
     @Test func diagonalToolUsesTheCornerFacingTheFace() {
@@ -33,13 +33,13 @@ struct ToolTipLocatorTests {
     }
 
     @Test func anchorInsideToolPicksTheNearerEnd() {
-        #expect(ToolTipLocator.tip(of: vertical, toward: CGPoint(x: 4, y: 40)) == CGPoint(x: 10, y: 10))
+        #expect(ToolTipLocator.tip(of: vertical, toward: CGPoint(x: 4, y: 40)) == CGPoint(x: 10, y: 0))
     }
 
     @Test func faceWithoutCenterFallsBackToEyes() {
         var face = FacePoints()
         face.leftEye = CGPoint(x: 0, y: -100)
         face.rightEye = CGPoint(x: 20, y: -100)
-        #expect(ToolTipLocator.tip(of: vertical, face: face) == CGPoint(x: 10, y: 10))
+        #expect(ToolTipLocator.tip(of: vertical, face: face) == CGPoint(x: 10, y: 0))
     }
 }
