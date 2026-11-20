@@ -4,15 +4,6 @@
 //
 //  Created by Davin P on 18/11/26.
 //
-
-
-//
-//  MirrorGlowLayer.swift
-//  Retouch
-//
-//  Created by Davin P on 18/11/26.
-//
-
 import SwiftUI
 
 struct MirrorGlowLayer: View {
@@ -27,7 +18,7 @@ struct MirrorGlowLayer: View {
             .ignoresSafeArea()
     }
 
-    private var edgeColor: Color {
+    var edgeColor: Color {
         switch viewModel.filterColor {
         case .warm: LightColor.warm.color
         case .cool: LightColor.cool.color
@@ -35,7 +26,7 @@ struct MirrorGlowLayer: View {
         }
     }
 
-    private var autoEdgeColor: Color {
+    var autoEdgeColor: Color {
         let zoomProgress = (viewModel.zoomState.scale - 1) / (LightingTuning.autoShiftFullScale - 1)
         let progress = max(Double(min(max(zoomProgress, 0), 1)), viewModel.closeness)
         let t = LightingTuning.autoShiftStrength * min(max(progress, 0), 1)
