@@ -40,7 +40,7 @@ struct LightModeButton: View {
         .accessibilityElement(children: .contain)
         .padding(.horizontal, 6)
         .padding(.vertical, inset)
-        .lightGlass()
+        .controlGlass()
         .frame(width: size, height: size, alignment: .bottom)
         .scaleEffect(isLifted && !reduceMotion ? 1.12 : 1)
         .shadow(color: .black.opacity(isLifted ? 0.25 : 0), radius: 12, y: 6)
@@ -143,17 +143,6 @@ struct LightModeButton: View {
         guard newMode != mode else { return }
         withAnimation(.snappy) { mode = newMode }
         onChange?(newMode)
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func lightGlass() -> some View {
-        if #available(iOS 26, *) {
-            glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            background(.ultraThinMaterial, in: Capsule())
-        }
     }
 }
 

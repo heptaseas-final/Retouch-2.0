@@ -15,56 +15,87 @@ struct HorizontalPicker<Item: Hashable>: View {
     var padding: CGFloat = 20
     var height: CGFloat = 54
     var expandedHeight: CGFloat = 66
+    var expandedWidth: CGFloat?
     let title: (Item) -> String
 
     @State private var base = 0
+    @State private var dragOffset: CGFloat = 0
+    @State private var isDraggingPicker = false
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.legibilityWeight) private var legibilityWeight
+    @Environment(\.colorScheme) private var colorScheme
 
     private let maxStepsPerSwipe = 1
     private let selectionInset: CGFloat = 4
+    private let pickerDragMinimum: CGFloat = 4
+    private let visibleSpread = 5
+    private let lensMagnify: CGFloat = 1.08
+    private let rimWidth: CGFloat = 1.2
+
+    private var rimGradient: LinearGradient {
+        LinearGradient(colors: [.white.opacity(0.75), .white.opacity(0.1), .white.opacity(0.4)],
+                       startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
 
     var body: some View {
         let font = PickerMetrics.font(for: typeSize, isBold: legibilityWeight == .bold)
         let restingHeight = PickerMetrics.height(height, font: font)
         let liftedHeight = restingHeight + expandedHeight - height
         let track = PickerTrack(slots: items.map { PickerMetrics.textWidth(title($0), font: font) + 2 * padding })
-        let dragX = track.center(base) - (swipe.isDragging ? swipe.translation : 0)
-        let x = min(max(dragX, track.center(base - maxStepsPerSwipe)), track.center(base + maxStepsPerSwipe))
+        let x = position(on: track)
         let current = track.nearest(to: x, around: base)
-        let capsuleWidth = swipe.isDragging ? track.slotWidth(at: x, around: base) : track.slot(base)
-        let currentHeight = swipe.isDragging ? liftedHeight : restingHeight
+        let isDragging = swipe.isDragging || isDraggingPicker
+        let capsuleWidth = isDragging ? track.slotWidth(at: x, around: base) : track.slot(base)
+        let currentHeight = isDragging ? liftedHeight : restingHeight
+        let lensWidth = capsuleWidth - selectionInset * 2
+        let lensHeight = currentHeight - selectionInset * 2
+
+        let openWidth = max(expandedWidth ?? width, width)
+        let shapeWidth = isDragging ? openWidth : width
 
         ZStack {
             Color.clear
-                .pickerGlass(tint: contrast == .increased ? .white.opacity(0.8) : nil)
+                .frame(width: shapeWidth, height: currentHeight)
+                .controlGlass()
 
             Capsule()
                 .fill(Color.appMagenta)
-                .frame(width: capsuleWidth - selectionInset * 2, height: currentHeight - selectionInset * 2)
-
-            ForEach(Array(current - 5...current + 5), id: \.self) { index in
-                Button { select(index) } label: {
-                    Text(title(item(at: index)))
-                        .font(Font(font))
-                        .foregroundStyle(index == current ? Color.white : Color.appInactive)
-                        .lineLimit(1)
-                        .fixedSize()
-                        .frame(width: track.slot(index), height: currentHeight)
-                        .contentShape(Rectangle())
+                .overlay {
+                    Capsule().strokeBorder(rimGradient, lineWidth: rimWidth)
                 }
-                .buttonStyle(.plain)
-                .accessibilityHidden(true)
-                .allowsHitTesting(abs(track.center(index) - x) < width / 2)
-                    .offset(x: track.center(index) - x)
-            }
+                .frame(width: lensWidth, height: lensHeight)
+
+
+            labels(track: track, x: x, height: currentHeight, span: openWidth, font: font,
+                   color: ControlPalette.text(colorScheme), tappable: true)
+                .mask {
+                    Rectangle()
+                        .overlay {
+                            Capsule()
+                                .frame(width: lensWidth, height: lensHeight)
+                                .blendMode(.destinationOut)
+                        }
+                        .compositingGroup()
+                }
+
+            labels(track: track, x: x, height: currentHeight, span: openWidth, font: font,
+                   color: .white, tappable: false)
+                .scaleEffect(lensMagnify)
+                .mask {
+                    Capsule().frame(width: lensWidth, height: lensHeight)
+                }
+                .allowsHitTesting(false)
         }
         .frame(width: width, height: currentHeight)
-        .clipShape(Capsule())
+        .mask {
+            Capsule()
+                .frame(width: shapeWidth, height: currentHeight)
+                .frame(width: width, height: currentHeight)
+        }
         .contentShape(Capsule())
-        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.6), value: swipe.isDragging)
+        .highPriorityGesture(pickerDrag(track: track))
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.6), value: isDragging)
         .sensoryFeedback(.selection, trigger: current)
         .accessibilityShowsLargeContentViewer {
             Text(title(selection).capitalized)
@@ -103,7 +134,57 @@ struct HorizontalPicker<Item: Hashable>: View {
             if delta < -items.count / 2 { delta += items.count }
             withAnimation(.snappy) { base += delta }
         }
-        .environment(\.colorScheme, .light)
+        .lightOnGlassSystems()
+    }
+
+    private func position(on track: PickerTrack) -> CGFloat {
+        if isDraggingPicker { return track.center(base) - dragOffset }
+        let dragX = track.center(base) - (swipe.isDragging ? swipe.translation : 0)
+        return min(max(dragX, track.center(base - maxStepsPerSwipe)), track.center(base + maxStepsPerSwipe))
+    }
+
+    private func labels(track: PickerTrack, x: CGFloat, height: CGFloat, span: CGFloat, font: UIFont,
+                        color: Color, tappable: Bool) -> some View {
+        let middle = track.nearest(to: x, around: base)
+        return ZStack {
+            ForEach(Array(middle - visibleSpread...middle + visibleSpread), id: \.self) { index in
+                Button { select(index) } label: {
+                    Text(title(item(at: index)))
+                        .font(Font(font))
+                        .foregroundStyle(color)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .frame(width: track.slot(index), height: height)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHidden(true)
+                .allowsHitTesting(tappable && abs(track.center(index) - x) < width / 2)
+                .offset(x: track.center(index) - x)
+            }
+        }
+        .frame(width: span, height: height)
+    }
+
+    private func pickerDrag(track: PickerTrack) -> some Gesture {
+        DragGesture(minimumDistance: pickerDragMinimum)
+            .onChanged { value in
+                if !isDraggingPicker {
+                    isDraggingPicker = true
+                    swipe.holdForPicker(true)
+                }
+                dragOffset = value.translation.width
+            }
+            .onEnded { value in
+                let landing = track.nearest(to: track.center(base) - value.predictedEndTranslation.width, around: base)
+                withAnimation(.snappy) {
+                    base = landing
+                    dragOffset = 0
+                    isDraggingPicker = false
+                }
+                swipe.holdForPicker(false)
+                commit(item(at: landing))
+            }
     }
 
     private func wrapped(_ index: Int) -> Int {
@@ -155,7 +236,7 @@ private struct PickerTrack {
     }
 
     func nearest(to x: CGFloat, around index: Int) -> Int {
-        (index - 8...index + 8).min { abs(center($0) - x) < abs(center($1) - x) } ?? index
+        (index - 16...index + 16).min { abs(center($0) - x) < abs(center($1) - x) } ?? index
     }
 
     func slotWidth(at x: CGFloat, around index: Int) -> CGFloat {
@@ -168,18 +249,6 @@ private struct PickerTrack {
 
     private func wrapped(_ index: Int) -> Int {
         ((index % slots.count) + slots.count) % slots.count
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func pickerGlass(tint: Color?) -> some View {
-        if #available(iOS 26.0, *) {
-            glassEffect(.regular.tint(tint), in: Capsule())
-        } else {
-            background(.ultraThinMaterial, in: Capsule())
-                .overlay(Capsule().fill(tint ?? .clear))
-        }
     }
 }
 

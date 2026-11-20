@@ -8,6 +8,7 @@ nonisolated extension ZoomService {
                         imageSize: CGSize) {
         guard viewSize.width > 0, viewSize.height > 0 else { return }
         let converter = CoordinateConverter(imageSize: imageSize, viewSize: viewSize)
+        self.imageSize = imageSize
 
         let now = max(max(faceSnap?.timestamp ?? .distantPast, handSnap?.timestamp ?? .distantPast,
                           toolSnap?.timestamp ?? .distantPast),
@@ -24,8 +25,9 @@ nonisolated extension ZoomService {
                             yawDegrees: Double(lastFace?.yaw ?? .nan),
                             valid: lastFace != nil,
                             now: faceSnap.timestamp.timeIntervalSinceReferenceDate)
-            publish(manualTarget)
-            onTracking?(ZoomTracking(target: manualTarget, face: points, viewSize: viewSize))
+            let target = isManualOverall ? ZoomTarget.overall : manualTarget
+            publish(target)
+            onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize))
             return
         }
 
@@ -113,9 +115,11 @@ nonisolated extension ZoomService {
         if winner != .lips, lipFlow.phase == .releasing { lipFlow.cancel() }
         handTarget = winner == .eye ? eyeFlow.target : nil
 
-        let target = resolver.resolve(hand: handTarget, lips: winner == .lips, nose: winner == .nose, head: headTarget, covering: covering, headStraight: headPose.isStraight, headQuickRelease: headPose.quickReleased, now: now)
+        let autoOverall = updateOverall(face: faceSnap?.value, converter: converter)
+        let target: ZoomTarget = autoOverall || isManualOverall ? .overall
+            : resolver.resolve(hand: handTarget, lips: winner == .lips, nose: winner == .nose, head: headTarget, covering: covering, headStraight: headPose.isStraight, headQuickRelease: headPose.quickReleased, now: now)
 
-        if target == .fullFace { distComp.clearReference() } else { distComp.latchReferenceIfNeeded() }
+        if target == .fullFace || target == .overall { distComp.clearReference() } else { distComp.latchReferenceIfNeeded() }
 
         let handDriven = target == .leftEye || target == .rightEye || target == .lips || target == .nose
         if handDriven, autoZoomSince == nil { autoZoomSince = now }
@@ -139,7 +143,8 @@ nonisolated extension ZoomService {
 
         publish(target)
 
-        onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize))
+        onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
+                                 overallPose: isOverallShowing ? overallRecognizer.pose : .none))
     }
 
     func trackMotion(face: FaceObservation?, hand: CGPoint?, at now: Date, faceChecked: Bool = true) {
@@ -185,6 +190,10 @@ nonisolated extension ZoomService {
             send(scale: pinchScale, focus: .pinch)
             return
         }
+        if target == .overall {
+            publishOverall()
+            return
+        }
         guard let focus = focusPoint(for: target, faceTracker.points) else {
             send(scale: 1, focus: .center)
             return
@@ -196,7 +205,7 @@ nonisolated extension ZoomService {
 
     func focusPoint(for target: ZoomTarget, _ p: FacePoints) -> CGPoint? {
         switch target {
-        case .fullFace: return nil
+        case .fullFace, .overall: return nil
         case .leftEye: return p.leftEye
         case .rightEye: return p.rightEye
         case .lips: return p.lips

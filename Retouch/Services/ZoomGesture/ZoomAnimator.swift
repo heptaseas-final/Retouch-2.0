@@ -32,6 +32,8 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     private var lastFilteredFocus: CGPoint = .zero
 
     private var currentScale: CGFloat = 1
+    private var scaleVelocity: CGFloat = 0
+    private var easesScale = false
     private var panX: CGFloat = 0
     private var panY: CGFloat = 0
     private var velX: CGFloat = 0
@@ -48,6 +50,8 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     func reset() {
         goalScale = 1
         currentScale = 1
+        scaleVelocity = 0
+        easesScale = false
         panX = 0
         panY = 0
         velX = 0
@@ -90,6 +94,14 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
 
     func setGoal(scale: CGFloat, focus: Focus) {
         if reducesMotion, !acceptsCut(to: focus) { return }
+        let oldMode = mode
+        defer {
+            easesScale = ZoomScaleEasing.easesAfterGoal(wasEasing: easesScale,
+                                                        wasOverall: oldMode == .target(.overall),
+                                                        isOverall: mode == .target(.overall),
+                                                        modeChanged: mode != oldMode)
+            if !easesScale { scaleVelocity = 0 }
+        }
         goalScale = scale
         switch focus {
         case .center:
@@ -190,14 +202,21 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         }
         if snaps || (reducesMotion && mode == .pinch) {
             currentScale = goalScale
+        } else if easesScale {
+            currentScale = ZoomScaleEasing.easedStep(current: currentScale, goal: goalScale, velocity: &scaleVelocity,
+                                                     smoothTime: ZoomTuning.overallScaleSmoothTime, dt: dt)
+            if ZoomScaleEasing.isSettled(current: currentScale, goal: goalScale, velocity: scaleVelocity) {
+                easesScale = false
+                scaleVelocity = 0
+            }
         } else {
             let tau = goalScale > currentScale ? zoomInTau : zoomOutTau
             currentScale += (goalScale - currentScale) * (1 - exp(-dt / tau))
         }
         scaleLock.lock(); shownScale = currentScale; scaleLock.unlock()
 
-        let maxX = (currentScale - 1) * size.width / 2
-        let maxY = (currentScale - 1) * size.height / 2
+        let maxX = max(currentScale - 1, 0) * size.width / 2
+        let maxY = max(currentScale - 1, 0) * size.height / 2
 
         var goalX: CGFloat = 0
         var goalY: CGFloat = 0

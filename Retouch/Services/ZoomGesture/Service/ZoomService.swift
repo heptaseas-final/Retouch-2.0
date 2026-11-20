@@ -14,6 +14,7 @@ nonisolated protocol ZoomServicing: AnyObject, Sendable {
     func resetSession()
     func select(_ part: FacePart)
     func setReduceMotion(_ isOn: Bool)
+    func setOverall(_ isOn: Bool)
 }
 
 nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
@@ -75,6 +76,11 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     var eyeActivity = EyeActivityRecognizer()
     var eyeInput = EyeZoomFlow.Input()
     var distComp = DistanceCompensator()
+    var overallRecognizer = OverallPoseRecognizer()
+    let deviceMotion = DeviceMotionTracker()
+    var isOverallShowing = false
+    var isManualOverall = false
+    var imageSize: CGSize = .zero
 
     var pinchScale: CGFloat = 1
     var pinchBase: CGFloat = 1
@@ -144,6 +150,7 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         noseFlow = NoseZoomFlow()
         noseInput = NoseZoomFlow.Input()
         distComp = DistanceCompensator()
+        resetOverall()
         clearToolState()
     }
 
@@ -158,9 +165,13 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         seqLock.unlock()
     }
 
-    func start() { DispatchQueue.main.async { [animator] in animator.start() } }
+    func start() {
+        deviceMotion.start()
+        DispatchQueue.main.async { [animator] in animator.start() }
+    }
 
     func stop() {
+        deviceMotion.stop()
         DispatchQueue.main.async { [animator] in animator.stop() }
         stateQueue.async { [self] in
             HeadProfileStore.save(headPose.profile)
@@ -273,6 +284,16 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
 
     func setReduceMotion(_ isOn: Bool) {
         Task { @MainActor [animator] in animator.reducesMotion = isOn }
+    }
+
+    func setOverall(_ isOn: Bool) {
+        stateQueue.async { [self] in
+            isManualOverall = isOn
+            pinchScale = 1
+            pinchBase = 1
+            pinchActive = false
+            publish(isOn ? .overall : (isGestureEnabled ? resolver.target : manualTarget))
+        }
     }
 
     func setManualTarget(_ target: ZoomTarget) {

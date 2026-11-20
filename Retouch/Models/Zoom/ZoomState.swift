@@ -1,10 +1,3 @@
-//
-//  ZoomState.swift
-//  Retouch
-//
-//  Created by Davin P on 25/10/26.
-//
-
 import CoreGraphics
 
 nonisolated struct ZoomState: Equatable {
@@ -23,17 +16,22 @@ nonisolated struct ZoomTracking: Sendable {
     var target: ZoomTarget = .fullFace
     var face = FacePoints()
     var viewSize: CGSize = .zero
+    var overallPose: OverallPose = .none
 }
+
+nonisolated enum OverallPose: Equatable, Sendable { case none, placedFar, heldHigh }
 
 nonisolated enum FaceSide { case left, right }
 
 nonisolated enum ZoomTarget: Equatable {
     case fullFace, leftEye, rightEye, lips, nose
     case faceSide(FaceSide)
+    case overall
 
     var zoomScale: CGFloat {
         switch self {
         case .fullFace: ZoomTuning.fullFaceZoom
+        case .overall: ZoomTuning.overallZoom
         case .leftEye, .rightEye: ZoomTuning.eyeZoomScale
         case .lips: ZoomTuning.lipsZoomScale
         case .nose: ZoomTuning.noseZoomScale
@@ -50,10 +48,15 @@ nonisolated enum ZoomTarget: Equatable {
         case .nose: "Nose"
         case .faceSide(.left): "Left side of face"
         case .faceSide(.right): "Right side of face"
+        case .overall: "Overall view"
         }
     }
 
     var zoomAnnouncement: String {
-        self == .fullFace ? "Back to full face" : "Zoomed to \(spokenName.lowercased())"
+        switch self {
+        case .fullFace: "Back to full face"
+        case .overall: "Showing overall view"
+        default: "Zoomed to \(spokenName.lowercased())"
+        }
     }
 }
