@@ -3,13 +3,14 @@ import Foundation
 import Observation
 
 enum ClipNotice: Equatable {
-    case saved, photosDenied, saveFailed
+    case saved, deleted, photosDenied, saveFailed
 
     var message: String {
         switch self {
         case .saved: "Video saved to your gallery"
-        case .photosDenied: "Allow Retouch to add to Photos in Settings to save clips."
-        case .saveFailed: "Couldn't save the clip. Try again."
+        case .deleted: "Video deleted"
+        case .photosDenied: "Allow Retouch to add to Photos in Settings to save videos."
+        case .saveFailed: "Couldn't save the video. Try again."
         }
     }
 }
@@ -29,6 +30,8 @@ final class ClipReviewViewModel {
     @ObservationIgnored private var isActive = false
     @ObservationIgnored private var dismissTask: Task<Void, Never>?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
+    @ObservationIgnored private var deletedClip: RecordedClip?
+    @ObservationIgnored private var deletedThumbnail: CGImage?
 
     init(recording: ClipRecordingServicing, photos: PhotoLibraryServicing, camera: CameraServicing) {
         self.recording = recording
@@ -53,6 +56,7 @@ final class ClipReviewViewModel {
         isRecording = false
         previewClip = nil
         discardClip()
+        clearNotice()
     }
 
     func pauseRecording() {
@@ -86,6 +90,28 @@ final class ClipReviewViewModel {
     func delete() {
         discardClip()
         closePreview()
+    }
+
+    func deleteWithUndo() {
+        guard let clip else { return }
+        dismissTask?.cancel()
+        discardDeletedClip()
+        deletedClip = clip
+        deletedThumbnail = thumbnail
+        self.clip = nil
+        thumbnail = nil
+        show(.deleted, for: RecordingConfig.undoLifetime)
+    }
+
+    func undoDelete() {
+        guard let deletedClip else { return }
+        noticeTask?.cancel()
+        notice = nil
+        clip = deletedClip
+        thumbnail = deletedThumbnail
+        self.deletedClip = nil
+        deletedThumbnail = nil
+        scheduleDismiss()
     }
 
     func save() async {
@@ -142,17 +168,26 @@ final class ClipReviewViewModel {
         }
     }
 
-    private func show(_ value: ClipNotice) {
+    private func show(_ value: ClipNotice, for lifetime: Duration = RecordingConfig.noticeLifetime) {
+        if value != .deleted { discardDeletedClip() }
         notice = value
         noticeTask?.cancel()
         noticeTask = Task { [weak self] in
-            guard (try? await Task.sleep(for: RecordingConfig.noticeLifetime)) != nil else { return }
+            guard (try? await Task.sleep(for: lifetime)) != nil else { return }
             self?.notice = nil
+            self?.discardDeletedClip()
         }
     }
 
     private func clearNotice() {
         noticeTask?.cancel()
         notice = nil
+        discardDeletedClip()
+    }
+
+    private func discardDeletedClip() {
+        if let deletedClip { recording.discard(deletedClip) }
+        deletedClip = nil
+        deletedThumbnail = nil
     }
 }

@@ -3,6 +3,10 @@ import SwiftUI
 struct ClipStatusLabel: View {
     let text: String
     var showsRecordingDot = false
+    var actionTitle: String?
+    var action: (() -> Void)?
+
+    private var hasAction: Bool { actionTitle != nil && action != nil }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -15,11 +19,18 @@ struct ClipStatusLabel: View {
             Text(text)
                 .font(.subheadline)
                 .foregroundStyle(.white)
+            if let actionTitle, let action {
+                Button(actionTitle, action: action)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white)
+                    .frame(minWidth: RecordingConfig.minTapTarget, minHeight: RecordingConfig.minTapTarget)
+                    .contentShape(Rectangle())
+            }
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 12)
+        .padding(.vertical, hasAction ? 0 : 12)
         .background(Color.appInactive.opacity(0.8), in: Capsule())
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: hasAction ? .contain : .combine)
     }
 }
 
@@ -29,6 +40,7 @@ struct ClipStatusLabel: View {
         VStack {
             ClipStatusLabel(text: "Recording", showsRecordingDot: true)
             ClipStatusLabel(text: "Saved to Photos")
+            ClipStatusLabel(text: "Video deleted", actionTitle: "Undo", action: {})
         }
     }
 }

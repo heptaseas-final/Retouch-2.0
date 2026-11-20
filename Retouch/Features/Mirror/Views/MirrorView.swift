@@ -32,15 +32,19 @@ struct MirrorView: View {
                 CameraPermissionDeniedView(onOpenSettings: viewModel.openSettings)
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
+                    .accessibilityHidden(isClipPreviewing)
                 MirrorGlowLayer(viewModel: viewModel)
                 cameraStateOverlay
+                    .accessibilityHidden(isClipPreviewing)
                 if showsControls, viewModel.cameraState != .failed {
                   VStack(spacing: 12) {
                       Spacer()
                       controls
                           .transition(.opacity)
                   }
+                  .accessibilityHidden(isClipPreviewing)
                   sideLightButton
+                      .accessibilityHidden(isClipPreviewing)
                   if let clipReview { ClipPreviewLayer(viewModel: clipReview) }
                 }
             }
@@ -70,7 +74,15 @@ struct MirrorView: View {
         .onChange(of: visibleStatus) { _, status in
             if let status { AccessibilityNotification.Announcement(status.message).post() }
         }
-        .syncsGlowLevel(with: viewModel)
+    }
+
+    private var isClipPreviewing: Bool { clipReview?.isPreviewing == true }
+
+    private static let inactivePauseDelay: Duration = .milliseconds(600)
+
+    private func pauseAfterSettling() async {
+        guard (try? await Task.sleep(for: Self.inactivePauseDelay)) != nil else { return }
+        viewModel.pauseCamera()
     }
 
     private func announceCameraState(_ state: CameraState) {

@@ -4,6 +4,7 @@ struct OverallViewButton: View {
     @Binding var isOn: Bool
     var size: CGFloat = 46
 
+    @Environment(\.isEnabled) private var isEnabled
 
     private let inset: CGFloat = 4
     private var circleSize: CGFloat { size - inset * 2 }
@@ -31,7 +32,12 @@ struct OverallViewButton: View {
         .accessibilityInputLabels([Text("Overall view"), Text("Overall"), Text("Zoom out")])
         .accessibilityValue(isOn ? "On" : "Off")
         .accessibilityAddTraits(.isToggle)
-        .accessibilityHint(isOn ? "Returns to the normal mirror." : "Shows your whole camera view.")
+        .accessibilityHint(hint)
+    }
+
+    private var hint: String {
+        guard isEnabled else { return "Not available while recording." }
+        return isOn ? "Returns to the normal mirror." : "Shows your whole camera view."
     }
 }
 
