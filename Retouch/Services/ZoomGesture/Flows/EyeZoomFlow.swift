@@ -34,6 +34,7 @@ nonisolated struct EyeZoomFlow {
     var fastReleaseDwell = ZoomTuning.fastReleaseDwell
     var poseGrace = ZoomTuning.eyeFlowPoseGrace
     var softHoldWindow = ZoomTuning.softHoldWindow
+    var holdGrace = ZoomTuning.holdGrace
     var reentryWindow = ZoomTuning.reentryWindow
     var reentryDwell = ZoomTuning.reentryDwell
 
@@ -174,6 +175,7 @@ nonisolated struct EyeZoomFlow {
             if handHold { lastHeld = now }
             let recentlyHeld = lastHeld.map { now.timeIntervalSince($0) <= softHoldWindow } ?? false
             let soft = activity == .active || activity == .turning
+            let graceOK = lastHeld.map { now.timeIntervalSince($0) <= holdGrace } ?? false
             let softOK = soft && recentlyHeld
             let unknownOK = activity == .unknown && recentlyHeld
 
@@ -187,7 +189,7 @@ nonisolated struct EyeZoomFlow {
             }
 
             let switching = switchPending != nil
-            let holding = handHold || softOK || unknownOK || lostOK || switching
+            let holding = handHold || graceOK || softOK || unknownOK || lostOK || switching
             if handHold {
                 holdReason = "jari"
             } else if switching {
@@ -198,6 +200,8 @@ nonisolated struct EyeZoomFlow {
                 holdReason = "data hilang"
             } else if lostOK {
                 holdReason = "tangan hilang"
+            } else if graceOK {
+                holdReason = "jeda"
             } else {
                 holdReason = "-"
             }

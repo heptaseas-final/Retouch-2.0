@@ -22,6 +22,7 @@ nonisolated struct NoseZoomFlow {
     var toolDwell = ZoomTuning.toolEnterDwell
     var lostHold = ZoomTuning.noseLostHoldCap
     var releaseDwell = ZoomTuning.noseReleaseDwell
+    var holdGrace = ZoomTuning.holdGrace
     var fastReleaseDwell = ZoomTuning.fastReleaseDwell
     var poseGrace = ZoomTuning.eyeFlowPoseGrace
     var reentryWindow = ZoomTuning.reentryWindow
@@ -99,7 +100,8 @@ nonisolated struct NoseZoomFlow {
             let lostOK = ZoomTuning.handLostHoldEnabled && input.handLost && !input.fingerNear
                 && (lastNear.map { now.timeIntervalSince($0) < lostHold } ?? false)
 
-            if input.fingerNear || lostOK {
+            let graceOK = lastNear.map { now.timeIntervalSince($0) <= holdGrace } ?? false
+            if input.fingerNear || lostOK || graceOK {
                 releaseSince = nil
                 phase = .active
             } else {

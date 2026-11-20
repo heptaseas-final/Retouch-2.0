@@ -35,6 +35,9 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     var queuedToolSeq = 0
 
     var toolTracker = ToolBoxTracker()
+    var gripVerifier = ToolGripVerifier()
+    var toolLatch = ToolLatch()
+    var toolsFromPose = false
     var toolSchedule = ToolDetectionSchedule()
     var lastTools: [TrackedTool] = []
     var lastToolTime = Date.distantPast
@@ -207,7 +210,7 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         }
         let toolPlan = stateQueue.sync { toolDetectionPlan() }
         faceDetector.submit(pixelBuffer, minInterval: interval)
-        if isAuto, !toolPlan.pausesHands { handDetector.submit(pixelBuffer, minInterval: interval) }
+        if isAuto { handDetector.submit(pixelBuffer, minInterval: interval) }
         if isAuto, let toolInterval = toolPlan.interval {
             toolDetector.submit(pixelBuffer, face: faceDetector.snapshot.value, minInterval: toolInterval)
         }

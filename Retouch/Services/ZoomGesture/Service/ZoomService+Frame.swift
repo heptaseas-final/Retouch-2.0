@@ -33,7 +33,15 @@ nonisolated extension ZoomService {
 
         let H = viewSize.height
 
-        if let handSnap, inputMode.mode == .finger {
+        if let handSnap {
+            gripVerifier.note(fingertips: handSnap.value.fingertips.map { converter.toView($0) },
+                              grips: handSnap.value.grips.map {
+                                  ToolGripPose(grip: converter.toView($0.grip), tip: converter.toView($0.tip))
+                              },
+                              handsSeen: handSnap.value.handsSeen, at: handSnap.timestamp)
+        }
+        let toolDrives = toolDrivesInput(now: now)
+        if let handSnap, !toolDrives {
             lastScan = handSnap.value
             if ZoomTuning.handSeenBoostsRate, lastScan.handsSeen > 0 {
                 pacer.noteMotion(at: handSnap.timestamp)
@@ -50,12 +58,13 @@ nonisolated extension ZoomService {
         var points = faceTracker.points
         if let faceSnap {
             lastFace = faceSnap.value
-            points = faceTracker.update(face: lastFace, covering: covering, converter: converter, now: faceSnap.timestamp)
+            points = faceTracker.update(face: lastFace, covering: covering, anchored: zonesAnchored,
+                                        converter: converter, now: faceSnap.timestamp)
         }
         refreshTools(snap: toolSnap, converter: converter, points: points, now: now)
         updateInputMode(now: now)
 
-        if handSnap != nil, inputMode.mode == .finger {
+        if handSnap != nil, !toolDrives {
             let support = ZoomTuning.pitchEnabled && ZoomTuning.pitchHandSupportEnabled && pitchRecognizer.isLifted
             let readiness = ZoomReadiness(hands: hands, scan: lastScan, converter: converter,
                                           handProfile: handProfile, maxIntentSpeed: handBank.maxIntentSpeed,
@@ -83,7 +92,7 @@ nonisolated extension ZoomService {
         trackMotion(face: faceSnap != nil ? lastFace : nil, hand: lastHand, at: now,
                     faceChecked: faceSnap != nil)
 
-        let tools = inputMode.mode == .tool ? toolReading : ToolZoneReading()
+        let tools = toolDrives ? toolReading : ToolZoneReading()
         var eyeIn = eyeInput
         eyeIn.activityLeft = eyeActivity.leftState
         eyeIn.activityRight = eyeActivity.rightState
@@ -143,7 +152,7 @@ nonisolated extension ZoomService {
                           isHolding: $0.holding, isPoint: $0.isPoint)
         }
         let debugTips = lastScan.fingertips.map { converter.toView($0) }
-        let debugTools = lastTools.map { ToolTipLocator.tip(of: $0.rect, face: points) }
+        let debugTools = lastTools.map { ToolTipLocator.tip(of: $0, face: points) }
         let debugBoxes = lastTools.map(\.rect)
         let debugLabels = lastTools.map { "\($0.label.rawValue) \(Int($0.confidence * 100))%" }
 #else
@@ -156,7 +165,8 @@ nonisolated extension ZoomService {
         onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
                                  isFaceVisible: lastFace != nil, hands: debugHands, fingertips: debugTips,
                                  toolTips: debugTools, toolBoxes: debugBoxes, toolLabels: debugLabels, lockedZone: FaceZone(target: target),
-                                 zoneReach: zoneReach, lipsReach: zoneLipsReach, inputMode: inputMode.mode))
+                                 zoneReach: zoneReach, lipsReach: zoneLipsReach,
+                                 inputMode: toolDrives ? .tool : .finger))
     }
 
     func trackMotion(face: FaceObservation?, hand: CGPoint?, at now: Date, faceChecked: Bool = true) {

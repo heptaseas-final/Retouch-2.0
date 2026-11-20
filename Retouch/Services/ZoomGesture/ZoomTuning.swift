@@ -51,10 +51,14 @@ nonisolated struct ZoomTuning {
     static let coverDistance: CGFloat = 0.65
     static let coverGrace: TimeInterval = 1.8
     static let coverHold: TimeInterval = 0.8
+    static let faceLostClear: TimeInterval = 1.0
+    static let faceLostClearCovering: TimeInterval = 3.0
     static let resolverExitCooldown: TimeInterval = 0.6
     static let coverFollowEnabled = true
     static let coverFollowMinScale: CGFloat = 0.8
     static let coverFollowMaxScale: CGFloat = 1.25
+    static let anchorYawLimit = 10.0
+    static let anchorBlendTau: TimeInterval = 1.5
     static let widthTau: CGFloat = 0.65
 
     static let resolverSwitchDwell: TimeInterval = 0.15
@@ -113,11 +117,12 @@ nonisolated struct ZoomTuning {
     static let lipsEnterDwell: TimeInterval = 0.35
     static let lipsReleaseDwell: TimeInterval = 0.4
     static let lipsPose2Max: CGFloat = 0.4
-    static let lipMotionBaselineTau = 0.8
-    static let lipMotionDevTau = 0.15
+    static let lipMotionBaselineTau = 0.4
+    static let lipMotionDevTau = 0.1
     static let lipMotionEnter = 0.05
-    static let lipMotionExit = 0.025
+    static let lipMotionExit = 0.04
     static let lipMotionLostGrace: TimeInterval = 0.5
+    static let lipsStillDwell: TimeInterval = 0.2
     static let lipsTriggerStretchX: CGFloat = 1.1
     static let lipsTriggerStretchY: CGFloat = 0.7
 
@@ -125,7 +130,7 @@ nonisolated struct ZoomTuning {
     static let lipsLineFallback: CGFloat = 0.5
     static let zoneLockScale: CGFloat = 1.15
     static let zoneLockMargin: CGFloat = 0.15
-    static let zoneSwitchDwell: TimeInterval = 0.75
+    static let zoneSwitchDwell: TimeInterval = 0.85
     static let eyeShapeInner: CGFloat = 0.8
     static let eyeShapeOuter: CGFloat = 1.1
     static let eyeShapeUp: CGFloat = 0.9
@@ -163,11 +168,13 @@ nonisolated struct ZoomTuning {
     static let toolSwitchDwell: TimeInterval = zoneSwitchDwell
     static let softHoldWindow: TimeInterval = 0.3
     static let fastReleaseDwell: TimeInterval = 0.15
+    static let holdGrace: TimeInterval = 0.85
     static let reentryWindow: TimeInterval = 1.5
     static let reentryDwell: TimeInterval = 0.2
 
     static let pinInset: CGFloat = 0.12
     static let panSmoothTime: CGFloat = 0.18
+    static let pinCenterPullX: CGFloat = 1.0
     static let focusMinCutoff: Double = 0.4
     static let focusBeta: Double = 0.06
 

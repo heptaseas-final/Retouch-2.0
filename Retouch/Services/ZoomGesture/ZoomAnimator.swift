@@ -125,7 +125,13 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
 
             if isNew {
                 mode = .target(target)
-                pinned = (manual || viewSize.width <= 0) ? nil : screenPosition(of: point)
+                if manual || viewSize.width <= 0 {
+                    pinned = nil
+                } else {
+                    var spot = screenPosition(of: point)
+                    spot.x += (viewSize.width / 2 - spot.x) * ZoomTuning.pinCenterPullX
+                    pinned = spot
+                }
             }
             lockedFocus = point
         }

@@ -25,6 +25,7 @@ nonisolated struct LipsZoomFlow {
     var fastReleaseDwell = ZoomTuning.fastReleaseDwell
     var poseGrace = ZoomTuning.eyeFlowPoseGrace
     var softHoldWindow = ZoomTuning.softHoldWindow
+    var holdGrace = ZoomTuning.holdGrace
     var reentryWindow = ZoomTuning.reentryWindow
     var reentryDwell = ZoomTuning.reentryDwell
 
@@ -43,6 +44,7 @@ nonisolated struct LipsZoomFlow {
     private var releaseSince: Date?
     private var lostSince: Date?
     private var lastNear: Date?
+    private var lastMoving: Date?
     private var lastExit: Date?
 
     var isActive: Bool { phase == .active || phase == .releasing }
@@ -99,8 +101,9 @@ nonisolated struct LipsZoomFlow {
             clearEntryTimers()
 
             if input.fingerNear { lastNear = now }
+            if input.lipsMoving { lastMoving = now }
             let talkingOK = input.lipsMoving
-                && (lastNear.map { now.timeIntervalSince($0) <= softHoldWindow } ?? false)
+                || (lastMoving.map { now.timeIntervalSince($0) <= ZoomTuning.lipsStillDwell } ?? false)
 
             let lostOK: Bool
             if input.handLost && !input.fingerNear && !talkingOK {
@@ -111,13 +114,15 @@ nonisolated struct LipsZoomFlow {
                 lostOK = false
             }
 
-            if input.fingerNear || talkingOK || lostOK {
+            let graceOK = lastNear.map { now.timeIntervalSince($0) <= holdGrace } ?? false
+            if input.fingerNear || talkingOK || lostOK || graceOK {
                 releaseSince = nil
                 phase = .active
             } else {
                 if releaseSince == nil { releaseSince = now }
                 phase = .releasing
-                let releaseNeed = input.handMovingAway ? min(fastReleaseDwell, releaseDwell) : releaseDwell
+                let quick = input.handMovingAway || lastMoving != nil
+                let releaseNeed = quick ? min(fastReleaseDwell, releaseDwell) : releaseDwell
                 if let since = releaseSince, now.timeIntervalSince(since) >= releaseNeed {
                     lastExit = now
                     goIdle()
@@ -149,5 +154,6 @@ nonisolated struct LipsZoomFlow {
         releaseSince = nil
         lostSince = nil
         lastNear = nil
+        lastMoving = nil
     }
 }

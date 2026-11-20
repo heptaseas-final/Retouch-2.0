@@ -54,7 +54,7 @@ nonisolated struct InputModeGate {
         guard face.width > 0, let center = face.center else { return .none }
         var result = Presence.none
         for tool in tools where tool.confidence >= ToolDetectionTuning.minConfidence {
-            let tip = ToolTipLocator.tip(of: tool.rect, face: face)
+            let tip = ToolTipLocator.tip(of: tool, face: face)
             guard hypot(tip.x - center.x, tip.y - center.y) / face.width <= ToolDetectionTuning.faceAreaRadius
             else { continue }
             if tool.confidence >= ToolDetectionTuning.triggerConfidence { return .strong }

@@ -25,7 +25,7 @@ nonisolated struct ToolZoneRecognizer {
         var reading = ToolZoneReading()
         guard let map = FaceZoneMap(points: points, reach: reach, lipsReach: lipsReach) else { return reading }
         for tool in tools where tool.confidence >= ToolDetectionTuning.minConfidence {
-            let tip = ToolTipLocator.tip(of: tool.rect, face: points)
+            let tip = ToolTipLocator.tip(of: tool, face: points)
             if tool.speed >= maxIntentSpeed { reading.fastTool = true }
             for zone in FaceZone.allCases where map.holds(zone, at: tip) {
                 Self.markHold(zone, in: &reading)

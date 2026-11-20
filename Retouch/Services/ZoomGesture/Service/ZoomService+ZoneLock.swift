@@ -18,6 +18,8 @@ nonisolated extension ZoomService {
         return CGFloat(handProfile.enterDistance) * (support ? ZoomTuning.pitchLipsReach : 1)
     }
 
+    var zonesAnchored: Bool { eyeFlow.isActive || lipFlow.isActive || noseFlow.isActive }
+
     func applyZoneLock(eye: inout EyeZoomFlow.Input, lips: inout LipsZoomFlow.Input,
                        nose: inout NoseZoomFlow.Input) {
         let floor = ZoomTuning.zoneSwitchDwell
