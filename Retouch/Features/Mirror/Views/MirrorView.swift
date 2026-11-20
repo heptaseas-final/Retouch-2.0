@@ -10,6 +10,7 @@ struct MirrorView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var lightDrag: CGSize = .zero
     @State private var isDraggingLight = false
+    @State private var pauseTask: Task<Void, Never>?
     @State private var screenFrame: CGRect = .zero
     @State private var dockSlotCenter: CGPoint = .zero
     private let showsControls: Bool
@@ -54,9 +55,10 @@ struct MirrorView: View {
         .animation(.easeInOut, value: showsControls)
         .task { await viewModel.start() }
         .onChange(of: scenePhase) { _, phase in
+            pauseTask?.cancel()
             switch phase {
             case .active: viewModel.refresh(startsCamera: clipReview?.isPreviewing != true)
-            case .inactive: viewModel.pauseCamera()
+            case .inactive: pauseTask = Task { await pauseAfterSettling() }
             case .background: viewModel.stop()
             @unknown default: break
             }
@@ -70,6 +72,13 @@ struct MirrorView: View {
         .onChange(of: visibleStatus) { _, status in
             if let status { AccessibilityNotification.Announcement(status.message).post() }
         }
+    }
+
+    private static let inactivePauseDelay: Duration = .milliseconds(600)
+
+    private func pauseAfterSettling() async {
+        guard (try? await Task.sleep(for: Self.inactivePauseDelay)) != nil else { return }
+        viewModel.pauseCamera()
     }
 
     private func announceCameraState(_ state: CameraState) {
@@ -94,6 +103,7 @@ struct MirrorView: View {
                 lightMoveActions: moveActions(from: .docked),
                 onLightSlotCenter: { dockSlotCenter = $0 },
                 isOverallOn: Binding(get: { viewModel.isOverallOn }, set: viewModel.setOverall),
+                isOverallEnabled: clipReview?.isRecording != true,
                 expandsPicker: true
             )
         }
