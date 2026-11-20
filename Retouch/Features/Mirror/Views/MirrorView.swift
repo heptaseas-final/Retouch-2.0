@@ -12,6 +12,8 @@ struct MirrorView: View {
     @State private var isDraggingLight = false
     @State private var screenFrame: CGRect = .zero
     @State private var dockSlotCenter: CGPoint = .zero
+    @State private var isPickerFullWidth = false
+    @State private var dockBeforeFullWidth: LightDock?
     private let showsControls: Bool
     private let onReplayTutorial: (() -> Void)?
     private let clipReview: ClipReviewViewModel?
@@ -112,6 +114,7 @@ struct MirrorView: View {
     }
     private static let sideMargin: CGFloat = 16
     private static let dockZoneHeight: CGFloat = 120
+    private static let bannerTrailing: CGFloat = 82
 
     @ViewBuilder
     private var sideLightButton: some View {
