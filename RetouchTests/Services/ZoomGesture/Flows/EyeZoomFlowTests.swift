@@ -130,7 +130,7 @@ struct EyeZoomFlowTests {
         #expect(flow.target == .rightEye)
     }
 
-    @Test func softHoldEndsAfterWindow() {
+    @Test func softHoldEndsAfterWindowAndGrace() {
         var flow = activeLeft()
         var held = EyeZoomFlow.Input()
         held.holdLeft = true
@@ -139,9 +139,10 @@ struct EyeZoomFlowTests {
         closing.activityLeft = .active
         flow.update(closing, now: at(1 + ZoomTuning.softHoldWindow - 0.05))
         #expect(flow.phase == .active)
-        flow.update(closing, now: at(1 + ZoomTuning.softHoldWindow + 0.05))
+        let released = 1 + max(ZoomTuning.softHoldWindow, ZoomTuning.holdGrace) + 0.05
+        flow.update(closing, now: at(released))
         #expect(flow.phase == .releasing)
-        flow.update(closing, now: at(1 + ZoomTuning.softHoldWindow + ZoomTuning.eyeFlowReleaseDwell + 0.1))
+        flow.update(closing, now: at(released + ZoomTuning.eyeFlowReleaseDwell + 0.01))
         #expect(flow.phase == .idle)
     }
 

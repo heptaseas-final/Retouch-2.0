@@ -24,15 +24,16 @@ nonisolated struct FaceZoneMap {
     }
 
     func zone(primary: CGPoint, others: [CGPoint], locked: FaceZone? = nil) -> FaceZone? {
-        if let locked, let direct = zone(of: primary),
-           FaceZoneConfig.priority(of: direct) < FaceZoneConfig.priority(of: locked) {
-            return direct
+        if let locked {
+            let growth = FaceZoneConfig.lockGrowth(for: locked, layout: layout)
+            if contains(locked, primary, grownBy: growth) { return locked }
+            if let direct = zone(of: primary),
+               FaceZoneConfig.priority(of: direct) < FaceZoneConfig.priority(of: locked) {
+                return direct
+            }
+            if others.contains(where: { contains(locked, $0, grownBy: growth) }) { return locked }
         }
-        let probes = [primary] + others
-        if let locked, probes.contains(where: { contains(locked, $0, grownBy: FaceZoneConfig.lockGrowth(for: locked, layout: layout)) }) {
-            return locked
-        }
-        return probes.compactMap { zone(of: $0) }
+        return ([primary] + others).compactMap { zone(of: $0) }
             .min { FaceZoneConfig.priority(of: $0) < FaceZoneConfig.priority(of: $1) }
     }
 

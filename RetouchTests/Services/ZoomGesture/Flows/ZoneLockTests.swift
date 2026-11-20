@@ -15,8 +15,8 @@ struct ZoneLockTests {
 
     private func at(_ seconds: TimeInterval) -> Date { start.addingTimeInterval(seconds) }
 
-    @Test func switchDwellIsThreeQuarterSecond() {
-        #expect(ZoomTuning.zoneSwitchDwell == 0.75)
+    @Test func switchDwellIsSharedAndLongerThanEntry() {
+        #expect(ZoomTuning.zoneSwitchDwell > ZoomTuning.toolEnterDwell)
         #expect(ZoomTuning.toolSwitchDwell == ZoomTuning.zoneSwitchDwell)
         #expect(ZoomTuning.eyeFlowSwitchDwell == ZoomTuning.zoneSwitchDwell)
     }
@@ -27,7 +27,7 @@ struct ZoneLockTests {
         input.toolReady = true
         input.enterFloor = ZoomTuning.zoneSwitchDwell
         flow.update(input, now: at(0))
-        flow.update(input, now: at(0.5))
+        flow.update(input, now: at(ZoomTuning.zoneSwitchDwell - 0.01))
         #expect(flow.phase == .entering)
         flow.update(input, now: at(ZoomTuning.zoneSwitchDwell + 0.01))
         #expect(flow.phase == .active)
@@ -39,7 +39,7 @@ struct ZoneLockTests {
         input.toolReady = true
         input.enterFloor = ZoomTuning.zoneSwitchDwell
         flow.update(input, now: at(0))
-        flow.update(input, now: at(0.5))
+        flow.update(input, now: at(ZoomTuning.zoneSwitchDwell - 0.01))
         #expect(flow.phase == .entering)
         flow.update(input, now: at(ZoomTuning.zoneSwitchDwell + 0.01))
         #expect(flow.phase == .active)
@@ -51,7 +51,7 @@ struct ZoneLockTests {
         input.toolLeft = true
         input.enterFloor = ZoomTuning.zoneSwitchDwell
         flow.update(input, now: at(0))
-        flow.update(input, now: at(0.5))
+        flow.update(input, now: at(ZoomTuning.zoneSwitchDwell - 0.01))
         #expect(flow.target == nil)
         flow.update(input, now: at(ZoomTuning.zoneSwitchDwell + 0.01))
         #expect(flow.target == .leftEye)
@@ -75,7 +75,7 @@ struct ZoneLockTests {
         var right = EyeZoomFlow.Input()
         right.toolRight = true
         flow.update(right, now: at(1))
-        flow.update(right, now: at(1 + ZoomTuning.eyeFlowReleaseDwell + 0.1))
+        flow.update(right, now: at(1 + ZoomTuning.toolSwitchDwell - 0.01))
         #expect(flow.phase == .active)
         #expect(flow.target == .leftEye)
         flow.update(right, now: at(1 + ZoomTuning.toolSwitchDwell + 0.01))

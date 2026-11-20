@@ -111,7 +111,7 @@ struct ToolZoneRecognizerTests {
     }
 
     @Test func lockedLipsKeepsBrushNearTheBoundary() {
-        let nearBoundary = CGRect(x: 144, y: 154, width: 12, height: 12)
+        let nearBoundary = CGRect(x: 146, y: 172, width: 8, height: 8)
         let free = read([tool(.brush, nearBoundary)])
         #expect(free.noseTrigger && !free.lipsTrigger)
         let locked = read([tool(.brush, nearBoundary)], locked: .lips)

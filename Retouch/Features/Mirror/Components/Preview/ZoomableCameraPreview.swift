@@ -12,7 +12,7 @@ struct ZoomableCameraPreview: View {
     var body: some View {
         GeometryReader { geo in
             GlowMirrorPreview(renderer: viewModel.renderer, zoom: viewModel.zoomState,
-                              shrink: GlowFrame.zoomShrink(in: geo.size, progress: viewModel.glowProgress,
+                              shrink: GlowFrame.previewShrink(in: geo.size, progress: viewModel.glowProgress,
                                                            isOverall: viewModel.zoomTarget == .overall))
                 .animation(GlowFrame.overallAnimation, value: viewModel.zoomTarget == .overall)
                 .transaction { if reduceMotion { $0.animation = nil } }
