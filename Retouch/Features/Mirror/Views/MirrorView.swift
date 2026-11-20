@@ -70,6 +70,11 @@ struct MirrorView: View {
         .onChange(of: visibleStatus) { _, status in
             if let status { AccessibilityNotification.Announcement(status.message).post() }
         }
+        .onChange(of: showsControls, initial: true) { _, isVisible in viewModel.setControlsVisible(isVisible) }
+        .sheet(isPresented: Binding(get: { viewModel.isShortcutGuideVisible },
+                                    set: { if !$0 { viewModel.closeShortcutGuide() } })) {
+            ShortcutGuideSheet(onClose: viewModel.closeShortcutGuide)
+        }
         .syncsGlowLevel(with: viewModel)
     }
 
@@ -221,10 +226,17 @@ struct MirrorView: View {
         if showsControls, viewModel.permission != .denied, let onReplayTutorial {
             ToolbarItem(placement: .topBarTrailing) {
                 SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
-                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement)) {
+                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement),
+                             onAddToLockScreen: { viewModel.showShortcutGuide(fromPrompt: false) }) {
                     viewModel.select(.face)
                     viewModel.setLightMode(.off)
                     onReplayTutorial()
+                }
+                .popover(isPresented: Binding(get: { viewModel.isShortcutPromptVisible },
+                                              set: { if !$0 { viewModel.snoozeShortcutPrompt() } })) {
+                    ShortcutPromptPopover(onShowGuide: { viewModel.showShortcutGuide(fromPrompt: true) },
+                                          onDismissForever: viewModel.dismissShortcutPromptForever)
+                        .onDisappear(perform: viewModel.shortcutPromptDidDisappear)
                 }
             }
         }

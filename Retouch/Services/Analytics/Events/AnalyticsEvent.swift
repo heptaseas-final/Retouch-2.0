@@ -31,6 +31,10 @@ nonisolated enum AnalyticsEyeSide: String, Sendable {
     case right, left
 }
 
+nonisolated enum AnalyticsShortcutGuideSource: String, Sendable {
+    case prompt, settings
+}
+
 nonisolated enum AnalyticsZoomMode: String, Sendable, Codable {
     case auto
     case lockRightEye = "lock_right_eye"
@@ -126,6 +130,9 @@ nonisolated enum AnalyticsEvent: Sendable, Equatable {
     case lightGoodShown(faceLux: Int)
     case thermalStateChanged(state: AnalyticsThermalState)
     case glowLimitedByHeat
+    case shortcutPromptShown
+    case shortcutGuideOpened(source: AnalyticsShortcutGuideSource)
+    case shortcutPromptDismissedForever
 }
 
 extension AnalyticsEvent {
@@ -150,6 +157,9 @@ extension AnalyticsEvent {
         case .lightGoodShown: "light_good_shown"
         case .thermalStateChanged: "thermal_state_changed"
         case .glowLimitedByHeat: "glow_limited_by_heat"
+        case .shortcutPromptShown: "shortcut_prompt_shown"
+        case .shortcutGuideOpened: "shortcut_guide_opened"
+        case .shortcutPromptDismissedForever: "shortcut_prompt_dismissed_forever"
         }
     }
 
@@ -172,8 +182,11 @@ extension AnalyticsEvent {
             return ["recovery_ms": .int(recoveryMs)]
         case let .onboardingStepCompleted(step), let .onboardingSkipped(step):
             return ["step": .string(step)]
-        case .onboardingCompleted, .replayTutorialOpened, .autoLightResumed, .glowLimitedByHeat:
+        case .onboardingCompleted, .replayTutorialOpened, .autoLightResumed, .glowLimitedByHeat,
+             .shortcutPromptShown, .shortcutPromptDismissedForever:
             return [:]
+        case let .shortcutGuideOpened(source):
+            return ["source": .string(source.rawValue)]
         case let .autoZoomTriggered(trigger, eyeSide, holdMs):
             var values: [String: AnalyticsValue] = ["trigger": .string(trigger.rawValue), "hold_ms": .int(holdMs)]
             if let eyeSide { values["eye_side"] = .string(eyeSide.rawValue) }

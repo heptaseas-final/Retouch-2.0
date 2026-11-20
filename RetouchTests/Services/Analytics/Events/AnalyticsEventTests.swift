@@ -29,7 +29,10 @@ struct AnalyticsEventTests {
             .dimBannerShown(faceLux: 80),
             .lightGoodShown(faceLux: 520),
             .thermalStateChanged(state: .fair),
-            .glowLimitedByHeat
+            .glowLimitedByHeat,
+            .shortcutPromptShown,
+            .shortcutGuideOpened(source: .prompt),
+            .shortcutPromptDismissedForever
         ]
     }
 
@@ -46,6 +49,9 @@ struct AnalyticsEventTests {
         #expect(AnalyticsEvent.replayTutorialOpened.properties.isEmpty)
         #expect(AnalyticsEvent.autoLightResumed.properties.isEmpty)
         #expect(AnalyticsEvent.glowLimitedByHeat.properties.isEmpty)
+        #expect(AnalyticsEvent.shortcutPromptShown.properties.isEmpty)
+        #expect(AnalyticsEvent.shortcutPromptDismissedForever.properties.isEmpty)
+        #expect(AnalyticsEvent.shortcutGuideOpened(source: .settings).properties["source"] == .string("settings"))
     }
 
     @Test func autoZoomOmitsEyeSideWhenThereIsNone() {
