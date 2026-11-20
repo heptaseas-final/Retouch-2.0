@@ -6,22 +6,22 @@ struct ShortcutGuideSheet: View {
     private static let controlCenterSteps = [
         "Swipe down from the top-right corner of the screen to open Control Center.",
         "Tap the Add button at the top left.",
-        "Tap Add a Control, then search for Retouch.",
-        "Tap Open Retouch to add it."
+        "Tap Add a Control, then search for Re-touch.",
+        "Tap Open Re-touch to add it."
     ]
 
     private static let lockScreenSteps = [
         "On the Lock Screen, touch and hold until Customize appears.",
         "Tap Customize, then tap Lock Screen.",
         "Tap the Remove button on a control at the bottom of the screen.",
-        "Tap the Add button, then tap Open Retouch.",
+        "Tap the Add button, then tap Open Re-touch.",
         "Tap Done."
     ]
 
     private static let actionButtonSteps = [
         "Open Settings, then tap Action Button.",
         "Swipe to Controls, then tap Choose a Control.",
-        "Search for Retouch, then tap Open Retouch."
+        "Search for Re-touch, then tap Open Re-touch."
     ]
 
     var body: some View {
