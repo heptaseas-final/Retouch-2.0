@@ -15,8 +15,6 @@ struct MirrorView: View {
     private let showsControls: Bool
     private let onReplayTutorial: (() -> Void)?
 
-    private static let whiteHex: UInt32 = 0xFFFFFF
-
     init(viewModel: MirrorViewModel, showsControls: Bool = true, onReplayTutorial: (() -> Void)? = nil) {
         _viewModel = State(initialValue: viewModel)
         _lightDock = State(initialValue: LightDock(viewModel.lightPlacement))
@@ -31,7 +29,8 @@ struct MirrorView: View {
                 CameraPermissionDeniedView(onOpenSettings: viewModel.openSettings)
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
-                RingLightPanels(level: viewModel.ringLightLevel, color: edgeColor,
+                MirrorGlowLayer(viewModel: viewModel)
+                RingLightPanels(level: viewModel.ringLightLevel, color: MirrorGlowLayer(viewModel: viewModel).edgeColor,
                                 maxSideFraction: viewModel.ringLightWidth,
                                 softness: viewModel.ringLightSoftness)
                     .ignoresSafeArea()
@@ -115,7 +114,6 @@ struct MirrorView: View {
     }
     private static let sideMargin: CGFloat = 16
     private static let dockZoneHeight: CGFloat = 120
-    private static let bannerTrailing: CGFloat = 82
 
     @ViewBuilder
     private var sideLightButton: some View {
@@ -205,22 +203,6 @@ struct MirrorView: View {
         }
     }
 
-    private var edgeColor: Color {
-        switch viewModel.filterColor {
-        case .warm: LightColor.warm.color
-        case .cool: LightColor.cool.color
-        case .natural, nil: autoEdgeColor
-        }
-    }
-
-    private var autoEdgeColor: Color {
-        let zoomProgress = (viewModel.zoomState.scale - 1) / (LightingTuning.autoShiftFullScale - 1)
-        let progress = max(Double(min(max(zoomProgress, 0), 1)), viewModel.closeness)
-        let t = LightingTuning.autoShiftStrength * min(max(progress, 0), 1)
-        let c = LightingTuning.blend(Self.whiteHex, LightingTuning.softBlue, t)
-        return Color(red: c.r, green: c.g, blue: c.b)
-    }
-
     @ViewBuilder
     private var cameraStateOverlay: some View {
         if viewModel.cameraState == .failed {
@@ -236,6 +218,20 @@ struct MirrorView: View {
         }
     }
 
+    @ToolbarContentBuilder
+    private var settingsToolbar: some ToolbarContent {
+        if showsControls, viewModel.permission != .denied, let onReplayTutorial {
+            ToolbarItem(placement: .topBarTrailing) {
+                SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
+                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement)) {
+                    viewModel.select(.face)
+                    viewModel.setLightMode(.off)
+                    onReplayTutorial()
+                }
+            }
+        }
+    }
+    
     private var visibleStatus: MirrorStatus? {
         guard let status = viewModel.status, showsControls || status == .cameraPaused else { return nil }
         return status

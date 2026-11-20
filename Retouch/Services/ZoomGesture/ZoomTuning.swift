@@ -3,17 +3,21 @@ import CoreImage
 import Vision
 
 nonisolated struct ZoomTuning {
-    static let detectionRate = 12.0
-    static let fairRate = 8.0
-    static let seriousRate = 5.0
-    static let idleRate = 6.0
+    static let detectionRate = 8.0
+    static let fairRate = 6.0
+    static let seriousRate = 4.0
+    static let idleRate = 4.0
     static let idleAfter: TimeInterval = 3.0
     static let idleFaceSpeed = 0.3
     static let idleYawRate = 25.0
     static let envCheckInterval: TimeInterval = 2.0
+    static let strainFps = 27.0
+    static let strainRecoverFps = 29.5
+    static let strainEnterAfter: TimeInterval = 1.5
+    static let strainExitAfter: TimeInterval = 8.0
 
     static let downscaleEnabled = true
-    static let analysisWidth: CGFloat = 640
+    static let analysisWidth: CGFloat = 480
 
     static let yawTau = 0.15
     static let pointTau: CGFloat = 0.1

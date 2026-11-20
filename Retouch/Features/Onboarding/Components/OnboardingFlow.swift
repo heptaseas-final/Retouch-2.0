@@ -7,15 +7,18 @@ import SwiftUI
 
 struct OnboardingFlow: View {
     let onFinish: () -> Void
+    private let analytics: OnboardingAnalyticsRecording
     @State private var signals: ZoomOnboardingSignals
 
-    init(signals: @autoclosure () -> ZoomOnboardingSignals, onFinish: @escaping () -> Void) {
+    init(signals: @autoclosure () -> ZoomOnboardingSignals, analytics: OnboardingAnalyticsRecording,
+         onFinish: @escaping () -> Void) {
+        self.analytics = analytics
         self.onFinish = onFinish
         _signals = State(initialValue: signals())
     }
 
     var body: some View {
-        OnboardingView(signalSource: signals, onFinish: finish) { part, light in
+        OnboardingView(signalSource: signals, analytics: analytics, onFinish: finish) { part, light in
             OnboardingCameraControl(signals: signals, part: part, light: light)
         }
         .onAppear { signals.connect() }

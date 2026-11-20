@@ -2,7 +2,7 @@ import SwiftUI
 
 struct MirrorStatusBanner: View {
     let status: MirrorStatus
-    
+
     var body: some View {
         Text(status.message)
             .font(.subheadline)

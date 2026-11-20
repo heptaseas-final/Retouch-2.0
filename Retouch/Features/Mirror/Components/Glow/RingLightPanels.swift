@@ -41,5 +41,6 @@ struct RingLightPanels: View {
         }
         .opacity(reduceMotion ? min(max(level, 0), 1) : 1)
         .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }

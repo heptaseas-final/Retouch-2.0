@@ -23,6 +23,9 @@ struct SettingsMenu: View {
         } label: {
             Label("Settings", systemImage: "gearshape.fill")
                 .labelStyle(.iconOnly)
+                .font(.title3)
+                .frame(width: 44, height: 44)
+                .background(.ultraThinMaterial, in: Circle())
         }
         .tint(Color.appMagenta)
         .task(id: pendingLargerButtons) { await applyLargerButtonsAfterClose() }

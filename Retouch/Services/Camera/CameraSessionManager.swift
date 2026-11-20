@@ -21,7 +21,7 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
     var onStateChange: ((CameraState) -> Void)?
     var frameRate: Int32 = 60
     var prefersAutoFrameRate = false
-    var preferredWidth: Int32 = 1920
+    var preferredWidth: Int32 = 2560
     var maxRestartAttempts = 3
     var preferredStabilization: AVCaptureVideoStabilizationMode = .standard
     
@@ -61,7 +61,8 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
         let shouldCap = state == .serious || state == .critical
         guard shouldCap != isThermalCapped else { return }
         isThermalCapped = shouldCap
-        let fps = shouldCap ? min(selectedFPS, 30) : selectedFPS
+        let lowest = device.activeFormat.videoSupportedFrameRateRanges.map(\.minFrameRate).min() ?? selectedFPS
+        let fps = shouldCap ? max(min(selectedFPS, 24), lowest) : selectedFPS
         let duration = CMTime(seconds: 1.0 / fps, preferredTimescale: 60_000)
         withLock(device) { camera in
             camera.activeVideoMinFrameDuration = duration
@@ -120,8 +121,8 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
         if !session.isRunning { session.startRunning() }
         report(session.isRunning ? .running : .failed)
     }
-
-    private func configureColorAndExposure(_ device: AVCaptureDevice){
+    
+    private func configureColorAndExposure(_ device: AVCaptureDevice) {
         withLock(device) { device in
             if device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
                 device.whiteBalanceMode = .continuousAutoWhiteBalance
@@ -279,20 +280,15 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
             if let current = best {
                 if candidate.pixelCount != current.pixelCount {
                     better = candidate.pixelCount > current.pixelCount
-                }
-                else if candidate.fps != current.fps {
+                } else if candidate.fps != current.fps {
                     better = candidate.fps > current.fps
-                }
-                else if candidate.hdr != current.hdr {
+                } else if candidate.hdr != current.hdr {
                     better = candidate.hdr
-                }
-                else if candidate.p3 != current.p3 {
+                } else if candidate.p3 != current.p3 {
                     better = candidate.p3
-                }
-                else if candidate.isBinned != current.isBinned {
+                } else if candidate.isBinned != current.isBinned {
                     better = !candidate.isBinned
-                }
-                else {
+                } else {
                     better = candidate.auto && !current.auto
                 }
             } else {
@@ -329,6 +325,10 @@ final class CameraSessionManager: NSObject, AVCaptureVideoDataOutputSampleBuffer
             }
         }
         selectedFPS = best.auto ? nil : best.fps
+#if DEBUG
+        let size = CMVideoFormatDescriptionGetDimensions(best.format.formatDescription)
+        print("[Camera] format \(size.width)x\(size.height) @ \(best.fps) fps, auto: \(best.auto)")
+#endif
         isThermalCapped = false
         applyThermalFrameRate()
     }

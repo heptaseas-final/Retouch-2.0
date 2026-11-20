@@ -7,10 +7,10 @@ nonisolated struct TrackedHand {
     var speed: CGFloat
     var pose2: Bool
     var pose3: Bool
-    var finger: CGPoint? = nil
+    var finger: CGPoint?
     var holding = false
     var mode = ""
-    var base: CGPoint? = nil
+    var base: CGPoint?
     var kept = false
     var isPoint = false
     var hasPose: Bool { pose2 || pose3 }
@@ -26,10 +26,10 @@ nonisolated struct HandTrackBank {
         var tip: CGPoint
         var pose2: Bool
         var pose3: Bool
-        var finger: CGPoint? = nil
+        var finger: CGPoint?
         var holding = false
         var mode = ""
-        var base: CGPoint? = nil
+        var base: CGPoint?
         var kept = false
         var isPoint = false
     }

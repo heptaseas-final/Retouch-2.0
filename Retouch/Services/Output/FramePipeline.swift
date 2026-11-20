@@ -31,7 +31,11 @@ final class FramePipeline {
         guard renderer.isReady, let queue, let commandBuffer = queue.makeCommandBuffer() else { return }
         let zoom = renderer.zoom
         lighting.zoomScale = Float(zoom.scale)
-        parameters.addZoomDenoise(scale: Float(zoom.scale))
+        
+        if ProcessInfo.processInfo.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue {
+            parameters.addZoomDenoise(scale: Float(zoom.scale))
+        }
+        
         let source = CIImage(cvPixelBuffer: frame.pixelBuffer)
         let colorSpace = source.colorSpace ?? fallbackColorSpace
         let enhanced = parameters.needsProcessing

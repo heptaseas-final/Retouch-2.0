@@ -14,8 +14,18 @@ settings:
     ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     MARKETING_VERSION: 2.1
-    CURRENT_PROJECT_VERSION: 41
+    CURRENT_PROJECT_VERSION: 1
+    VERSIONING_SYSTEM: apple-generic
     
+
+configFiles:
+  Debug: Config/Analytics-Debug.xcconfig
+  Release: Config/Analytics-Release.xcconfig
+
+packages:
+  Mixpanel:
+    url: https://github.com/mixpanel/mixpanel-swift
+    from: 6.4.1
 
 targets:
   Retouch:
@@ -24,8 +34,10 @@ targets:
     sources:
       - path: Retouch
       - path: RetouchWidgetExt/OpenRetouchIntent.swift
+      - path: Config/MixpanelConfig.plist
     dependencies:
       - target: RetouchWidgetExt
+      - package: Mixpanel
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: bsd.iosda.Retouch

@@ -8,6 +8,7 @@ final class AppContainer {
     let pipeline: FramePipeline
     let zoom: ZoomServicing
     let zoomStore = ZoomStore()
+    let analytics: AnalyticsRecorder
     let mirrorViewModel: MirrorViewModel
 
     init() {
@@ -21,9 +22,10 @@ final class AppContainer {
         pipeline = FramePipeline(lighting: lightingEngine)
         cameraSession.onFrame = { [pipeline] frame in pipeline.process(frame) }
         zoom = ZoomService()
+        analytics = AnalyticsRecorder(service: AnalyticsService(), zoomStore: zoomStore, lighting: lighting)
         mirrorViewModel = MirrorViewModel(camera: camera, lighting: lighting, zoom: zoom,
                                           zoomStore: zoomStore, renderer: pipeline.renderer,
-                                          settings: MirrorSettingsStore())
+                                          settings: MirrorSettingsStore(), analytics: analytics)
         connectZoom()
     }
 
