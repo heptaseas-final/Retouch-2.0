@@ -7,7 +7,7 @@ struct LightingConfig {
     var skinReflectance: Float = 0.35
     var faceBrightness: Float = 0.50
     var ringLightStartLux: Float = 50
-    var ringLightWidth: Float = 0.08
+    var ringLightWidth: Float = 0.11
     var ringLightSoftness: Double = 0.5
     var ringLightFadeTime: TimeInterval = 0.25
 

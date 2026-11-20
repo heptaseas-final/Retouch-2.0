@@ -30,6 +30,27 @@ struct MirrorViewModelTests {
         #expect(viewModel.lightPlacement == .left && settings.lightPlacement == .left)
     }
 
+    @Test func glowFollowsLevel() {
+        let viewModel = makeViewModel()
+        viewModel.glowLevelDidChange(0.5)
+        #expect(viewModel.glowOpacity == 0.5)
+        #expect(viewModel.glowProgress > 0)
+    }
+
+    @Test func glowOffReturnsToFullCamera() {
+        let viewModel = makeViewModel()
+        viewModel.glowLevelDidChange(1)
+        viewModel.glowLevelDidChange(0)
+        #expect(viewModel.glowOpacity == 0)
+        #expect(viewModel.glowProgress == 0)
+    }
+
+    @Test func faintAutoGlowKeepsFullCameraLook() {
+        let viewModel = makeViewModel()
+        viewModel.glowLevelDidChange(0.015)
+        #expect(viewModel.glowProgress == 0)
+    }
+
     @Test func lowLightStatusAppearsAndCanBeDismissed() {
         let viewModel = makeViewModel()
         viewModel.setLightMode(.on(.white))

@@ -12,25 +12,23 @@ struct MirrorGlowLayer: View {
     private static let whiteHex: UInt32 = 0xFFFFFF
 
     var body: some View {
-        RingLightPanels(level: viewModel.ringLightLevel, color: edgeColor,
-                        maxSideFraction: viewModel.ringLightWidth,
-                        softness: viewModel.ringLightSoftness)
+        RingLightPanels(progress: viewModel.glowProgress, isOverall: viewModel.zoomTarget == .overall,
+                        opacity: viewModel.glowOpacity, color: edgeColor)
+            .animation(GlowFrame.overallAnimation, value: viewModel.zoomTarget == .overall)
             .ignoresSafeArea()
     }
+
+    private static let autoEdgeColor: Color = {
+        let c = LightingTuning.blend(whiteHex, LightingTuning.softBlue, LightingTuning.autoShiftStrength)
+        return Color(red: c.r, green: c.g, blue: c.b)
+    }()
 
     var edgeColor: Color {
         switch viewModel.filterColor {
         case .warm: LightColor.warm.color
         case .cool: LightColor.cool.color
-        case .natural, nil: autoEdgeColor
+        case .natural: LightColor.white.color
+        case nil: Self.autoEdgeColor
         }
-    }
-
-    var autoEdgeColor: Color {
-        let zoomProgress = (viewModel.zoomState.scale - 1) / (LightingTuning.autoShiftFullScale - 1)
-        let progress = max(Double(min(max(zoomProgress, 0), 1)), viewModel.closeness)
-        let t = LightingTuning.autoShiftStrength * min(max(progress, 0), 1)
-        let c = LightingTuning.blend(Self.whiteHex, LightingTuning.softBlue, t)
-        return Color(red: c.r, green: c.g, blue: c.b)
     }
 }

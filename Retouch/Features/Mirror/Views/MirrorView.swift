@@ -34,10 +34,6 @@ struct MirrorView: View {
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
                 MirrorGlowLayer(viewModel: viewModel)
-                RingLightPanels(level: viewModel.ringLightLevel, color: MirrorGlowLayer(viewModel: viewModel).edgeColor,
-                                maxSideFraction: viewModel.ringLightWidth,
-                                softness: viewModel.ringLightSoftness)
-                    .ignoresSafeArea()
                 cameraStateOverlay
                 if showsControls, viewModel.cameraState != .failed {
                   VStack(spacing: 12) {
@@ -75,6 +71,7 @@ struct MirrorView: View {
         .onChange(of: visibleStatus) { _, status in
             if let status { AccessibilityNotification.Announcement(status.message).post() }
         }
+        .syncsGlowLevel(with: viewModel)
     }
 
     private static let inactivePauseDelay: Duration = .milliseconds(600)
