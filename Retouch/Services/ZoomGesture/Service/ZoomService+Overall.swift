@@ -1,10 +1,12 @@
 import CoreGraphics
+import Foundation
 
 nonisolated extension ZoomService {
     func updateOverall(face: FaceObservation?, converter: CoordinateConverter) -> Bool {
         let wasShowing = isOverallShowing
-        if let face { armReach.update(faceWidth: face.width, yawDegrees: face.yaw) }
-        isOverallShowing = armReach.isReaching && (isOverallShowing || resolver.target == .fullFace)
+        let pose = overallRecognizer.update(face: face, motion: deviceMotion.sample(),
+                                            now: ProcessInfo.processInfo.systemUptime)
+        isOverallShowing = pose != .none && (isOverallShowing || resolver.target == .fullFace)
         if wasShowing, !isOverallShowing, let face {
             faceTracker.reseedSize(face: face, converter: converter)
             distComp = DistanceCompensator()
@@ -13,7 +15,7 @@ nonisolated extension ZoomService {
     }
 
     func resetOverall() {
-        armReach.reset()
+        overallRecognizer.reset()
         isOverallShowing = false
     }
 

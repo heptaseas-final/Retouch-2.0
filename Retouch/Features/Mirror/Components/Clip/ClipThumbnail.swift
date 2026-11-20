@@ -30,11 +30,10 @@ struct ClipThumbnail: View {
             }
             .overlay(alignment: .bottomTrailing) {
                 Text(Duration.seconds(duration), format: .time(pattern: .minuteSecond))
-                    .font(.caption2.monospacedDigit())
+                    .font(.caption.bold().monospacedDigit())
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 4)
-                    .background(.black.opacity(0.6), in: Capsule())
-                    .padding(6)
+                    .shadow(color: .black.opacity(0.6), radius: RecordingConfig.durationShadowRadius)
+                    .padding(8)
             }
             .contentShape(.rect(cornerRadius: RecordingConfig.thumbnailCornerRadius))
             .offset(dragOffset)

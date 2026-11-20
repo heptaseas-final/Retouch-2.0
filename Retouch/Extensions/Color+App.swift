@@ -14,6 +14,7 @@ extension Color {
                   blue: Double(hex & 0xFF) / 255)
     }
     static let appMagenta = Color(hex: 0x963C60)
+    static let appPink50 = Color(hex: 0xF5ECEF)
     static let appInactive = Color(hex: 0x333333)
     static let spotlightColor = Color(hex: 0x1D1D1D)
     static let lightNeutral = Color(hex: 0xFFFFFF)

@@ -151,7 +151,7 @@ final class LightingService: LightingServicing, CameraLifecycleListening {
     private func applyBrightness() {
         guard isAppActive else { return }
         if let manualBrightness {
-            brightnessController.set(manualBrightness)
+            brightnessController.ramp(to: manualBrightness)
             let baseline = Double(brightnessController.baseline)
             let level = baseline >= 0.98
                 ? (manualBrightness >= 0.98 ? 1 : 0)

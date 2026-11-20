@@ -33,10 +33,6 @@ struct MirrorView: View {
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
                 MirrorGlowLayer(viewModel: viewModel)
-                RingLightPanels(level: viewModel.ringLightLevel, color: MirrorGlowLayer(viewModel: viewModel).edgeColor,
-                                maxSideFraction: viewModel.ringLightWidth,
-                                softness: viewModel.ringLightSoftness)
-                    .ignoresSafeArea()
                 cameraStateOverlay
                 if showsControls, viewModel.cameraState != .failed {
                   VStack(spacing: 12) {
@@ -50,6 +46,7 @@ struct MirrorView: View {
             }
         }
         .toolbar { settingsToolbar }
+        .toolbarColorScheme(.light, for: .navigationBar)
         .toolbar(clipReview?.isPreviewing == true ? .hidden : .automatic, for: .navigationBar)
         .pickerSwipe(pickerSwipe, isEnabled: showsControls && viewModel.permission != .denied && viewModel.cameraState != .failed && !isDraggingLight)
         .sensoryFeedback(.impact(weight: .medium), trigger: lightDock)
@@ -58,9 +55,10 @@ struct MirrorView: View {
         .task { await viewModel.start() }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
-            case .active: viewModel.refresh()
+            case .active: viewModel.refresh(startsCamera: clipReview?.isPreviewing != true)
+            case .inactive: viewModel.pauseCamera()
             case .background: viewModel.stop()
-            default: break
+            @unknown default: break
             }
         }
         .onChange(of: viewModel.cameraState) { old, new in
@@ -72,6 +70,7 @@ struct MirrorView: View {
         .onChange(of: visibleStatus) { _, status in
             if let status { AccessibilityNotification.Announcement(status.message).post() }
         }
+        .syncsGlowLevel(with: viewModel)
     }
 
     private func announceCameraState(_ state: CameraState) {
@@ -94,7 +93,9 @@ struct MirrorView: View {
                 onLightLiftDrag: liftDragChanged,
                 onLightLiftEnd: liftEnded,
                 lightMoveActions: moveActions(from: .docked),
-                onLightSlotCenter: { dockSlotCenter = $0 }
+                onLightSlotCenter: { dockSlotCenter = $0 },
+                isOverallOn: Binding(get: { viewModel.isOverallOn }, set: viewModel.setOverall),
+                expandsPicker: true
             )
         }
         .padding(.horizontal, 16)
@@ -212,6 +213,11 @@ struct MirrorView: View {
 
     @ToolbarContentBuilder
     private var settingsToolbar: some ToolbarContent {
+        if showsControls, let clipReview {
+            ToolbarItem(placement: .principal) {
+                ClipSavedToast(viewModel: clipReview)
+            }
+        }
         if showsControls, viewModel.permission != .denied, let onReplayTutorial {
             ToolbarItem(placement: .topBarTrailing) {
                 SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),

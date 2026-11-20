@@ -1,6 +1,5 @@
 import AVFoundation
 import CoreImage
-import QuartzCore
 
 nonisolated struct RecordedClip: Equatable, Identifiable, Sendable {
     let url: URL
@@ -19,6 +18,7 @@ nonisolated protocol ClipRecordingServicing: AnyObject, Sendable {
     var onEvent: (@Sendable (ClipRecordingEvent) -> Void)? { get set }
     func setEnabled(_ isEnabled: Bool)
     func noteTracking(_ tracking: ZoomTracking)
+    func finishRecording()
     func append(_ frame: CIImage, time: TimeInterval)
     func discard(_ clip: RecordedClip)
     func thumbnail(for clip: RecordedClip) async -> CGImage?
@@ -54,11 +54,9 @@ nonisolated final class ClipRecordingService: ClipRecordingServicing, @unchecked
 
     func noteTracking(_ tracking: ZoomTracking) {
         let canStart = ProcessInfo.processInfo.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue
-        let now = CACurrentMediaTime()
         let action = lock.withLock { () -> ClipTrigger.Action in
             guard isEnabled else { return .none }
-            return trigger.update(isOverall: tracking.target == .overall, isFaceVisible: tracking.isFaceVisible,
-                                  canStart: canStart, now: now)
+            return trigger.update(pose: tracking.overallPose, canStart: canStart)
         }
         switch action {
         case .none:
@@ -69,6 +67,16 @@ nonisolated final class ClipRecordingService: ClipRecordingServicing, @unchecked
         case .stop:
             finish()
         }
+    }
+
+    func finishRecording() {
+        let wasRecording = lock.withLock { () -> Bool in
+            let wasRecording = trigger.isRecording
+            trigger.recordingEnded()
+            return wasRecording
+        }
+        guard wasRecording else { return }
+        finish()
     }
 
     func append(_ frame: CIImage, time: TimeInterval) {

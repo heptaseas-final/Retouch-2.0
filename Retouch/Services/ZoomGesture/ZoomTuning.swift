@@ -34,9 +34,20 @@ nonisolated struct ZoomTuning {
     static let cheekReleaseDwell: TimeInterval = 0.4
 
     static let overallZoom: CGFloat = 1.0
-    static let overallEnterWidth = 0.24
-    static let overallExitWidth = 0.27
     static let overallMinYawCos = 0.5
+    static let placedEnterWidth = 0.175
+    static let placedExitWidth = 0.20
+    static let placedStillDwell: TimeInterval = 0.7
+    static let placedMoveGrace: TimeInterval = 0.3
+    static let highTiltEnter = 15.0
+    static let highTiltMax = 80.0
+    static let highTiltExit = 8.0
+    static let highEnterWidth = 0.45
+    static let highExitWidth = 0.55
+    static let highEnterDwell: TimeInterval = 0.2
+    static let motionUpdateRate = 20.0
+    static let motionStillRotation = 0.04
+    static let motionStillAcceleration = 0.015
     static let reseedMinYawCos = 0.6
     static let sideEnterDwell: TimeInterval = 0.5
     static let sideExitDwell: TimeInterval = 0.7
@@ -68,6 +79,7 @@ nonisolated struct ZoomTuning {
 
     static let zoomInTau: CGFloat = 0.25
     static let zoomOutTau: CGFloat = 0.25
+    static let overallScaleSmoothTime: CGFloat = 0.2
     static let reducedMotionStableDelay: TimeInterval = 0.3
 
     static let exitHold: TimeInterval = 1.2

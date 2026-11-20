@@ -26,8 +26,7 @@ struct ContentView: View {
                         }
                     }
                     .navigationBarTitleDisplayMode(.inline)
-                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-                    .toolbarBackgroundVisibility(barBackground, for: .navigationBar)
+                    .mirrorBarStyle(isOverall: mirrorViewModel.zoomTarget == .overall)
                 }
             } else {
                 SplashView { withAnimation(.easeInOut) { hasSeenSplash = true } }
@@ -35,13 +34,13 @@ struct ContentView: View {
             }
         }
         .environment(\.isLargerButtons, mirrorViewModel.isLargerButtons)
-        .environment(\.colorScheme, .light)
+        .preferredColorScheme(Self.forcedScheme)
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
     }
 
-    private var barBackground: Visibility {
-        if #available(iOS 26, *) { return .hidden }
-        return .visible
+    private static var forcedScheme: ColorScheme? {
+        if #available(iOS 26, *) { return .light }
+        return nil
     }
 }
 

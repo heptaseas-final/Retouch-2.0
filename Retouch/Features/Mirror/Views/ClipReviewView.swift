@@ -23,7 +23,7 @@ struct ClipReviewView: View {
                               onOpen: viewModel.openPreview, onHoldChanged: viewModel.setThumbnailHeld,
                               onDiscard: viewModel.delete)
                     .transition(slotTransition)
-            } else if let notice = viewModel.notice, !viewModel.isPreviewing {
+            } else if let notice = viewModel.notice, notice != .saved, !viewModel.isPreviewing {
                 ClipStatusLabel(text: notice.message)
                     .transition(slotTransition)
             }
@@ -38,8 +38,9 @@ struct ClipReviewView: View {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active: viewModel.activate()
+            case .inactive: viewModel.pauseRecording()
             case .background: viewModel.deactivate()
-            default: break
+            @unknown default: break
             }
         }
         .onChange(of: viewModel.isRecording) { _, isOn in

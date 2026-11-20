@@ -25,8 +25,9 @@ nonisolated extension ZoomService {
                             yawDegrees: Double(lastFace?.yaw ?? .nan),
                             valid: lastFace != nil,
                             now: faceSnap.timestamp.timeIntervalSinceReferenceDate)
-            publish(manualTarget)
-            onTracking?(ZoomTracking(target: manualTarget, face: points, viewSize: viewSize,
+            let target = isManualOverall ? ZoomTarget.overall : manualTarget
+            publish(target)
+            onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
                                      isFaceVisible: lastFace != nil))
             return
         }
@@ -126,7 +127,8 @@ nonisolated extension ZoomService {
         if winner != .cheek, cheekFlow.phase == .releasing { cheekFlow.cancel() }
         handTarget = winner == .eye ? eyeFlow.target : (winner == .cheek ? cheekFlow.target : nil)
 
-        let target: ZoomTarget = updateOverall(face: faceSnap?.value, converter: converter) ? .overall
+        let autoOverall = updateOverall(face: faceSnap?.value, converter: converter)
+        let target: ZoomTarget = autoOverall || isManualOverall ? .overall
             : resolver.resolve(hand: handTarget, lips: winner == .lips, nose: winner == .nose, head: headTarget, covering: covering, headStraight: isHeadStraight(points.layout), headQuickRelease: headPose.quickReleased, now: now)
 
         if target == .fullFace || target == .overall { distComp.clearReference() } else { distComp.latchReferenceIfNeeded() }
@@ -174,7 +176,8 @@ nonisolated extension ZoomService {
                                  isFaceVisible: lastFace != nil, hands: debugHands, fingertips: debugTips,
                                  toolTips: debugTools, toolBoxes: debugBoxes, toolLabels: debugLabels, lockedZone: FaceZone(target: target),
                                  zoneReach: zoneReach, lipsReach: zoneLipsReach,
-                                 inputMode: toolDrives ? .tool : .finger))
+                                 inputMode: toolDrives ? .tool : .finger,
+                                 overallPose: isOverallShowing ? overallRecognizer.pose : .none))
     }
 
     func trackMotion(face: FaceObservation?, hand: CGPoint?, at now: Date, faceChecked: Bool = true) {
