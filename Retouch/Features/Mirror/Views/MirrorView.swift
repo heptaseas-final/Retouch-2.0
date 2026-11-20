@@ -32,7 +32,6 @@ struct MirrorView: View {
                 CameraPermissionDeniedView(onOpenSettings: viewModel.openSettings)
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
-                ZoomDebugOverlay(store: viewModel.zoomStore, isEnabled: true)
                 MirrorGlowLayer(viewModel: viewModel)
                 RingLightPanels(level: viewModel.ringLightLevel, color: MirrorGlowLayer(viewModel: viewModel).edgeColor,
                                 maxSideFraction: viewModel.ringLightWidth,

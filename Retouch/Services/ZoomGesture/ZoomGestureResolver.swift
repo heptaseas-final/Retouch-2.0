@@ -93,5 +93,7 @@ nonisolated struct ZoomGestureResolver {
     }
 
     private static func isEye(_ t: ZoomTarget) -> Bool { t == .leftEye || t == .rightEye }
-    private static func isHandTarget(_ t: ZoomTarget) -> Bool { isEye(t) || t == .lips || t == .nose }
+    private static func isHandTarget(_ t: ZoomTarget) -> Bool {
+        isEye(t) || t == .lips || t == .nose || t == .cheek(.left) || t == .cheek(.right)
+    }
 }

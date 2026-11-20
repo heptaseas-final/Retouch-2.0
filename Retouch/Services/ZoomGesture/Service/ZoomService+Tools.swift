@@ -13,7 +13,7 @@ nonisolated extension ZoomService {
             isAutoZoom: isGestureEnabled,
             faceVisible: lastFace != nil,
             handSeen: false,
-            zoomHolding: inputMode.mode == .tool && (eyeFlow.isActive || lipFlow.isActive || noseFlow.isActive),
+            zoomHolding: inputMode.mode == .tool && zonesAnchored,
             thermalState: info.thermalState,
             isLowPowerMode: info.isLowPowerModeEnabled
         )
@@ -86,13 +86,13 @@ nonisolated extension ZoomService {
     }
 
     func updateInputMode(now: Date) {
-        let zoomActive = eyeFlow.isActive || lipFlow.isActive || noseFlow.isActive
-        let mode = inputMode.update(zoomActive: zoomActive, now: now)
+        let mode = inputMode.update(zoomActive: zonesAnchored, now: now)
         guard mode == .tool || toolLatch.isLatched, toolDrivesInput(now: now) else { return }
         dropHandState()
         eyeInput = EyeZoomFlow.Input()
         lipsInput = LipsZoomFlow.Input()
         noseInput = NoseZoomFlow.Input()
+        cheekInput = CheekZoomFlow.Input()
     }
 
     func clearToolState() {

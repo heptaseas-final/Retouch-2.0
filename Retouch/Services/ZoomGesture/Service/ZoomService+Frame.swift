@@ -61,26 +61,29 @@ nonisolated extension ZoomService {
             points = faceTracker.update(face: lastFace, covering: covering, anchored: zonesAnchored,
                                         converter: converter, now: faceSnap.timestamp)
         }
+        points.layout = layoutGate.update(points: points, isFrozen: zonesAnchored, now: now)
         refreshTools(snap: toolSnap, converter: converter, points: points, now: now)
         updateInputMode(now: now)
 
         if handSnap != nil, !toolDrives {
             let support = ZoomTuning.pitchEnabled && ZoomTuning.pitchHandSupportEnabled && pitchRecognizer.isLifted
             let readiness = ZoomReadiness(hands: hands, scan: lastScan, converter: converter,
-                                          handProfile: handProfile, maxIntentSpeed: handBank.maxIntentSpeed,
+                                          maxIntentSpeed: handBank.maxIntentSpeed,
                                           locked: FaceZone(target: resolver.target))
             eyeInput = readiness.eye(points: points, support: support)
-            lipsInput = readiness.lips(points: points, support: support)
-            noseInput = readiness.nose(points: points, support: support)
+            lipsInput = readiness.lips(points: points)
+            noseInput = readiness.nose(points: points)
+            cheekInput = readiness.cheek(points: points)
         }
 
         if let faceSnap {
-            let learn = !eyeFlow.isActive && !lipFlow.isActive && !noseFlow.isActive
+            let learn = !zonesAnchored
             let faceForHead = covering ? nil : faceSnap.value
             pitchRecognizer.update(face: faceForHead, learn: learn, covered: covering, now: faceSnap.timestamp)
             let freeze = ZoomTuning.pitchEnabled && ZoomTuning.pitchYawFreezeEnabled
                 && pitchRecognizer.isFrozen(now: faceSnap.timestamp)
-            headTarget = headPose.update(face: faceForHead, learn: learn && !freeze, covered: covering, yawFrozen: freeze, now: faceSnap.timestamp)
+            let poseTarget = headPose.update(face: faceForHead, learn: learn && !freeze, covered: covering, yawFrozen: freeze, now: faceSnap.timestamp)
+            headTarget = FaceZoneConfig.layoutDrivesHeadZoom ? layoutHeadTarget(points.layout) : poseTarget
             distComp.update(span: Double(points.scale / viewSize.width),
                             yawDegrees: Double(faceForHead?.yaw ?? .nan),
                             valid: !covering && !freeze,
@@ -101,30 +104,35 @@ nonisolated extension ZoomService {
         lipIn.lipsMoving = lipMotion.isMoving
         lipIn = ZoomReadiness.applying(tools, to: lipIn)
         var noseIn = ZoomReadiness.applying(tools, to: noseInput)
-        applyZoneLock(eye: &eyeIn, lips: &lipIn, nose: &noseIn)
+        var cheekIn = ZoomReadiness.applying(tools, to: cheekInput)
+        applyZoneLock(eye: &eyeIn, lips: &lipIn, nose: &noseIn, cheek: &cheekIn)
 
-        applyStraightRelease(eye: &eyeIn, lips: &lipIn, nose: &noseIn)
+        applyStraightRelease(eye: &eyeIn, lips: &lipIn, nose: &noseIn, cheek: &cheekIn)
         eyeFlow.update(eyeIn, now: now)
         lipFlow.update(lipIn, now: now)
         noseFlow.update(noseIn, now: now)
+        cheekFlow.update(cheekIn, now: now)
         let ranked: [(owner: FlowOwner, running: Bool, holding: Bool)] = [
             (.nose, noseFlow.isActive, noseFlow.phase == .active),
             (.eye, eyeFlow.isActive, eyeFlow.phase == .active),
-            (.lips, lipFlow.isActive, lipFlow.phase == .active)
+            (.lips, lipFlow.isActive, lipFlow.phase == .active),
+            (.cheek, cheekFlow.isActive, cheekFlow.phase == .active)
         ]
         let winner: FlowOwner? = newestHolding(ranked.filter { $0.holding }.map(\.owner), now: now)
             ?? ranked.first(where: { $0.running })?.owner
         if winner != .nose, noseFlow.phase == .releasing { noseFlow.cancel() }
         if winner != .eye, eyeFlow.phase == .releasing { eyeFlow.cancel() }
         if winner != .lips, lipFlow.phase == .releasing { lipFlow.cancel() }
-        handTarget = winner == .eye ? eyeFlow.target : nil
+        if winner != .cheek, cheekFlow.phase == .releasing { cheekFlow.cancel() }
+        handTarget = winner == .eye ? eyeFlow.target : (winner == .cheek ? cheekFlow.target : nil)
 
         let target: ZoomTarget = updateOverall(face: faceSnap?.value, converter: converter) ? .overall
-            : resolver.resolve(hand: handTarget, lips: winner == .lips, nose: winner == .nose, head: headTarget, covering: covering, headStraight: headPose.isStraight, headQuickRelease: headPose.quickReleased, now: now)
+            : resolver.resolve(hand: handTarget, lips: winner == .lips, nose: winner == .nose, head: headTarget, covering: covering, headStraight: isHeadStraight(points.layout), headQuickRelease: headPose.quickReleased, now: now)
 
         if target == .fullFace || target == .overall { distComp.clearReference() } else { distComp.latchReferenceIfNeeded() }
 
         let handDriven = target == .leftEye || target == .rightEye || target == .lips || target == .nose
+            || target == .cheek(.left) || target == .cheek(.right)
         if handDriven, autoZoomSince == nil { autoZoomSince = now }
         if !handDriven, autoZoomSince != nil {
             autoZoomSince = nil
@@ -196,6 +204,7 @@ nonisolated extension ZoomService {
             anchors.contains { hypot(h.point.x - $0.x, h.point.y - $0.y) / W < ZoomTuning.coverDistance }
         }
         return near || (lipFlow.isActive && lipsInput.fingerNear) || (noseFlow.isActive && noseInput.fingerNear)
+            || (cheekFlow.isActive && (cheekInput.nearLeft || cheekInput.nearRight))
     }
 
     func nearestHandPoint(_ points: FacePoints) -> CGPoint? {
@@ -233,6 +242,7 @@ nonisolated extension ZoomService {
         case .lips: return p.lips
         case .nose: return p.nose
         case .faceSide(let side): return sideFocus(side, p)
+        case .cheek(let side): return cheekFocus(side, p)
         }
     }
 

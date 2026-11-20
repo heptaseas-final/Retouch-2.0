@@ -29,6 +29,9 @@ nonisolated struct ZoomTuning {
     static let noseZoomScale: CGFloat = 1.9
 
     static let sideZoom: CGFloat = 1.6
+    static let cheekZoom: CGFloat = 1.6
+    static let cheekEnterDwell: TimeInterval = 0.5
+    static let cheekReleaseDwell: TimeInterval = 0.4
 
     static let overallZoom: CGFloat = 1.0
     static let overallEnterWidth = 0.24
@@ -63,7 +66,7 @@ nonisolated struct ZoomTuning {
 
     static let resolverSwitchDwell: TimeInterval = 0.15
 
-    static let zoomInTau: CGFloat = 0.2
+    static let zoomInTau: CGFloat = 0.25
     static let zoomOutTau: CGFloat = 0.25
     static let reducedMotionStableDelay: TimeInterval = 0.3
 
@@ -130,7 +133,7 @@ nonisolated struct ZoomTuning {
     static let lipsLineFallback: CGFloat = 0.5
     static let zoneLockScale: CGFloat = 1.15
     static let zoneLockMargin: CGFloat = 0.15
-    static let zoneSwitchDwell: TimeInterval = 0.85
+    static let zoneSwitchDwell: TimeInterval = 0.4
     static let eyeShapeInner: CGFloat = 0.8
     static let eyeShapeOuter: CGFloat = 1.1
     static let eyeShapeUp: CGFloat = 0.9
@@ -154,6 +157,8 @@ nonisolated struct ZoomTuning {
     static let eyeUnknownCap: TimeInterval = 2.2
     static let eyeFlowPoseGrace: TimeInterval = 0.3
     static let eyeHoldUsesAllFingertips = true
+    static let fingertipVoteEnabled = true
+    static let fingertipVoteRadius: CGFloat = 0.6
 
     static let noseEnterDwell: TimeInterval = 0.35
     static let noseReleaseDwell: TimeInterval = 0.4
@@ -168,7 +173,7 @@ nonisolated struct ZoomTuning {
     static let toolSwitchDwell: TimeInterval = zoneSwitchDwell
     static let softHoldWindow: TimeInterval = 0.3
     static let fastReleaseDwell: TimeInterval = 0.15
-    static let holdGrace: TimeInterval = 0.85
+    static let holdGrace: TimeInterval = 0.45
     static let reentryWindow: TimeInterval = 1.5
     static let reentryDwell: TimeInterval = 0.2
 

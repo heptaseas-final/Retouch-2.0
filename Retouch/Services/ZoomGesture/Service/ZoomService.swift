@@ -64,7 +64,10 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
 
     var noseFlow = NoseZoomFlow()
     var noseInput = NoseZoomFlow.Input()
-    enum FlowOwner: CaseIterable { case eye, lips, nose }
+    var cheekFlow = CheekZoomFlow()
+    var cheekInput = CheekZoomFlow.Input()
+    var layoutGate = FaceLayoutGate()
+    enum FlowOwner: CaseIterable { case eye, lips, nose, cheek }
     var handTarget: ZoomTarget?
     var flowEnteredAt: [FlowOwner: Date] = [:]
     var headTarget: ZoomTarget?
@@ -149,6 +152,9 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         eyeInput = EyeZoomFlow.Input()
         noseFlow = NoseZoomFlow()
         noseInput = NoseZoomFlow.Input()
+        cheekFlow = CheekZoomFlow()
+        cheekInput = CheekZoomFlow.Input()
+        layoutGate.reset()
         distComp = DistanceCompensator()
         resetOverall()
         clearToolState()

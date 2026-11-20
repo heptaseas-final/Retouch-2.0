@@ -41,6 +41,7 @@ nonisolated enum FaceSide { case left, right }
 nonisolated enum ZoomTarget: Equatable {
     case fullFace, leftEye, rightEye, lips, nose
     case faceSide(FaceSide)
+    case cheek(FaceSide)
     case overall
 
     var zoomScale: CGFloat {
@@ -51,6 +52,7 @@ nonisolated enum ZoomTarget: Equatable {
         case .lips: ZoomTuning.lipsZoomScale
         case .nose: ZoomTuning.noseZoomScale
         case .faceSide: ZoomTuning.sideZoom
+        case .cheek: ZoomTuning.cheekZoom
         }
     }
 
@@ -63,6 +65,8 @@ nonisolated enum ZoomTarget: Equatable {
         case .nose: "Nose"
         case .faceSide(.left): "Left side of face"
         case .faceSide(.right): "Right side of face"
+        case .cheek(.left): "Left cheek"
+        case .cheek(.right): "Right cheek"
         case .overall: "Overall view"
         }
     }

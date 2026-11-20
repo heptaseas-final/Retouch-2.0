@@ -9,7 +9,7 @@
 import Foundation
 
 nonisolated enum FaceZone: CaseIterable, Sendable {
-    case leftEye, rightEye, nose, lips
+    case leftEye, rightEye, nose, lips, leftCheek, rightCheek
 
     init?(target: ZoomTarget) {
         switch target {
@@ -17,6 +17,8 @@ nonisolated enum FaceZone: CaseIterable, Sendable {
         case .rightEye: self = .rightEye
         case .nose: self = .nose
         case .lips: self = .lips
+        case .cheek(.left): self = .leftCheek
+        case .cheek(.right): self = .rightCheek
         case .fullFace, .faceSide, .overall: return nil
         }
     }
