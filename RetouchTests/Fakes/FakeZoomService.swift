@@ -11,6 +11,7 @@ final class FakeZoomService: ZoomServicing, @unchecked Sendable {
     private(set) var gestureEnabled: [Bool] = []
     private(set) var reduceMotionValues: [Bool] = []
     private(set) var overallValues: [Bool] = []
+    private(set) var overallOnlyValues: [Bool] = []
 
     func start() {}
     func stop() { stopCount += 1 }
@@ -24,4 +25,5 @@ final class FakeZoomService: ZoomServicing, @unchecked Sendable {
     func select(_ part: FacePart) { selectedParts.append(part) }
     func setReduceMotion(_ isOn: Bool) { reduceMotionValues.append(isOn) }
     func setOverall(_ isOn: Bool) { overallValues.append(isOn) }
+    func setOverallOnly(_ isOn: Bool) { overallOnlyValues.append(isOn) }
 }

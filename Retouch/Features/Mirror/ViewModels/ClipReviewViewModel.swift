@@ -27,6 +27,7 @@ final class ClipReviewViewModel {
     @ObservationIgnored private let photos: PhotoLibraryServicing
     @ObservationIgnored private let camera: CameraServicing
     @ObservationIgnored private var isActive = false
+    @ObservationIgnored private var keepsThumbnail = false
     @ObservationIgnored private var dismissTask: Task<Void, Never>?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
 
@@ -53,6 +54,11 @@ final class ClipReviewViewModel {
         isRecording = false
         previewClip = nil
         discardClip()
+    }
+
+    func setKeepsThumbnail(_ keeps: Bool) {
+        keepsThumbnail = keeps
+        if keeps { dismissTask?.cancel() } else { scheduleDismiss() }
     }
 
     func pauseRecording() {
@@ -135,7 +141,7 @@ final class ClipReviewViewModel {
 
     private func scheduleDismiss() {
         dismissTask?.cancel()
-        guard clip != nil, !isPreviewing else { return }
+        guard clip != nil, !isPreviewing, !keepsThumbnail else { return }
         dismissTask = Task { [weak self] in
             guard (try? await Task.sleep(for: RecordingConfig.thumbnailLifetime)) != nil else { return }
             self?.discardClip()

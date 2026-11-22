@@ -7,16 +7,21 @@
 
 import SwiftUI
 
-struct OnboardingView<Camera: View>: View {
+struct OnboardingView<Camera: View, RecordingThumbnail: View, RecordingPreview: View>: View {
     @State private var coordinator: OnboardingCoordinator
     private let signalSource: any OnboardingSignalSource
-    private let camera: (FacePart, LightMode) -> Camera
+    private let clipState: OnboardingClipState
+    private let camera: (FacePart, LightMode, Bool) -> Camera
+    private let recordingThumbnail: (ControlEmphasis) -> RecordingThumbnail
+    private let recordingPreview: () -> RecordingPreview
 
     @State private var pickerSwipe = PickerSwipe()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
 
     private let handSize: CGFloat = 277
+    private let overallVideoSize: CGFloat = 583
+    private let announceDelay: Duration = .seconds(1)
     private let spotlightPadding: CGFloat = 10
     private let controlsHeight: CGFloat = 66
     @Environment(\.isLargerButtons) private var isLargerButtons
@@ -28,20 +33,26 @@ struct OnboardingView<Camera: View>: View {
     init(
         signalSource: any OnboardingSignalSource,
         autoPart: FacePart = .face,
+        clipState: OnboardingClipState,
         analytics: OnboardingAnalyticsRecording,
         onFinish: @escaping () -> Void,
-        @ViewBuilder camera: @escaping (FacePart, LightMode) -> Camera
+        @ViewBuilder camera: @escaping (FacePart, LightMode, Bool) -> Camera,
+        @ViewBuilder recordingThumbnail: @escaping (ControlEmphasis) -> RecordingThumbnail,
+        @ViewBuilder recordingPreview: @escaping () -> RecordingPreview
     ) {
         _coordinator = State(initialValue: OnboardingCoordinator(autoPart: autoPart, analytics: analytics, onFinish: onFinish))
         self.signalSource = signalSource
+        self.clipState = clipState
         self.camera = camera
+        self.recordingThumbnail = recordingThumbnail
+        self.recordingPreview = recordingPreview
     }
 
     var body: some View {
         let step = coordinator.step
 
         ZStack {
-            camera(coordinator.selectedPart, coordinator.lightMode)
+            camera(coordinator.selectedPart, coordinator.lightMode, step.isOverallOnly)
                 .ignoresSafeArea()
 
             if step.focus == .picker {
@@ -52,8 +63,14 @@ struct OnboardingView<Camera: View>: View {
 
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
-                controls(for: step)
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(layoutSpace)) } action: { controlsFrame = $0 }
+                VStack {
+                    if step.showsRecording {
+                        recordingThumbnail(step.focus == .recording
+                                           ? .highlighted(Color.pickerGlow, guide: step.spokenInstruction) : .normal)
+                    }
+                    controls(for: step)
+                }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(layoutSpace)) } action: { controlsFrame = $0 }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
@@ -68,6 +85,14 @@ struct OnboardingView<Camera: View>: View {
 
             if showsSwipeHand {
                 swipeHand
+            }
+
+            if step == .overallIntro {
+                overallVideo
+            }
+
+            if step.showsRecording {
+                recordingPreview()
             }
 
             VStack(spacing: 0) {
@@ -92,6 +117,9 @@ struct OnboardingView<Camera: View>: View {
         .animation(.snappy, value: coordinator.step)
         .animation(.snappy, value: coordinator.isBubbleVisible)
         .onChange(of: isVoiceOverOn, initial: true) { _, isOn in coordinator.isVoiceOverOn = isOn }
+        .onChange(of: clipState) { old, new in coordinator.clipStateChanged(from: old, to: new) }
+        .task(id: step) { await stillVideoEndIfNeeded(step) }
+        .task(id: step) { await announceIfNeeded(step) }
         .onAppear {
             coordinator.attach(signalSource)
             coordinator.start()
@@ -108,7 +136,19 @@ struct OnboardingView<Camera: View>: View {
 
     private func spotlightOpacity(for step: OnboardingStep) -> Double {
         if step.dimsBackdrop { return 0.7 }
-        return step.focus == .none ? 0 : 0.4
+        return step.focus == .none || step.focus == .preview ? 0 : 0.4
+    }
+
+    private func stillVideoEndIfNeeded(_ step: OnboardingStep) async {
+        guard step == .overallIntro, reduceMotion,
+              (try? await Task.sleep(for: .seconds(OnboardingStep.pause))) != nil else { return }
+        coordinator.receive(.videoEnded)
+    }
+
+    private func announceIfNeeded(_ step: OnboardingStep) async {
+        guard step.focus == .preview, isVoiceOverOn, let text = step.spokenInstruction,
+              (try? await Task.sleep(for: announceDelay)) != nil else { return }
+        AccessibilityNotification.Announcement(text).post()
     }
 
     @ToolbarContentBuilder
@@ -130,6 +170,16 @@ struct OnboardingView<Camera: View>: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
             .transition(.opacity)
+    }
+
+    private var overallVideo: some View {
+        LoopingVideo(name: "overall-check", isPlaying: !reduceMotion, loops: false) {
+            coordinator.receive(.videoEnded)
+        }
+        .frame(width: overallVideoSize, height: overallVideoSize)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .transition(.opacity)
     }
 
     private var lightModeBinding: Binding<LightMode> {
@@ -187,9 +237,13 @@ struct OnboardingView<Camera: View>: View {
     }
     let source = PreviewSignalSource()
     return ZStack {
-        OnboardingView(signalSource: source, analytics: PreviewAnalytics(), onFinish: {}) { part, light in
+        OnboardingView(signalSource: source, clipState: .empty, analytics: PreviewAnalytics(), onFinish: {}) { part, light, _ in
             (light.lightColor?.color ?? Color(white: 0.35))
                 .overlay { Text(part.title).font(.largeTitle).foregroundStyle(.black.opacity(0.25)) }
+        } recordingThumbnail: { _ in
+            EmptyView()
+        } recordingPreview: {
+            EmptyView()
         }
         HStack {
             Button("Hand near eye") { source.onSignal?(.handNearEye) }

@@ -129,6 +129,7 @@ nonisolated extension ZoomService {
 
         let autoOverall = updateOverall(face: faceSnap?.value, converter: converter)
         let target: ZoomTarget = autoOverall || isManualOverall ? .overall
+            : isOverallOnly ? .fullFace
             : resolver.resolve(hand: handTarget, lips: winner == .lips, nose: winner == .nose, head: headTarget, covering: covering, headStraight: isHeadStraight(points.layout), headQuickRelease: headPose.quickReleased, now: now)
 
         if target == .fullFace || target == .overall { distComp.clearReference() } else { distComp.latchReferenceIfNeeded() }

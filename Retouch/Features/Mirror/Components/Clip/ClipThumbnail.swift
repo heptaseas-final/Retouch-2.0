@@ -5,7 +5,7 @@ struct ClipThumbnail: View {
     let duration: TimeInterval
     let onOpen: () -> Void
     let onHoldChanged: (Bool) -> Void
-    let onDiscard: () -> Void
+    let onDiscard: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @GestureState private var isHolding = false
@@ -48,9 +48,11 @@ struct ClipThumbnail: View {
             .accessibilityElement(children: .ignore)
             .accessibilityAddTraits(.isButton)
             .accessibilityLabel("Clip, \(seconds) seconds")
-            .accessibilityHint("Opens the clip. Swipe up to delete.")
+            .accessibilityHint(onDiscard == nil ? "Opens the clip." : "Opens the clip. Swipe up to delete.")
             .accessibilityAction { onOpen() }
-            .accessibilityAction(named: "Delete clip") { onDiscard() }
+            .accessibilityActions {
+                if let onDiscard { Button("Delete clip", action: onDiscard) }
+            }
     }
 
     private func release(_ value: DragGesture.Value) {
@@ -60,7 +62,7 @@ struct ClipThumbnail: View {
             return onOpen()
         }
         let upward = -min(value.translation.height, value.predictedEndTranslation.height)
-        guard upward > RecordingConfig.thumbnailSwipeDistance else {
+        guard let onDiscard, upward > RecordingConfig.thumbnailSwipeDistance else {
             withAnimation(.snappy) { dragOffset = .zero }
             return
         }

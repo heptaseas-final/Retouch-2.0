@@ -11,6 +11,10 @@ extension OnboardingStep {
         case .tapForCool: "tap_for_cool"
         case .tapForWhite: "tap_for_white"
         case .tapToTurnOff: "tap_to_turn_off"
+        case .overallIntro: "overall_intro"
+        case .overallCheck: "overall_check"
+        case .tapRecording: "tap_recording"
+        case .reviewRecording: "review_recording"
         case .done: "done"
         }
     }
