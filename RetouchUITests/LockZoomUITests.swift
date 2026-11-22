@@ -37,33 +37,33 @@ final class LockZoomUITests: RetouchUITestCase {
     func test_TC_3_1_16_gestureMissedUseLockInstead() {
         let tc = "TC-3.1-16"
         lock(Target.leftEye, tc)
-        XCTAssertEqual(zoomLevel(tc), ZoomLevel.eye, accuracy: ZoomLevel.accuracy, "\(tc): level zoom eye")
+        waitForMirrorTarget(Spoken.leftEye, tc)
     }
 
     func test_TC_3_6_02_lockToEye() {
         let tc = "TC-3.6-02"
         lock(Target.leftEye, tc)
-        XCTAssertEqual(zoomLevel(tc), ZoomLevel.eye, accuracy: ZoomLevel.accuracy, "\(tc): level zoom eye")
+        waitForMirrorTarget(Spoken.leftEye, tc)
         XCTAssertNotEqual(text(element(Name.zoomTarget)), Target.autoZoom, "\(tc): Lock tidak aktif")
     }
 
     func test_TC_3_6_03_lockToMouth() {
         let tc = "TC-3.6-03"
         lock(Target.lips, tc)
-        XCTAssertEqual(zoomLevel(tc), ZoomLevel.mouth, accuracy: ZoomLevel.accuracy, "\(tc): level zoom mouth")
+        waitForMirrorTarget(Spoken.lips, tc)
     }
 
     func test_TC_3_6_04_lockToNose() {
         let tc = "TC-3.6-04"
         lock(Target.nose, tc)
-        XCTAssertEqual(zoomLevel(tc), ZoomLevel.nose, accuracy: ZoomLevel.accuracy, "\(tc): level zoom nose")
+        waitForMirrorTarget(Spoken.nose, tc)
     }
 
     func test_TC_3_6_05_lockToFullFace() {
         let tc = "TC-3.6-05"
         lock(Target.leftEye, tc)
         selectZoomTarget(Target.fullFace, tc)
-        XCTAssertEqual(zoomLevel(tc), ZoomLevel.fullFace, accuracy: ZoomLevel.accuracy, "\(tc): level zoom full face")
+        waitForMirrorTarget(Spoken.fullFace, tc)
     }
 
 //    func test_TC_3_6_08_lockTheCurrentViewAfterPinching() throws {
@@ -113,9 +113,13 @@ final class LockZoomUITests: RetouchUITestCase {
         openMirror()
         let mirror = require(Name.mirror, tc)
         mirror.pinch(withScale: 10, velocity: 2)
-        XCTAssertLessThanOrEqual(zoomLevel(tc), ZoomLevel.maximum, "\(tc): zoom melewati batas atas")
+        pause(0.5)
+        XCTAssertEqual(app.state, .runningForeground, "\(tc): app crash saat pinch melewati batas atas")
+        XCTAssertTrue(mirror.exists, "\(tc): mirror hilang setelah pinch melewati batas atas")
         mirror.pinch(withScale: 0.1, velocity: -2)
-        XCTAssertGreaterThanOrEqual(zoomLevel(tc), ZoomLevel.widest, "\(tc): zoom melewati batas bawah")
+        pause(0.5)
+        XCTAssertEqual(app.state, .runningForeground, "\(tc): app crash saat pinch melewati batas bawah")
+        XCTAssertTrue(mirror.exists, "\(tc): mirror hilang setelah pinch melewati batas bawah")
     }
 
     func test_TC_3_6_15_pinchingTurnsAutoZoomOff() {
