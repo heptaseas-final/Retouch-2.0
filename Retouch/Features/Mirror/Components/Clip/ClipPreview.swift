@@ -66,6 +66,7 @@ struct ClipPreview: View {
                 }
                 .buttonStyle(ClipActionStyle(isProminent: true, fillsWidth: true))
                 .accessibilityLabel("Save to Photos")
+                .accessibilityInputLabels([Text("Save"), Text("Save to Photos")])
                 .accessibilityValue(isSaving ? "Saving" : "")
             }
             .disabled(isSaving)
@@ -99,7 +100,7 @@ struct ClipActionStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.bold())
-            .foregroundStyle(isProminent ? Color.white : (isCircle ? Color.appMagenta : Color.black))
+            .foregroundStyle(isProminent ? Color.white : Color.black)
             .padding(.horizontal, isCircle ? 0 : 16)
             .frame(minWidth: RecordingConfig.minTapTarget, maxWidth: fillsWidth ? .infinity : nil,
                    minHeight: RecordingConfig.minTapTarget)

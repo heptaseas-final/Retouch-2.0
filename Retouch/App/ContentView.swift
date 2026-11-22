@@ -34,13 +34,8 @@ struct ContentView: View {
             }
         }
         .environment(\.isLargerButtons, mirrorViewModel.isLargerButtons)
-        .preferredColorScheme(Self.forcedScheme)
+        .preferredColorScheme(.light)
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
-    }
-
-    private static var forcedScheme: ColorScheme? {
-        if #available(iOS 26, *) { return .light }
-        return nil
     }
 }
 
