@@ -7,7 +7,7 @@ struct ShortcutPromptPopover: View {
     private static let width: CGFloat = 300
     private static let horizontalPadding: CGFloat = 20
     private static let verticalPadding: CGFloat = 20
-    private static let buttonSpacing: CGFloat = 8
+    private static let buttonSpacing: CGFloat = 12
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -29,6 +29,7 @@ struct ShortcutPromptPopover: View {
                 .buttonStyle(.bordered)
                 .tint(Color.appInactive)
             }
+            .controlSize(.large)
         }
         .padding(.horizontal, Self.horizontalPadding)
         .padding(.vertical, Self.verticalPadding)
