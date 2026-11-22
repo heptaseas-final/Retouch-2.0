@@ -12,6 +12,8 @@ struct MirrorView: View {
     @State private var isDraggingLight = false
     @State private var screenFrame: CGRect = .zero
     @State private var dockSlotCenter: CGPoint = .zero
+    @State private var isPickerFullWidth = false
+    @State private var dockBeforeFullWidth: LightDock?
     private let showsControls: Bool
     private let onReplayTutorial: (() -> Void)?
     private let clipReview: ClipReviewViewModel?
@@ -74,15 +76,12 @@ struct MirrorView: View {
         .onChange(of: visibleStatus) { _, status in
             if let status { AccessibilityNotification.Announcement(status.message).post() }
         }
-    }
-
-    private var isClipPreviewing: Bool { clipReview?.isPreviewing == true }
-
-    private static let inactivePauseDelay: Duration = .milliseconds(600)
-
-    private func pauseAfterSettling() async {
-        guard (try? await Task.sleep(for: Self.inactivePauseDelay)) != nil else { return }
-        viewModel.pauseCamera()
+        .onChange(of: showsControls, initial: true) { _, isVisible in viewModel.setControlsVisible(isVisible) }
+        .sheet(isPresented: Binding(get: { viewModel.isShortcutGuideVisible },
+                                    set: { if !$0 { viewModel.closeShortcutGuide() } })) {
+            ShortcutGuideSheet(onClose: viewModel.closeShortcutGuide)
+        }
+        .syncsGlowLevel(with: viewModel)
     }
 
     private func announceCameraState(_ state: CameraState) {
@@ -119,6 +118,7 @@ struct MirrorView: View {
     }
     private static let sideMargin: CGFloat = 16
     private static let dockZoneHeight: CGFloat = 120
+    private static let bannerTrailing: CGFloat = 82
 
     @ViewBuilder
     private var sideLightButton: some View {
@@ -233,10 +233,17 @@ struct MirrorView: View {
         if showsControls, viewModel.permission != .denied, let onReplayTutorial {
             ToolbarItem(placement: .topBarTrailing) {
                 SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),
-                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement)) {
+                             lightPlacement: Binding(get: { lightDock.placement }, set: chooseLightPlacement),
+                             onAddToLockScreen: { viewModel.showShortcutGuide(fromPrompt: false) }) {
                     viewModel.select(.face)
                     viewModel.setLightMode(.off)
                     onReplayTutorial()
+                }
+                .popover(isPresented: Binding(get: { viewModel.isShortcutPromptVisible },
+                                              set: { if !$0 { viewModel.snoozeShortcutPrompt() } })) {
+                    ShortcutPromptPopover(onShowGuide: { viewModel.showShortcutGuide(fromPrompt: true) },
+                                          onDismissForever: viewModel.dismissShortcutPromptForever)
+                        .onDisappear(perform: viewModel.shortcutPromptDidDisappear)
                 }
             }
         }

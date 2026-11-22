@@ -71,9 +71,9 @@ nonisolated final class ClipRecordingService: ClipRecordingServicing, @unchecked
 
     func finishRecording() {
         let wasRecording = lock.withLock { () -> Bool in
-            guard trigger.isRecording else { return false }
+            let wasRecording = trigger.isRecording
             trigger.recordingEnded()
-            return true
+            return wasRecording
         }
         guard wasRecording else { return }
         finish()

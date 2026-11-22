@@ -9,6 +9,7 @@ nonisolated enum GlowFrame {
     static let fullFallDuration = 0.5
     static let minimumRampDuration = 0.25
     static let overallAnimation: Animation = .smooth(duration: 0.5)
+    static let shrinksCameraWithGlow = false
 
     static func lightOpacity(level: Double) -> Double {
         min(max(level, 0), 1)
@@ -40,6 +41,11 @@ nonisolated enum GlowFrame {
         guard !isOverall, full > 0 else { return 1 }
         let fit = fillScale(for: windowRect(in: size).size) / full
         return 1 + (fit - 1) * min(max(progress, 0), 1)
+    }
+
+    static func previewShrink(in size: CGSize, progress: CGFloat, isOverall: Bool) -> CGFloat {
+        guard shrinksCameraWithGlow else { return 1 }
+        return zoomShrink(in: size, progress: progress, isOverall: isOverall)
     }
 
     static func windowedZoom(_ zoom: ZoomState, shrink: CGFloat) -> ZoomState {

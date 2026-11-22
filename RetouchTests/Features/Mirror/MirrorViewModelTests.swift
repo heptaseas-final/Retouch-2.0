@@ -8,10 +8,127 @@ struct MirrorViewModelTests {
     let zoom = FakeZoomService()
     let settings = FakeMirrorSettingsStore()
     let analytics = FakeAnalyticsRecorder()
+    let shortcutPrompt = FakeShortcutPromptService()
 
     func makeViewModel() -> MirrorViewModel {
         MirrorViewModel(camera: camera, lighting: lighting, zoom: zoom,
-                        zoomStore: ZoomStore(), renderer: MirrorRenderer(device: nil), settings: settings, analytics: analytics)
+                        zoomStore: ZoomStore(), renderer: MirrorRenderer(device: nil), settings: settings, analytics: analytics,
+                        shortcutPrompt: shortcutPrompt)
+    }
+
+    @Test func coldLaunchCountsOneOpen() async {
+        let viewModel = makeViewModel()
+        await viewModel.start()
+        viewModel.refresh()
+        #expect(shortcutPrompt.openCount == 1)
+    }
+
+    @Test func returningFromBackgroundCountsAnOpenButInactiveDoesNot() async {
+        let viewModel = makeViewModel()
+        await viewModel.start()
+        viewModel.refresh()
+        viewModel.stop()
+        viewModel.refresh()
+        viewModel.refresh()
+        #expect(shortcutPrompt.openCount == 2)
+    }
+
+    @Test func shortcutPromptGetsReadinessFromScreen() {
+        let viewModel = makeViewModel()
+        viewModel.setControlsVisible(true)
+        lighting.status = LightingStatus(faceLux: 400)
+        viewModel.refreshStatus(now: 10)
+        viewModel.refreshStatus(now: 13)
+        #expect(shortcutPrompt.lastContext?.isControlsVisible == true)
+        #expect(shortcutPrompt.lastContext?.faceSeenSeconds == 3)
+        #expect(!viewModel.isShortcutPromptVisible)
+    }
+
+    @Test func shortcutPromptShowsOnceAndIsTracked() {
+        let viewModel = makeViewModel()
+        shortcutPrompt.shouldShowResult = true
+        viewModel.refreshStatus(now: 0)
+        viewModel.refreshStatus(now: 1)
+        #expect(viewModel.isShortcutPromptVisible)
+        #expect(shortcutPrompt.shownCount == 1)
+        #expect(analytics.calls.filter { $0 == "shortcutPromptShown" }.count == 1)
+    }
+
+    @Test func hidingControlsHidesShortcutPrompt() {
+        let viewModel = makeViewModel()
+        shortcutPrompt.shouldShowResult = true
+        viewModel.refreshStatus(now: 0)
+        viewModel.setControlsVisible(false)
+        #expect(!viewModel.isShortcutPromptVisible)
+    }
+
+    @Test func showMeHowOpensGuide() {
+        let viewModel = makeViewModel()
+        shortcutPrompt.shouldShowResult = true
+        viewModel.refreshStatus(now: 0)
+        viewModel.showShortcutGuide(fromPrompt: true)
+        #expect(!viewModel.isShortcutPromptVisible)
+        #expect(!viewModel.isShortcutGuideVisible)
+        viewModel.shortcutPromptDidDisappear()
+        #expect(viewModel.isShortcutGuideVisible)
+        #expect(analytics.calls.contains("shortcutGuideOpened(true)"))
+        viewModel.closeShortcutGuide()
+        #expect(!viewModel.isShortcutGuideVisible)
+    }
+
+    @Test func statusBannerWaitsWhileShortcutPromptIsVisible() {
+        let viewModel = makeViewModel()
+        shortcutPrompt.shouldShowResult = true
+        viewModel.refreshStatus(now: 0)
+        shortcutPrompt.shouldShowResult = false
+        viewModel.setLightMode(.on(.white))
+        lighting.status = LightingStatus(faceLux: 100)
+        viewModel.refreshStatus(now: 1)
+        viewModel.refreshStatus(now: 4)
+        #expect(viewModel.isShortcutPromptVisible)
+        #expect(viewModel.status == nil)
+        viewModel.snoozeShortcutPrompt()
+        viewModel.refreshStatus(now: 5)
+        viewModel.refreshStatus(now: 7)
+        #expect(viewModel.status == .notEnoughLight)
+    }
+
+    @Test func cameraPauseClosesShortcutPrompt() {
+        let viewModel = makeViewModel()
+        shortcutPrompt.shouldShowResult = true
+        viewModel.refreshStatus(now: 0)
+        shortcutPrompt.shouldShowResult = false
+        camera.state = .reconnecting
+        viewModel.refreshStatus(now: 1)
+        #expect(!viewModel.isShortcutPromptVisible)
+        viewModel.refreshStatus(now: 3)
+        #expect(viewModel.status == .cameraPaused)
+    }
+
+    @Test func settingsOpensGuideRightAway() {
+        let viewModel = makeViewModel()
+        viewModel.showShortcutGuide(fromPrompt: false)
+        #expect(viewModel.isShortcutGuideVisible)
+        #expect(analytics.calls.contains("shortcutGuideOpened(false)"))
+    }
+
+    @Test func notNowDoesNotOpenGuide() {
+        let viewModel = makeViewModel()
+        shortcutPrompt.shouldShowResult = true
+        viewModel.refreshStatus(now: 0)
+        viewModel.snoozeShortcutPrompt()
+        viewModel.shortcutPromptDidDisappear()
+        #expect(!viewModel.isShortcutGuideVisible)
+    }
+
+    @Test func dontShowAgainIsSaved() {
+        let viewModel = makeViewModel()
+        shortcutPrompt.shouldShowResult = true
+        viewModel.refreshStatus(now: 0)
+        viewModel.dismissShortcutPromptForever()
+        #expect(!viewModel.isShortcutPromptVisible)
+        #expect(shortcutPrompt.isDismissedForever)
+        #expect(analytics.calls.contains("shortcutPromptDismissedForever"))
     }
 
     @Test func loadsSavedSettings() {

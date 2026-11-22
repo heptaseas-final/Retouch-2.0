@@ -40,7 +40,7 @@ struct ZoomRulesTests {
         var zoomed = headZoomedOut()
         #expect(zoomed.resolver.target == .fullFace)
         let target = zoomed.resolver.resolve(hand: nil, lips: false, head: .faceSide(.right), covering: false,
-                                             headStraight: false, now: zoomed.changedAt.addingTimeInterval(1.0))
+                                             headStraight: false, now: zoomed.changedAt.addingTimeInterval(ZoomTuning.resolverExitCooldown - 0.2))
         #expect(target == .fullFace)
     }
 

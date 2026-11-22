@@ -58,6 +58,12 @@ struct GlowFrameTests {
         #expect(GlowFrame.zoomShrink(in: phone, progress: 0, isOverall: false) == 1)
     }
 
+    @Test func previewKeepsZoomWhenGlowTurnsOn() {
+        guard !GlowFrame.shrinksCameraWithGlow else { return }
+        #expect(GlowFrame.previewShrink(in: phone, progress: 1, isOverall: false) == 1)
+        #expect(GlowFrame.previewShrink(in: phone, progress: 0.5, isOverall: false) == 1)
+    }
+
     @Test func overallModeIsNotShrunkTwice() {
         #expect(GlowFrame.zoomShrink(in: phone, progress: 1, isOverall: true) == 1)
     }
