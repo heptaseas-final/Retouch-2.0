@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsMenu: View {
     @Binding var isLargerButtons: Bool
     @Binding var lightPlacement: LightPlacement
+    let onAddToLockScreen: () -> Void
     let onReplayTutorial: () -> Void
 
     @State private var pendingLargerButtons: Bool?
@@ -12,6 +13,7 @@ struct SettingsMenu: View {
     var body: some View {
         Menu {
             Button("Replay Tutorial", systemImage: "play.fill", action: onReplayTutorial)
+            Button("Add to Lock Screen", systemImage: "lock.iphone", action: onAddToLockScreen)
             Section("Customize Settings") {
                 Toggle("Larger Buttons", systemImage: "arrow.down.left.and.arrow.up.right", isOn: largerButtonsSelection)
             }
@@ -24,9 +26,12 @@ struct SettingsMenu: View {
             Label("Settings", systemImage: "gearshape.fill")
                 .labelStyle(.iconOnly)
                 .font(.title3)
+                .foregroundStyle(Color.appMagenta)
                 .frame(width: 44, height: 44)
-                .background(.ultraThinMaterial, in: Circle())
+                .controlGlass()
+                .lightOnGlassSystems()
         }
+        .environment(\.colorScheme, .light)
         .tint(Color.appMagenta)
         .task(id: pendingLargerButtons) { await applyLargerButtonsAfterClose() }
     }
@@ -57,7 +62,7 @@ struct SettingsMenu: View {
     @Previewable @State var placement = LightPlacement.bottom
     ZStack(alignment: .topTrailing) {
         Color.gray.ignoresSafeArea()
-        SettingsMenu(isLargerButtons: $isLarger, lightPlacement: $placement) {}
+        SettingsMenu(isLargerButtons: $isLarger, lightPlacement: $placement, onAddToLockScreen: {}) {}
             .padding()
     }
 }

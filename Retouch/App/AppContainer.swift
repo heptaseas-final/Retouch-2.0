@@ -9,7 +9,11 @@ final class AppContainer {
     let zoom: ZoomServicing
     let zoomStore = ZoomStore()
     let analytics: AnalyticsRecorder
+    let shortcutPrompt: ShortcutPromptService
     let mirrorViewModel: MirrorViewModel
+    let clipRecording: ClipRecordingServicing
+    let photoLibrary = PhotoLibraryService()
+    let clipReviewViewModel: ClipReviewViewModel
 
     init() {
         let config = LightingConfig()
@@ -23,10 +27,16 @@ final class AppContainer {
         cameraSession.onFrame = { [pipeline] frame in pipeline.process(frame) }
         zoom = ZoomService()
         analytics = AnalyticsRecorder(service: AnalyticsService(), zoomStore: zoomStore, lighting: lighting)
+        shortcutPrompt = ShortcutPromptService(store: ShortcutPromptStore(), controls: ControlPlacementService())
         mirrorViewModel = MirrorViewModel(camera: camera, lighting: lighting, zoom: zoom,
                                           zoomStore: zoomStore, renderer: pipeline.renderer,
-                                          settings: MirrorSettingsStore(), analytics: analytics)
+                                          settings: MirrorSettingsStore(), analytics: analytics,
+                                          shortcutPrompt: shortcutPrompt)
+        clipRecording = ClipRecordingService(writer: ClipWriter(commandQueue: pipeline.queue))
+        clipReviewViewModel = ClipReviewViewModel(recording: clipRecording, photos: photoLibrary,
+                                                  camera: camera)
         connectZoom()
+        connectClipRecording()
     }
 
     func makeOnboardingSignals() -> ZoomOnboardingSignals {
@@ -44,5 +54,11 @@ final class AppContainer {
         pipeline.vision.setHandler { [zoom] buffer in
             zoom.process(buffer)
         }
+    }
+
+    private func connectClipRecording() {
+        let recording = clipRecording
+        pipeline.onOutputFrame = { image, time in recording.append(image, time: time) }
+        zoomStore.addTrackingListener { tracking, _ in recording.noteTracking(tracking) }
     }
 }

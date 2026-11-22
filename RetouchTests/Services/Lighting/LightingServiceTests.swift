@@ -33,4 +33,16 @@ struct LightingServiceTests {
         #expect(service.isAutoBrightness == true)
         #expect(service.selectedColor == .white)
     }
+
+    @Test func lightButtonRampsScreenBrightnessInsteadOfJumping() {
+        let controller = BrightnessController()
+        controller.set(0.3)
+        let engine = LightingEngine(camera: CameraSessionManager(), config: LightingConfig())
+        let service = LightingService(engine: engine, brightnessController: controller, isAppActive: true)
+
+        service.setLightMode(.on(.white))
+
+        #expect(controller.target == 1)
+        #expect(controller.current == 0.3)
+    }
 }

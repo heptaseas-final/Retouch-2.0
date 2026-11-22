@@ -6,6 +6,8 @@ nonisolated struct TrackedTool: Equatable {
     let confidence: Float
     let rect: CGRect
     let speed: CGFloat
+    var grip: CGPoint?
+    var tipHint: CGPoint?
 
     var center: CGPoint { CGPoint(x: rect.midX, y: rect.midY) }
 }

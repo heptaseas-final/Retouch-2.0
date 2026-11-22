@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  Retouch
-//
-//  Created by Davin P on 21/10/26.
-//
-
 import SwiftUI
 
 struct ContentView: View {
@@ -13,13 +6,15 @@ struct ContentView: View {
     let mirrorViewModel: MirrorViewModel
     let makeOnboardingSignals: () -> ZoomOnboardingSignals
     let analytics: AnalyticsRecording
+    let clipReviewViewModel: ClipReviewViewModel
 
     var body: some View {
         Group {
             if hasSeenSplash || hasCompletedOnboarding {
                 NavigationStack {
                     ZStack {
-                        MirrorView(viewModel: mirrorViewModel, showsControls: hasCompletedOnboarding) {
+                        MirrorView(viewModel: mirrorViewModel, showsControls: hasCompletedOnboarding,
+                                   clipReview: clipReviewViewModel) {
                             withAnimation(.easeInOut) { hasCompletedOnboarding = false }
                         }
 
@@ -31,8 +26,7 @@ struct ContentView: View {
                         }
                     }
                     .navigationBarTitleDisplayMode(.inline)
-                    .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-                    .toolbarBackgroundVisibility(barBackground, for: .navigationBar)
+                    .mirrorBarStyle(isOverall: mirrorViewModel.zoomTarget == .overall)
                 }
             } else {
                 SplashView { withAnimation(.easeInOut) { hasSeenSplash = true } }
@@ -40,13 +34,13 @@ struct ContentView: View {
             }
         }
         .environment(\.isLargerButtons, mirrorViewModel.isLargerButtons)
-        .environment(\.colorScheme, .light)
+        .preferredColorScheme(Self.forcedScheme)
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
     }
 
-    private var barBackground: Visibility {
-        if #available(iOS 26, *) { return .hidden }
-        return .visible
+    private static var forcedScheme: ColorScheme? {
+        if #available(iOS 26, *) { return .light }
+        return nil
     }
 }
 
@@ -54,5 +48,6 @@ struct ContentView: View {
     let container = AppContainer()
     return ContentView(mirrorViewModel: container.mirrorViewModel,
                        makeOnboardingSignals: container.makeOnboardingSignals,
-                       analytics: container.analytics)
+                       analytics: container.analytics,
+                       clipReviewViewModel: container.clipReviewViewModel)
 }

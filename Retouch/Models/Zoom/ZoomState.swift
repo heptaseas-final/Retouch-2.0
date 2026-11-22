@@ -1,10 +1,3 @@
-//
-//  ZoomState.swift
-//  Retouch
-//
-//  Created by Davin P on 25/10/26.
-//
-
 import CoreGraphics
 
 nonisolated struct ZoomState: Equatable {
@@ -19,25 +12,50 @@ nonisolated struct ZoomFade: Equatable {
     var progress: CGFloat
 }
 
+nonisolated struct ZoomDebugHand: Sendable {
+    var point: CGPoint
+    var checkPoints: [CGPoint]
+    var hasPose: Bool
+    var isHolding: Bool
+    var isPoint: Bool
+}
+
 nonisolated struct ZoomTracking: Sendable {
     var target: ZoomTarget = .fullFace
     var face = FacePoints()
     var viewSize: CGSize = .zero
+    var isFaceVisible = false
+    var hands: [ZoomDebugHand] = []
+    var fingertips: [CGPoint] = []
+    var toolTips: [CGPoint] = []
+    var toolBoxes: [CGRect] = []
+    var toolLabels: [String] = []
+    var lockedZone: FaceZone?
+    var zoneReach: CGFloat = 1
+    var lipsReach = CGFloat(ZoomTuning.handEnterDistance)
+    var inputMode: InputMode = .finger
+    var overallPose: OverallPose = .none
 }
+
+nonisolated enum OverallPose: Equatable, Sendable { case none, placedFar, heldHigh }
 
 nonisolated enum FaceSide { case left, right }
 
 nonisolated enum ZoomTarget: Equatable {
     case fullFace, leftEye, rightEye, lips, nose
     case faceSide(FaceSide)
+    case cheek(FaceSide)
+    case overall
 
     var zoomScale: CGFloat {
         switch self {
         case .fullFace: ZoomTuning.fullFaceZoom
+        case .overall: ZoomTuning.overallZoom
         case .leftEye, .rightEye: ZoomTuning.eyeZoomScale
         case .lips: ZoomTuning.lipsZoomScale
         case .nose: ZoomTuning.noseZoomScale
         case .faceSide: ZoomTuning.sideZoom
+        case .cheek: ZoomTuning.cheekZoom
         }
     }
 
@@ -50,10 +68,17 @@ nonisolated enum ZoomTarget: Equatable {
         case .nose: "Nose"
         case .faceSide(.left): "Left side of face"
         case .faceSide(.right): "Right side of face"
+        case .cheek(.left): "Left cheek"
+        case .cheek(.right): "Right cheek"
+        case .overall: "Overall view"
         }
     }
 
     var zoomAnnouncement: String {
-        self == .fullFace ? "Back to full face" : "Zoomed to \(spokenName.lowercased())"
+        switch self {
+        case .fullFace: "Back to full face"
+        case .overall: "Showing overall view"
+        default: "Zoomed to \(spokenName.lowercased())"
+        }
     }
 }

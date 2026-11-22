@@ -27,11 +27,22 @@ struct MirrorStatusAdvisorTests {
         _ = advisor.update(dark, now: 0)
         _ = advisor.update(dark, now: 1.6)
         _ = advisor.update(bright, now: 2)
-        let shown = advisor.update(bright, now: 3.6)
-        let stillShown = advisor.update(bright, now: 5.5)
-        let gone = advisor.update(bright, now: 5.7)
+        let shown = advisor.update(bright, now: 6.2)
+        let stillShown = advisor.update(bright, now: 8.1)
+        let gone = advisor.update(bright, now: 8.3)
         #expect(shown == .enoughLight)
         #expect(stillShown == .enoughLight)
+        #expect(gone == nil)
+    }
+
+    @Test func errorMessageHidesAfterItsDisplayTime() {
+        var advisor = MirrorStatusAdvisor()
+        _ = advisor.update(dark, now: 0)
+        let shown = advisor.update(dark, now: 1.6)
+        let stillShown = advisor.update(dark, now: 1.6 + MirrorStatusConfig.errorTime - 0.1)
+        let gone = advisor.update(dark, now: 1.6 + MirrorStatusConfig.errorTime + 0.1)
+        #expect(shown == .notEnoughLight)
+        #expect(stillShown == .notEnoughLight)
         #expect(gone == nil)
     }
 

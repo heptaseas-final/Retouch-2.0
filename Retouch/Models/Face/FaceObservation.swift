@@ -29,6 +29,7 @@ nonisolated struct FacePoints {
     var center: CGPoint?
     var width: CGFloat = 0
     var scale: CGFloat = 0
+    var layout: FaceZoneLayout = .frontal
 
     var handTargets: [(ZoomTarget, CGPoint)] {
         var result: [(ZoomTarget, CGPoint)] = []
