@@ -6,6 +6,8 @@ struct ClipStatusLabel: View {
     var actionTitle: String?
     var action: (() -> Void)?
 
+    private static let cornerRadius: CGFloat = 22
+
     private var hasAction: Bool { actionTitle != nil && action != nil }
 
     var body: some View {
@@ -29,7 +31,7 @@ struct ClipStatusLabel: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, hasAction ? 0 : 12)
-        .background(Color.appInactive.opacity(0.8), in: Capsule())
+        .background(Color.appInactive.opacity(0.8), in: RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
         .accessibilityElement(children: hasAction ? .contain : .combine)
     }
 }

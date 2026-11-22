@@ -39,7 +39,7 @@ struct ShortcutPromptPopover: View {
 
     private func label(_ title: String) -> some View {
         Text(title)
-            .lineLimit(1)
+            .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
     }
 }
