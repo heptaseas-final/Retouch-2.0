@@ -8,6 +8,8 @@ struct ClipThumbnail: View {
     let onDiscard: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private static let snapBackDuration = 0.2
     @GestureState private var isHolding = false
     @State private var dragOffset: CGSize = .zero
     @State private var isDiscarding = false
@@ -64,7 +66,7 @@ struct ClipThumbnail: View {
         }
         let upward = -min(value.translation.height, value.predictedEndTranslation.height)
         guard upward > RecordingConfig.thumbnailSwipeDistance else {
-            withAnimation(.snappy) { dragOffset = .zero }
+            withAnimation(reduceMotion ? .easeOut(duration: Self.snapBackDuration) : .snappy) { dragOffset = .zero }
             return
         }
         withAnimation(.easeOut(duration: RecordingConfig.thumbnailDiscardDuration)) {
