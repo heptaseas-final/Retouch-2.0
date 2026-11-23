@@ -46,11 +46,16 @@ final class ZoomOnboardingSignals: OnboardingSignalSource {
         zoom.select(part)
     }
 
+    func setOverallOnly(_ isOn: Bool) {
+        zoom.setOverallOnly(isOn)
+    }
+
     func setLightMode(_ mode: LightMode) {
         lighting.setLightMode(mode)
     }
 
     func resetToDefaults() {
+        zoom.setOverallOnly(false)
         zoom.setGestureEnabled(true)
         lighting.setAuto(true)
     }

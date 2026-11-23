@@ -10,6 +10,8 @@ struct LoopingVideo: UIViewRepresentable {
     let name: String
     var fileExtension = "mov"
     var isPlaying = true
+    var loops = true
+    var onEnd: (() -> Void)?
 
     func makeUIView(context: Context) -> PlayerView {
         let view = PlayerView()
@@ -23,18 +25,34 @@ struct LoopingVideo: UIViewRepresentable {
         let player = AVPlayer(playerItem: item)
         player.isMuted = true
         player.preventsDisplaySleepDuringVideoPlayback = false
-        player.actionAtItemEnd = .none
-        context.coordinator.endObserver = NotificationCenter.default.addObserver(
+        player.actionAtItemEnd = loops ? .none : .pause
+        let coordinator = context.coordinator
+        coordinator.onEnd = onEnd
+        coordinator.endObserver = NotificationCenter.default.addObserver(
             forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main
-        ) { [weak player] _ in
+        ) { [weak player, loops] _ in
+            guard loops else {
+                coordinator.onEnd?()
+                return
+            }
             player?.seek(to: .zero)
             player?.play()
         }
         view.playerLayer.player = player
+        if !loops, !isPlaying { showLastFrame(of: player) }
         return view
     }
 
+    private func showLastFrame(of player: AVPlayer) {
+        guard let asset = player.currentItem?.asset else { return }
+        Task { @MainActor in
+            guard let duration = try? await asset.load(.duration) else { return }
+            await player.seek(to: duration, toleranceBefore: .zero, toleranceAfter: .zero)
+        }
+    }
+
     func updateUIView(_ view: PlayerView, context: Context) {
+        context.coordinator.onEnd = onEnd
         if isPlaying {
             view.playerLayer.player?.play()
         } else {
@@ -54,6 +72,7 @@ struct LoopingVideo: UIViewRepresentable {
 
     final class Coordinator {
         var endObserver: NSObjectProtocol?
+        var onEnd: (() -> Void)?
     }
 
     final class PlayerView: UIView {
