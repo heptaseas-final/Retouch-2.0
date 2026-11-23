@@ -35,6 +35,13 @@ enum Target {
     static let pickerStepCount = 6
 }
 
+enum Spoken {
+    static let leftEye = "Left eye"
+    static let lips = "Lips"
+    static let nose = "Nose"
+    static let fullFace = "Full face"
+}
+
 enum ZoomLevel {
     static let eye = 2.25
     static let mouth = 2.12
@@ -116,8 +123,11 @@ class RetouchUITestCase: XCTestCase {
         (element.value as? String) ?? element.label
     }
 
-    func zoomLevel(_ tc: String) -> Double {
-        Double(text(require(Name.zoomLevel, tc))) ?? .nan
+    func waitForMirrorTarget(_ expected: String, _ tc: String, timeout: TimeInterval = 3) {
+        let mirror = require(Name.mirror, tc)
+        let deadline = Date().addingTimeInterval(timeout)
+        while text(mirror) != expected, Date() < deadline { pause(0.3) }
+        XCTAssertEqual(text(mirror), expected, "\(tc): zoom tidak menuju \(expected)")
     }
 
     func pause(_ seconds: TimeInterval) {
