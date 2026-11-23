@@ -34,15 +34,19 @@ struct MirrorView: View {
                 CameraPermissionDeniedView(onOpenSettings: viewModel.openSettings)
             } else {
                 ZoomableCameraPreview(viewModel: viewModel, announcesZoom: showsControls)
+                    .accessibilityHidden(isClipPreviewing)
                 MirrorGlowLayer(viewModel: viewModel)
                 cameraStateOverlay
+                    .accessibilityHidden(isClipPreviewing)
                 if showsControls, viewModel.cameraState != .failed {
                   VStack(spacing: 12) {
                       Spacer()
                       controls
                           .transition(.opacity)
                   }
+                  .accessibilityHidden(isClipPreviewing)
                   sideLightButton
+                      .accessibilityHidden(isClipPreviewing)
                   if let clipReview { ClipPreviewLayer(viewModel: clipReview) }
                 }
             }
@@ -79,6 +83,8 @@ struct MirrorView: View {
         }
         .syncsGlowLevel(with: viewModel)
     }
+
+    private var isClipPreviewing: Bool { clipReview?.isPreviewing == true }
 
     private func announceCameraState(_ state: CameraState) {
         switch state {
@@ -208,11 +214,17 @@ struct MirrorView: View {
     private var cameraStateOverlay: some View {
         if viewModel.cameraState == .failed {
             CameraFailedView(onRetry: viewModel.retryCamera)
-        } else if let status = visibleStatus {
+        } else {
             VStack {
-                MirrorStatusBanner(status: status)
-                    .padding(.horizontal, Self.sideMargin)
-                    .transition(.opacity)
+                if showsControls, let clipReview {
+                    ClipSavedToast(viewModel: clipReview)
+                        .padding(.horizontal, Self.sideMargin)
+                }
+                if let status = visibleStatus {
+                    MirrorStatusBanner(status: status)
+                        .padding(.horizontal, Self.sideMargin)
+                        .transition(.opacity)
+                }
                 Spacer()
             }
             .padding(.top, 8)
@@ -221,11 +233,6 @@ struct MirrorView: View {
 
     @ToolbarContentBuilder
     private var settingsToolbar: some ToolbarContent {
-        if showsControls, let clipReview {
-            ToolbarItem(placement: .principal) {
-                ClipSavedToast(viewModel: clipReview)
-            }
-        }
         if showsControls, viewModel.permission != .denied, let onReplayTutorial {
             ToolbarItem(placement: .topBarTrailing) {
                 SettingsMenu(isLargerButtons: Binding(get: { viewModel.isLargerButtons }, set: setLargerButtons),

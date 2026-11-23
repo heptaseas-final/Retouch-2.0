@@ -40,18 +40,13 @@ struct ContentView: View {
             }
         }
         .environment(\.isLargerButtons, mirrorViewModel.isLargerButtons)
-        .preferredColorScheme(Self.forcedScheme)
+        .preferredColorScheme(.light)
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
     }
 
     private var onboardingClipState: OnboardingClipState {
         if clipReviewViewModel.isPreviewing { return .previewing }
         return clipReviewViewModel.clip == nil ? .empty : .recorded
-    }
-
-    private static var forcedScheme: ColorScheme? {
-        if #available(iOS 26, *) { return .light }
-        return nil
     }
 }
 

@@ -12,6 +12,7 @@ struct InstructionBubble: View {
     var isFullWidth = false
     var spokenText: String?
     var takesVoiceOverFocus = false
+    var isVoiceOverOnly = false
 
     @AccessibilityFocusState private var isFocused: Bool
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
@@ -25,21 +26,31 @@ struct InstructionBubble: View {
     private let focusDelay: Duration = .milliseconds(300)
 
     var body: some View {
-        ViewThatFits(in: .vertical) {
-            label
-            ScrollView { label }
-                .scrollBounceBehavior(.basedOnSize)
+        content
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(spokenText ?? text)
+            .accessibilityAddTraits(.isStaticText)
+            .accessibilityFocused($isFocused)
+            .task(id: text) { await focusIfNeeded() }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if isVoiceOverOnly {
+            Color.clear
+                .frame(width: width, height: 1)
+        } else {
+            ViewThatFits(in: .vertical) {
+                label
+                ScrollView { label }
+                    .scrollBounceBehavior(.basedOnSize)
+            }
+            .frame(width: width)
+            .frame(maxHeight: lineHeight * maxLines + verticalPadding * 2)
+            .background(Color.appInactive.opacity(0.8), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .dynamicTypeSize(...DynamicTypeSize.accessibility3)
+            .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
         }
-        .frame(width: width)
-        .frame(maxHeight: lineHeight * maxLines + verticalPadding * 2)
-        .background(Color.appInactive.opacity(0.8), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .dynamicTypeSize(...DynamicTypeSize.accessibility3)
-        .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(spokenText ?? text)
-        .accessibilityAddTraits(.isStaticText)
-        .accessibilityFocused($isFocused)
-        .task(id: text) { await focusIfNeeded() }
     }
 
     private func focusIfNeeded() async {

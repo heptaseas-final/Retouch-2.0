@@ -11,6 +11,7 @@ struct ClipPreview: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isPlaying: Bool?
     @State private var isConfirmingDelete = false
+    @AccessibilityFocusState private var isCloseFocused: Bool
 
     private var playing: Bool { isPlaying ?? !reduceMotion }
 
@@ -40,12 +41,17 @@ struct ClipPreview: View {
                         .labelStyle(.iconOnly)
                         .buttonStyle(ClipActionStyle(isProminent: false, isCircle: true))
                         .offset(RecordingConfig.closeButtonOffset)
+                        .accessibilityFocused($isCloseFocused)
                 }
                 .accessibilityElement(children: .contain)
-                .accessibilityLabel("Clip preview")
+                .accessibilityLabel("Video preview")
 
             if let message {
                 ClipStatusLabel(text: message)
+            } else {
+                Text("Save to keep this video.")
+                    .font(.footnote)
+                    .foregroundStyle(.white)
             }
 
             HStack(spacing: 12) {
@@ -60,13 +66,27 @@ struct ClipPreview: View {
                 }
                 .buttonStyle(ClipActionStyle(isProminent: true, fillsWidth: true))
                 .accessibilityLabel("Save to Photos")
+                .accessibilityInputLabels([Text("Save"), Text("Save to Photos")])
+                .accessibilityValue(isSaving ? "Saving" : "")
             }
             .disabled(isSaving)
         }
-        .alert("Delete video?", isPresented: $isConfirmingDelete) {
+        .accessibilityAction(.escape, onClose)
+        .alert("Delete this video?", isPresented: $isConfirmingDelete) {
             Button("Delete", role: .destructive, action: onDelete)
             Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("It hasn't been saved to Photos and can't be recovered.")
         }
+        .onChange(of: message) { _, text in
+            if let text { AccessibilityNotification.Announcement(text).post() }
+        }
+        .task { await focusClose() }
+    }
+
+    private func focusClose() async {
+        guard (try? await Task.sleep(for: RecordingConfig.voiceOverFocusDelay)) != nil else { return }
+        isCloseFocused = true
     }
 }
 
@@ -80,7 +100,7 @@ struct ClipActionStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.bold())
-            .foregroundStyle(isProminent ? Color.white : (isCircle ? Color.appMagenta : Color.black))
+            .foregroundStyle(isProminent ? Color.white : Color.black)
             .padding(.horizontal, isCircle ? 0 : 16)
             .frame(minWidth: RecordingConfig.minTapTarget, maxWidth: fillsWidth ? .infinity : nil,
                    minHeight: RecordingConfig.minTapTarget)

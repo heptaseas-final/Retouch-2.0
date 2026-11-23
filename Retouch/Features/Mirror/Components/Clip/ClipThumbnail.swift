@@ -8,9 +8,12 @@ struct ClipThumbnail: View {
     let onDiscard: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private static let snapBackDuration = 0.2
     @GestureState private var isHolding = false
     @State private var dragOffset: CGSize = .zero
     @State private var isDiscarding = false
+    @AccessibilityFocusState private var isFocused: Bool
 
     private var seconds: Int { Int(duration.rounded()) }
 
@@ -47,12 +50,14 @@ struct ClipThumbnail: View {
             .onChange(of: isHolding) { _, held in onHoldChanged(held) }
             .accessibilityElement(children: .ignore)
             .accessibilityAddTraits(.isButton)
-            .accessibilityLabel("Clip, \(seconds) seconds")
-            .accessibilityHint(onDiscard == nil ? "Opens the clip." : "Opens the clip. Swipe up to delete.")
+            .accessibilityLabel("Video, \(seconds) seconds")
+            .accessibilityHint("Opens the video.")
             .accessibilityAction { onOpen() }
             .accessibilityActions {
-                if let onDiscard { Button("Delete clip", action: onDiscard) }
+                if let onDiscard { Button("Delete video", action: onDiscard) }
             }
+            .accessibilityFocused($isFocused)
+            .onChange(of: isFocused) { _, focused in onHoldChanged(focused) }
     }
 
     private func release(_ value: DragGesture.Value) {
@@ -62,10 +67,12 @@ struct ClipThumbnail: View {
             return onOpen()
         }
         let upward = -min(value.translation.height, value.predictedEndTranslation.height)
+        
         guard let onDiscard, upward > RecordingConfig.thumbnailSwipeDistance else {
-            withAnimation(.snappy) { dragOffset = .zero }
+            withAnimation(reduceMotion ? .easeOut(duration: Self.snapBackDuration) : .snappy) { dragOffset = .zero }
             return
         }
+
         withAnimation(.easeOut(duration: RecordingConfig.thumbnailDiscardDuration)) {
             if !reduceMotion { dragOffset.height -= RecordingConfig.thumbnailSwipeDistance }
             isDiscarding = true

@@ -13,13 +13,22 @@ struct ClipReviewView: View {
         self.thumbnailEmphasis = thumbnailEmphasis
     }
 
+    @ViewBuilder
+    private func noticeLabel(_ notice: ClipNotice) -> some View {
+        if notice == .deleted {
+            ClipStatusLabel(text: notice.message, actionTitle: "Undo", action: viewModel.undoDelete)
+        } else {
+            ClipStatusLabel(text: notice.message)
+        }
+    }
+
     private var slotTransition: AnyTransition {
         reduceMotion ? .opacity : .move(edge: .trailing).combined(with: .opacity)
     }
 
     private var discardAction: (() -> Void)? {
         guard !isGuided else { return nil }
-        return viewModel.delete
+        return viewModel.deleteWithUndo
     }
 
     var body: some View {
@@ -34,7 +43,7 @@ struct ClipReviewView: View {
                     .emphasis(thumbnailEmphasis)
                     .transition(slotTransition)
             } else if let notice = viewModel.notice, notice != .saved, !viewModel.isPreviewing {
-                ClipStatusLabel(text: notice.message)
+                noticeLabel(notice)
                     .transition(slotTransition)
             }
         }
@@ -59,7 +68,10 @@ struct ClipReviewView: View {
             }
         }
         .onChange(of: viewModel.isRecording) { _, isOn in
-            AccessibilityNotification.Announcement(isOn ? "Recording clip" : "Recording stopped").post()
+            AccessibilityNotification.Announcement(isOn ? "Recording video" : "Recording stopped").post()
+        }
+        .onChange(of: viewModel.notice) { _, notice in
+            if notice == .deleted { AccessibilityNotification.Announcement(ClipNotice.deleted.message).post() }
         }
     }
 }
