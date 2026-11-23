@@ -30,14 +30,17 @@ struct OverallPoseRecognizerTests {
 
     @Test func placedNeedsFaceFarEnough() {
         var recognizer = OverallPoseRecognizer()
-        #expect(recognizer.update(face: face(width: 0.18), motion: motion(stillFor: still), now: 0) == .none)
+        let tooClose = face(width: CGFloat(ZoomTuning.placedEnterWidth + 0.01))
+        #expect(recognizer.update(face: tooClose, motion: motion(stillFor: still), now: 0) == .none)
     }
 
     @Test func placedHoldsUntilExitWidth() {
         var recognizer = OverallPoseRecognizer()
         _ = recognizer.update(face: face(width: 0.1), motion: motion(stillFor: still), now: 0)
-        #expect(recognizer.update(face: face(width: 0.19), motion: motion(stillFor: still), now: 1) == .placedFar)
-        #expect(recognizer.update(face: face(width: 0.21), motion: motion(stillFor: still), now: 2) == .none)
+        let holding = face(width: CGFloat((ZoomTuning.placedEnterWidth + ZoomTuning.placedExitWidth) / 2))
+        let leaving = face(width: CGFloat(ZoomTuning.placedExitWidth + 0.01))
+        #expect(recognizer.update(face: holding, motion: motion(stillFor: still), now: 1) == .placedFar)
+        #expect(recognizer.update(face: leaving, motion: motion(stillFor: still), now: 2) == .none)
     }
 
     @Test func lostFaceKeepsPlaced() {

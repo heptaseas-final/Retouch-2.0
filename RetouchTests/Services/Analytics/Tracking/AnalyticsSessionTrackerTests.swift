@@ -10,7 +10,7 @@ struct AnalyticsSessionTrackerTests {
         origin.addingTimeInterval(seconds)
     }
 
-    private func sample(hasFace: Bool = true, target: ZoomTarget = .fullFace, scale: Double = 1.1,
+    private func sample(hasFace: Bool = true, target: ZoomTarget = .fullFace, scale: Double = Double(ZoomTuning.fullFaceZoom),
                         lux: Double? = 600, glowAtMax: Bool = false) -> AnalyticsSample {
         AnalyticsSample(hasFace: hasFace, target: target, zoomScale: scale, faceLux: lux, isGlowAtMax: glowAtMax)
     }

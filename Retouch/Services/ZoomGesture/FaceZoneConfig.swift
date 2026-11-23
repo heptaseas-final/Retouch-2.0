@@ -16,10 +16,10 @@ nonisolated struct FaceZonePoint: Sendable {
 }
 
 nonisolated enum FaceZoneConfig {
-    static let turnEnter: CGFloat = 0.07
-    static let turnExit: CGFloat = 0.04
-    static let turnDwell: TimeInterval = 0.15
-    static let turnGrace: TimeInterval = 0.2
+    static let turnEnter: CGFloat = 0.09
+    static let turnExit: CGFloat = 0.045
+    static let turnDwell: TimeInterval = 0.4
+    static let turnGrace: TimeInterval = 0.3
 
     static let defaultDepth: CGFloat = 1.05
     static let minDepth: CGFloat = 0.7

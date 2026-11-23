@@ -230,7 +230,7 @@ nonisolated extension ZoomService {
             return
         }
         guard let focus = focusPoint(for: target, faceTracker.points) else {
-            send(scale: 1, focus: .center)
+            send(scale: target == .fullFace ? target.zoomScale : 1, focus: .center)
             return
         }
         let factor = target != .fullFace ? distComp.factor : 1
