@@ -149,13 +149,16 @@ struct OnboardingView<Camera: View>: View {
 
     @ViewBuilder
     private func bubble(at position: OnboardingBubblePosition) -> some View {
-        if coordinator.step.bubblePosition == position,
-           coordinator.isBubbleVisible,
-           let text = coordinator.instruction {
-            InstructionBubble(text: text, spokenText: coordinator.spokenInstruction,
-                              takesVoiceOverFocus: coordinator.step.focus == .none)
-                .id(text)
-                .transition(.opacity)
+        if coordinator.step.bubblePosition == position, coordinator.isBubbleVisible {
+            if let text = coordinator.instruction {
+                InstructionBubble(text: text, spokenText: coordinator.spokenInstruction,
+                                  takesVoiceOverFocus: coordinator.step.focus == .none)
+                    .id(text)
+                    .transition(.opacity)
+            } else if isVoiceOverOn, let spoken = coordinator.spokenInstruction {
+                InstructionBubble(text: spoken, takesVoiceOverFocus: true, isVoiceOverOnly: true)
+                    .id(spoken)
+            }
         }
     }
 

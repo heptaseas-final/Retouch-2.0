@@ -71,6 +71,7 @@ enum OnboardingStep: CaseIterable {
     var spokenInstruction: String? {
         switch self {
         case .swipeModes:    "Swipe up or down on Zoom target to switch modes and lock onto an area."
+        case .zoomedOnArea:  "Zoom is locked on this area. Take a look."
         case .needLight:     "Need more light? Double tap the Light button."
         case .tapForWarm:    "Double tap Light color to see warm light."
         case .tapForCool:    "Double tap Light color again to see cool light."

@@ -9,8 +9,9 @@ nonisolated enum RecordingConfig {
     static let frameIntervalTolerance = 0.9
     static let timescale: CMTimeScale = 600
 
-    static let thumbnailLifetime: Duration = .seconds(5)
+    static let thumbnailLifetime: Duration = .seconds(10)
     static let noticeLifetime: Duration = .seconds(2)
+    static let undoLifetime: Duration = .seconds(8)
     static let thumbnailPixelSize = CGSize(width: 240, height: 320)
     static let thumbnailSize = CGSize(width: 96, height: 128)
     static let thumbnailCornerRadius: CGFloat = 16
@@ -30,4 +31,5 @@ nonisolated enum RecordingConfig {
     static let previewStartScale: CGFloat = 0.2
     static let clipAspectRatio: CGFloat = 3.0 / 4.0
     static let minTapTarget: CGFloat = 44
+    static let voiceOverFocusDelay: Duration = .milliseconds(300)
 }

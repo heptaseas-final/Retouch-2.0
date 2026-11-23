@@ -10,7 +10,7 @@ struct RingLightPanels: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        GlowHoleShape(holeScale: GlowFrame.holeScale(in: size, progress: progress, isOverall: isOverall))
+        GlowHoleShape(holeScale: GlowFrame.holeScale(in: size, progress: reduceMotion ? 1 : progress, isOverall: isOverall))
             .fill(color, style: FillStyle(eoFill: true))
             .transaction { if reduceMotion { $0.animation = nil } }
             .opacity(opacity)
