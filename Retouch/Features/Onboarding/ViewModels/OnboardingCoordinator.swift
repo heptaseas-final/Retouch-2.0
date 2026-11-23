@@ -44,7 +44,7 @@ final class OnboardingCoordinator {
         guard !hasStarted else { return }
         hasStarted = true
         analytics.onboardingStarted()
-        enter(.placeHand)
+        enter(firstStep)
     }
 
     func attach(_ source: any OnboardingSignalSource) {
