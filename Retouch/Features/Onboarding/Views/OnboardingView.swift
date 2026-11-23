@@ -181,7 +181,8 @@ struct OnboardingView<Camera: View>: View {
         var onSignal: ((OnboardingTrigger) -> Void)?
     }
     final class PreviewAnalytics: OnboardingAnalyticsRecording {
-        func onboardingStepCompleted(step: String) {}
+        func onboardingStarted() {}
+        func onboardingStepCompleted(step: String, index: Int) {}
         func onboardingSkipped(step: String) {}
         func onboardingCompleted() {}
     }

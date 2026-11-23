@@ -39,6 +39,7 @@ final class OnboardingCoordinator {
     func start() {
         guard !hasStarted else { return }
         hasStarted = true
+        analytics.onboardingStarted()
         enter(.placeHand)
     }
 
@@ -151,7 +152,7 @@ final class OnboardingCoordinator {
             finish()
             return
         }
-        analytics.onboardingStepCompleted(step: step.analyticsName)
+        analytics.onboardingStepCompleted(step: step.analyticsName, index: step.analyticsIndex)
         enter(next)
     }
 
