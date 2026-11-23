@@ -57,6 +57,7 @@ struct MirrorStatusInput {
     var isLightAtLimit = false
     var faceWidthRatio: Double?
     var zoomScale: Double = 1
+    var isOverall = false
 }
 
 enum MirrorStatusConfig {

@@ -2,16 +2,24 @@ import CoreGraphics
 import Foundation
 
 nonisolated extension ZoomService {
+    func updatePose(face: FaceObservation?) {
+        _ = overallRecognizer.update(face: face, motion: deviceMotion.sample(),
+                                     now: ProcessInfo.processInfo.systemUptime)
+    }
+
     func updateOverall(face: FaceObservation?, converter: CoordinateConverter) -> Bool {
         let wasShowing = isOverallShowing
-        let pose = overallRecognizer.update(face: face, motion: deviceMotion.sample(),
-                                            now: ProcessInfo.processInfo.systemUptime)
-        isOverallShowing = pose != .none && (isOverallShowing || resolver.target == .fullFace)
+        updatePose(face: face)
+        isOverallShowing = overallRecognizer.pose != .none && (isOverallShowing || resolver.target == .fullFace)
         if wasShowing, !isOverallShowing, let face {
             faceTracker.reseedSize(face: face, converter: converter)
             distComp = DistanceCompensator()
         }
         return isOverallShowing
+    }
+
+    func setOverallOnly(_ isOn: Bool) {
+        stateQueue.async { [self] in isOverallOnly = isOn }
     }
 
     func resetOverall() {

@@ -1,7 +1,9 @@
 import Foundation
+import UIKit
 
 protocol OnboardingAnalyticsRecording: AnyObject {
-    func onboardingStepCompleted(step: String)
+    func onboardingStarted()
+    func onboardingStepCompleted(step: String, index: Int)
     func onboardingSkipped(step: String)
     func onboardingCompleted()
 }
@@ -26,8 +28,14 @@ final class AnalyticsRecorder: AnalyticsRecording {
     private let service: AnalyticsServicing
     private let zoomStore: ZoomStore
     private let lighting: LightingServicing
+    private let installTracker: InstallTracker
     private var tracker: AnalyticsSessionTracker
     private var autoLightTracker = AutoLightTracker()
+    private var performanceTracker = PerformanceHealthTracker()
+    private var onboardingStartedAt: Date?
+    private var onboardingSteps = 0
+    private var replayCount = 0
+    private var hasOpenedReplay = false
     private var lightMode: LightMode = .off
     private var isActive = false
     private var pollTask: Task<Void, Never>?
@@ -35,10 +43,13 @@ final class AnalyticsRecorder: AnalyticsRecording {
     private var thermalState = ProcessInfo.processInfo.thermalState
     private var isHeatLimited = false
 
-    init(service: AnalyticsServicing, zoomStore: ZoomStore, lighting: LightingServicing, launchStartedAt: Date = Date()) {
+    init(service: AnalyticsServicing, zoomStore: ZoomStore, lighting: LightingServicing,
+         installTracker: InstallTracker = InstallTracker(), launchStartedAt: Date = Date()) {
         self.service = service
         self.zoomStore = zoomStore
         self.lighting = lighting
+        self.installTracker = installTracker
+        UIDevice.current.isBatteryMonitoringEnabled = true
         tracker = AnalyticsSessionTracker(launchStartedAt: launchStartedAt)
         listener = zoomStore.addTrackingListener { [weak self] _, _ in self?.ingest() }
     }
@@ -46,6 +57,7 @@ final class AnalyticsRecorder: AnalyticsRecording {
     func appDidBecomeActive() {
         isActive = true
         tracker.appForegrounded()
+        send(installTracker.launched(at: Date()))
         pollTask?.cancel()
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -59,8 +71,11 @@ final class AnalyticsRecorder: AnalyticsRecording {
         isActive = false
         pollTask?.cancel()
         pollTask = nil
-        send(tracker.appBackgrounded(at: Date()))
+        let now = Date()
+        send(tracker.appBackgrounded(at: now))
+        send(installTracker.appBackgrounded(at: now))
         autoLightTracker.reset()
+        performanceTracker.reset()
     }
 
     func cameraStateChanged(from old: CameraState, to new: CameraState) {
@@ -83,11 +98,21 @@ final class AnalyticsRecorder: AnalyticsRecording {
     }
 
     func pinchEnded(scale: Double) {
+        tracker.pinchUsed()
         service.track(.pinchZoomUsed(zoomLevel: scale))
     }
 
-    func onboardingStepCompleted(step: String) {
-        service.track(.onboardingStepCompleted(step: step))
+    func onboardingStarted() {
+        onboardingStartedAt = Date()
+        onboardingSteps = 0
+        service.track(.onboardingStarted(variant: AnalyticsConfig.onboardingVariant,
+                                         entry: hasOpenedReplay ? .settings : .firstLaunch))
+    }
+
+    func onboardingStepCompleted(step: String, index: Int) {
+        onboardingSteps += 1
+        service.track(.onboardingStepCompleted(step: step, stepIndex: index,
+                                               secondsSinceStart: secondsSinceOnboardingStart()))
     }
 
     func onboardingSkipped(step: String) {
@@ -95,11 +120,16 @@ final class AnalyticsRecorder: AnalyticsRecording {
     }
 
     func onboardingCompleted() {
-        service.track(.onboardingCompleted)
+        service.track(.onboardingCompleted(completionTimeSeconds: secondsSinceOnboardingStart(),
+                                           completedStepCount: onboardingSteps))
+        onboardingStartedAt = nil
     }
 
     func replayTutorialOpened() {
-        service.track(.replayTutorialOpened)
+        hasOpenedReplay = true
+        replayCount += 1
+        service.track(.replayTutorialOpened(replayCount: replayCount,
+                                            sessionLengthSeconds: tracker.sessionLength(at: Date())))
     }
 
     func shortcutPromptShown() {
@@ -137,9 +167,14 @@ final class AnalyticsRecorder: AnalyticsRecording {
                                      target: zoomStore.tracking.target,
                                      zoomScale: Double(zoomStore.zoomState.scale),
                                      faceLux: status.faceLux,
-                                     isGlowAtMax: status.isGlowAtMax)
+                                     isGlowAtMax: status.isGlowAtMax,
+                                     isNightModeEnabled: lighting.config.nightModeEnabled)
         let now = Date()
-        send(tracker.update(sample, at: now))
+        let events = tracker.update(sample, at: now)
+        send(events)
+        if events.contains(where: { if case .sessionStarted = $0 { return true } else { return false } }) {
+            send(installTracker.mirrorSessionStarted(at: now))
+        }
         let light = AutoLightSample(faceLux: status.faceLux,
                                     glowLevel: lighting.ringLightLevel,
                                     isAuto: lighting.isAutoBrightness,
@@ -157,6 +192,20 @@ final class AnalyticsRecorder: AnalyticsRecording {
         let isLimited = lighting.status.isHeatLimited
         if isLimited, !isHeatLimited { service.track(.glowLimitedByHeat) }
         isHeatLimited = isLimited
+        send(performanceTracker.update(PerformanceHealthSample(
+            thermalState: AnalyticsThermalState(thermal),
+            batteryLevel: Self.batteryLevel(),
+            sessionLengthSeconds: tracker.sessionLength(at: Date()))))
+    }
+
+    private func secondsSinceOnboardingStart() -> Int {
+        guard let start = onboardingStartedAt else { return 0 }
+        return AnalyticsSessionMetrics.seconds(Date().timeIntervalSince(start))
+    }
+
+    private static func batteryLevel() -> Double? {
+        let level = UIDevice.current.batteryLevel
+        return level < 0 ? nil : Double(level)
     }
 
     private func send(_ events: [AnalyticsEvent]) {

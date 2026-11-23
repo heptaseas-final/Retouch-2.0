@@ -44,7 +44,7 @@ struct AnalyticsServiceTests {
     @Test func trackSendsNothingWhenOptedOut() throws {
         let sink = FakeAnalyticsSink()
         let service = AnalyticsService(sink: sink, context: context, consent: try makeConsent(isEnabled: false))
-        service.track(.onboardingCompleted)
+        service.track(.onboardingCompleted(completionTimeSeconds: 0, completedStepCount: 0))
         #expect(sink.sent.isEmpty)
     }
 
@@ -53,11 +53,11 @@ struct AnalyticsServiceTests {
         let service = AnalyticsService(sink: sink, context: context, consent: try makeConsent())
         service.setEnabled(false)
         #expect(!service.isEnabled)
-        service.track(.onboardingCompleted)
+        service.track(.onboardingCompleted(completionTimeSeconds: 0, completedStepCount: 0))
         #expect(sink.sent.isEmpty)
         service.setEnabled(true)
         #expect(service.isEnabled)
-        service.track(.onboardingCompleted)
+        service.track(.onboardingCompleted(completionTimeSeconds: 0, completedStepCount: 0))
         #expect(sink.sent.count == 1)
         #expect(sink.enabledCalls == [false, true])
     }

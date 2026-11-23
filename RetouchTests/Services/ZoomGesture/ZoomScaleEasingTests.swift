@@ -13,7 +13,7 @@ import Testing
 
 struct ZoomScaleEasingTests {
     private let frame: CGFloat = 1.0 / 60
-    private let start: CGFloat = 1.1
+    private let start = ZoomTuning.fullFaceZoom
     private let overall: CGFloat = 0.615
 
     @Test func enteringOverallEases() {
@@ -41,10 +41,11 @@ struct ZoomScaleEasingTests {
         #expect(start - next < oldCurveStep)
     }
 
-    @Test func easedZoomArrivesInAboutHalfASecond() {
+    @Test func easedZoomArrivesInAboutThreeSmoothTimes() {
         var current = start
         var velocity: CGFloat = 0
-        for _ in 0..<36 {
+        let frames = Int((3 * ZoomTuning.overallScaleSmoothTime / frame).rounded(.up))
+        for _ in 0..<frames {
             current = ZoomScaleEasing.easedStep(current: current, goal: overall, velocity: &velocity,
                                                 smoothTime: ZoomTuning.overallScaleSmoothTime, dt: frame)
         }

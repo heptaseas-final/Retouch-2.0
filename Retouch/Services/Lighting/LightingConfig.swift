@@ -14,7 +14,7 @@ struct LightingConfig {
     let panelPreRampFraction: Float = 0.5
     let luxCalibration: Float = 250
     let faceLuxCalibration: Float = 218
-    let minFaceAreas: Int = 3
+    let minFaceAreas: Int = 5
     let panelFullEV: Float = 1.0
 }
 

@@ -29,8 +29,12 @@ final class OnboardingCoordinator {
     @ObservationIgnored private var isArmed = false
     @ObservationIgnored private var hasStarted = false
 
-    init(autoPart: FacePart = .face, analytics: OnboardingAnalyticsRecording, onFinish: @escaping () -> Void) {
+    @ObservationIgnored private let firstStep: OnboardingStep
+
+    init(autoPart: FacePart = .face, analytics: OnboardingAnalyticsRecording, startingAt firstStep: OnboardingStep = .placeHand,
+         onFinish: @escaping () -> Void) {
         self.autoPart = autoPart
+        self.firstStep = firstStep
         self.selectedPart = autoPart
         self.analytics = analytics
         self.onFinish = onFinish
@@ -39,7 +43,8 @@ final class OnboardingCoordinator {
     func start() {
         guard !hasStarted else { return }
         hasStarted = true
-        enter(.placeHand)
+        analytics.onboardingStarted()
+        enter(firstStep)
     }
 
     func attach(_ source: any OnboardingSignalSource) {
@@ -79,6 +84,17 @@ final class OnboardingCoordinator {
         receive(.flashTapped)
     }
 
+    func clipStateChanged(from old: OnboardingClipState, to new: OnboardingClipState) {
+        if old == .previewing, new != .previewing {
+            receive(.recordingClosed)
+        }
+        switch new {
+        case .recorded: receive(.overallRecorded)
+        case .previewing: receive(.recordingOpened)
+        case .empty: break
+        }
+    }
+
     func nextLightMode(from mode: LightMode) -> LightMode {
         step.lightModeAfterTap ?? mode.next
     }
@@ -101,6 +117,7 @@ final class OnboardingCoordinator {
         delayTask?.cancel()
         stopDetectionHelp()
         step = newStep
+        if newStep == .overallIntro { selectedPart = autoPart }
         isArmed = false
         isInstructionVisible = newStep.revealTrigger == nil
 
@@ -129,7 +146,7 @@ final class OnboardingCoordinator {
     private func armAdvance() {
         isArmed = true
         let delay = step.advance.delay
-        scheduleAdvance(after: isVoiceOverOn && delay > 0 ? max(delay, OnboardingStep.voiceOverPause) : delay)
+        scheduleAdvance(after: isVoiceOverOn && step.holdsForVoiceOver ? max(delay, OnboardingStep.voiceOverPause) : delay)
     }
 
     private func scheduleAdvance(after delay: TimeInterval) {
@@ -151,7 +168,7 @@ final class OnboardingCoordinator {
             finish()
             return
         }
-        analytics.onboardingStepCompleted(step: step.analyticsName)
+        analytics.onboardingStepCompleted(step: step.analyticsName, index: step.analyticsIndex)
         enter(next)
     }
 

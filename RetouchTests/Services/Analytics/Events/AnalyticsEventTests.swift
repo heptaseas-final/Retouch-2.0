@@ -10,15 +10,20 @@ struct AnalyticsEventTests {
 
     private var allEvents: [AnalyticsEvent] {
         [
-            .sessionStarted(entry: .coldLaunch, lightBucket: .dim),
+            .appInstalled(source: "organic", installedAt: Date(timeIntervalSince1970: 1_794_884_400)),
+            .dailyRetentionCheck(daysSinceInstall: 7, hadMirrorSessionToday: true, launchCountToday: 3),
+            .performanceHealth(thermalState: .fair, batteryImpactLevel: 4, sessionLengthSeconds: 300),
+            .sessionStarted(sessionId: "abc", entry: .coldLaunch, lightBucket: .dim,
+                            startedAt: Date(timeIntervalSince1970: 1_794_884_400), initialMode: .auto),
             .sessionEnded(summary),
             .mirrorOpened(launchMs: 800),
             .cameraPermissionResult(isGranted: true),
             .cameraInterrupted(recoveryMs: 500),
-            .onboardingStepCompleted(step: "place_hand"),
+            .onboardingStarted(variant: "default", entry: .firstLaunch),
+            .onboardingStepCompleted(step: "place_hand", stepIndex: 0, secondsSinceStart: 4),
             .onboardingSkipped(step: "swipe_modes"),
-            .onboardingCompleted,
-            .replayTutorialOpened,
+            .onboardingCompleted(completionTimeSeconds: 42, completedStepCount: 10),
+            .replayTutorialOpened(replayCount: 2, sessionLengthSeconds: 95),
             .autoZoomTriggered(trigger: .lip, eyeSide: nil, holdMs: 900),
             .zoomModeChanged(from: .auto, to: .lockNose, secondsInPreviousMode: 12, secondsSinceLastAutoZoom: nil,
                              lastAutoTrigger: nil, positionsPassed: 2, settleMs: 300),
@@ -45,8 +50,6 @@ struct AnalyticsEventTests {
     }
 
     @Test func eventsWithoutPropertiesStayEmpty() {
-        #expect(AnalyticsEvent.onboardingCompleted.properties.isEmpty)
-        #expect(AnalyticsEvent.replayTutorialOpened.properties.isEmpty)
         #expect(AnalyticsEvent.autoLightResumed.properties.isEmpty)
         #expect(AnalyticsEvent.glowLimitedByHeat.properties.isEmpty)
         #expect(AnalyticsEvent.shortcutPromptShown.properties.isEmpty)
@@ -92,7 +95,73 @@ struct AnalyticsEventTests {
 
     @Test func occurredAtIsOnlySetForSessionEnded() {
         #expect(AnalyticsEvent.sessionEnded(summary).occurredAt == summary.endedAt)
-        #expect(AnalyticsEvent.onboardingCompleted.occurredAt == nil)
+        #expect(AnalyticsEvent.autoLightResumed.occurredAt == nil)
+    }
+
+    @Test func installAndRetentionCarryTheirFields() {
+        let installedAt = Date(timeIntervalSince1970: 1_794_884_400)
+        let install = AnalyticsEvent.appInstalled(source: "organic", installedAt: installedAt).properties
+        #expect(install["source"] == .string("organic"))
+        #expect(install["install_datetime"] == .string(installedAt.formatted(.iso8601)))
+        let retention = AnalyticsEvent.dailyRetentionCheck(daysSinceInstall: 7, hadMirrorSessionToday: true,
+                                                           launchCountToday: 3).properties
+        #expect(retention["days_since_install"] == .int(7))
+        #expect(retention["had_mirror_session_today"] == .bool(true))
+        #expect(retention["launch_count_today"] == .int(3))
+    }
+
+    @Test func performanceHealthOmitsMissingNumbers() {
+        let full = AnalyticsEvent.performanceHealth(thermalState: .serious, batteryImpactLevel: 4,
+                                                    sessionLengthSeconds: 300).properties
+        #expect(full["thermal_state"] == .string("serious"))
+        #expect(full["battery_impact_level"] == .double(4))
+        #expect(full["session_length_seconds"] == .int(300))
+        let sparse = AnalyticsEvent.performanceHealth(thermalState: .nominal, batteryImpactLevel: nil,
+                                                      sessionLengthSeconds: nil).properties
+        #expect(sparse["battery_impact_level"] == nil)
+        #expect(sparse["session_length_seconds"] == nil)
+    }
+
+    @Test func onboardingEventsCarryTimingAndIndex() {
+        let started = AnalyticsEvent.onboardingStarted(variant: "default", entry: .settings).properties
+        #expect(started["onboarding_variant"] == .string("default"))
+        #expect(started["entry_method"] == .string("settings"))
+        let step = AnalyticsEvent.onboardingStepCompleted(step: "place_hand", stepIndex: 0,
+                                                          secondsSinceStart: 4).properties
+        #expect(step["step"] == .string("place_hand"))
+        #expect(step["step_index"] == .int(0))
+        #expect(step["time_since_onboarding_start_seconds"] == .int(4))
+        let done = AnalyticsEvent.onboardingCompleted(completionTimeSeconds: 42, completedStepCount: 10).properties
+        #expect(done["completion_time_seconds"] == .int(42))
+        #expect(done["completed_step_count"] == .int(10))
+        let replay = AnalyticsEvent.replayTutorialOpened(replayCount: 2, sessionLengthSeconds: 95).properties
+        #expect(replay["replay_count"] == .int(2))
+        #expect(replay["session_length_seconds"] == .int(95))
+    }
+
+    @Test func sessionStartCarriesIdentityAndMode() {
+        let startedAt = Date(timeIntervalSince1970: 1_794_884_400)
+        let properties = AnalyticsEvent.sessionStarted(sessionId: "abc", entry: .foreground, lightBucket: .dim,
+                                                       startedAt: startedAt, initialMode: .lockNose).properties
+        #expect(properties["session_id"] == .string("abc"))
+        #expect(properties["entry"] == .string("foreground"))
+        #expect(properties["light_bucket_at_start"] == .string("dim"))
+        #expect(properties["session_start_datetime"] == .string(startedAt.formatted(.iso8601)))
+        #expect(properties["initial_mode"] == .string("lock_nose"))
+    }
+
+    @Test func featureBundleListsOnlyWhatWasUsed() {
+        var used = summary
+        used.sessionId = "abc"
+        used.pinchZooms = 2
+        used.nightModeAvailable = true
+        #expect(used.featureBundle == ["gesture_zoom", "manual_zoom", "night_mode"])
+        #expect(used.properties["feature_bundle"] == .string("gesture_zoom,manual_zoom,night_mode"))
+        #expect(used.properties["session_id"] == .string("abc"))
+        var quiet = summary
+        quiet.eyeZooms = 0
+        #expect(quiet.featureBundle.isEmpty)
+        #expect(quiet.properties["feature_bundle"] == .string(""))
     }
 
     @Test func permissionResultIsGrantedOrDenied() {

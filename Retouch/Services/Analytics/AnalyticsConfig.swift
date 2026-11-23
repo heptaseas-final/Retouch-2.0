@@ -14,6 +14,9 @@ nonisolated enum AnalyticsConfig {
     static let unresolvedTokenPrefix = "$("
     static let sandboxReceiptName = "sandboxReceipt"
     static let unknownValue = "unknown"
+    static let organicSource = "organic"
+    static let onboardingVariant = "default"
+    static let batteryImpactScale = 100.0
     static let secondsPerHour = 3600.0
 
     static let glowStartLevel = 0.01

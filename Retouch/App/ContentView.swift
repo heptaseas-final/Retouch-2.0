@@ -19,8 +19,14 @@ struct ContentView: View {
                         }
 
                         if !hasCompletedOnboarding, mirrorViewModel.cameraState != .failed, mirrorViewModel.permission != .denied {
-                            OnboardingFlow(signals: makeOnboardingSignals(), analytics: analytics) {
+                            OnboardingFlow(signals: makeOnboardingSignals(), clipState: onboardingClipState,
+                                           analytics: analytics) {
+                                clipReviewViewModel.deactivate()
                                 withAnimation(.easeInOut) { hasCompletedOnboarding = true }
+                            } recordingThumbnail: { emphasis in
+                                ClipReviewView(viewModel: clipReviewViewModel, isGuided: true, thumbnailEmphasis: emphasis)
+                            } recordingPreview: {
+                                ClipPreviewLayer(viewModel: clipReviewViewModel)
                             }
                             .transition(.opacity)
                         }
@@ -34,13 +40,13 @@ struct ContentView: View {
             }
         }
         .environment(\.isLargerButtons, mirrorViewModel.isLargerButtons)
-        .preferredColorScheme(Self.forcedScheme)
+        .preferredColorScheme(.light)
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
     }
 
-    private static var forcedScheme: ColorScheme? {
-        if #available(iOS 26, *) { return .light }
-        return nil
+    private var onboardingClipState: OnboardingClipState {
+        if clipReviewViewModel.isPreviewing { return .previewing }
+        return clipReviewViewModel.clip == nil ? .empty : .recorded
     }
 }
 
