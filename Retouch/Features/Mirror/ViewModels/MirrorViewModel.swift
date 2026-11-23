@@ -219,7 +219,8 @@ final class MirrorViewModel {
                                  faceLux: light.faceLux,
                                  isLightAtLimit: lightMode.isOn || light.isGlowAtMax,
                                  faceWidthRatio: width > 0 && viewWidth > 0 ? width / viewWidth : nil,
-                                 zoomScale: Double(zoomState.scale))
+                                 zoomScale: Double(zoomState.scale),
+                                 isOverall: zoomTarget == .overall)
     }
 
     func setReduceMotion(_ isOn: Bool) { zoom.setReduceMotion(isOn) }

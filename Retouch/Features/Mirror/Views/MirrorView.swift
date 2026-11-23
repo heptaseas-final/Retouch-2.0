@@ -37,7 +37,7 @@ struct MirrorView: View {
                     .accessibilityHidden(isClipPreviewing)
                 MirrorGlowLayer(viewModel: viewModel)
                 cameraStateOverlay
-                    .accessibilityHidden(isClipPreviewing)
+                    .accessibilityHidden(isClipPreviewing || !hasStateOverlayContent)
                 if showsControls, viewModel.cameraState != .failed {
                   VStack(spacing: 12) {
                       Spacer()
@@ -255,6 +255,12 @@ struct MirrorView: View {
     private var visibleStatus: MirrorStatus? {
         guard let status = viewModel.status, showsControls || status == .cameraPaused else { return nil }
         return status
+    }
+    
+    private var hasStateOverlayContent: Bool {
+        viewModel.cameraState == .failed
+            || visibleStatus != nil
+            || (showsControls && clipReview?.notice == .saved)
     }
 }
 
