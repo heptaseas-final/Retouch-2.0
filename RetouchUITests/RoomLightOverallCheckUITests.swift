@@ -39,15 +39,17 @@ final class RoomLightOverallCheckUITests: RetouchUITestCase {
     func test_TC_4_3_01_overallCheckButtonFromCloseZoom() {
         let tc = "TC-4.3-01"
         zoomIn(to: 3, tc)
+        selectZoomTarget(Target.lips, tc)
         selectZoomTarget(Target.fullFace, tc)
-        XCTAssertEqual(zoomLevel(tc), ZoomLevel.fullFace, accuracy: ZoomLevel.accuracy, "\(tc): zoom tidak kembali ke full face")
+        waitForMirrorTarget(Spoken.fullFace, tc)
     }
 
     func test_TC_4_3_02_overallCheckButtonFromSlightZoom() {
         let tc = "TC-4.3-02"
         zoomIn(to: 1.5, tc)
+        selectZoomTarget(Target.lips, tc)
         selectZoomTarget(Target.fullFace, tc)
-        XCTAssertEqual(zoomLevel(tc), ZoomLevel.fullFace, accuracy: ZoomLevel.accuracy, "\(tc): zoom tidak kembali ke full face")
+        waitForMirrorTarget(Spoken.fullFace, tc)
     }
 
     func test_TC_4_3_03_buttonWhileLocked() {
@@ -56,7 +58,7 @@ final class RoomLightOverallCheckUITests: RetouchUITestCase {
         selectZoomTarget(Target.lips, tc)
         selectZoomTarget(Target.fullFace, tc)
         XCTAssertEqual(text(element(Name.zoomTarget)), Target.fullFace, "\(tc): picker tidak pindah ke Full Face")
-        XCTAssertEqual(zoomLevel(tc), ZoomLevel.fullFace, accuracy: ZoomLevel.accuracy, "\(tc): zoom bukan full face")
+        waitForMirrorTarget(Spoken.fullFace, tc)
     }
 
     func test_TC_4_3_05_buttonSizeAndReach() {

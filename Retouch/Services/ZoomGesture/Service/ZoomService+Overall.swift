@@ -6,12 +6,16 @@ nonisolated extension ZoomService {
         let wasShowing = isOverallShowing
         let pose = overallRecognizer.update(face: face, motion: deviceMotion.sample(),
                                             now: ProcessInfo.processInfo.systemUptime)
-        isOverallShowing = pose != .none && (isOverallShowing || resolver.target == .fullFace)
+        isOverallShowing = pose != .none && (isOverallShowing || isOverallOnly || resolver.target == .fullFace)
         if wasShowing, !isOverallShowing, let face {
             faceTracker.reseedSize(face: face, converter: converter)
             distComp = DistanceCompensator()
         }
         return isOverallShowing
+    }
+
+    func setOverallOnly(_ isOn: Bool) {
+        stateQueue.async { [self] in isOverallOnly = isOn }
     }
 
     func resetOverall() {

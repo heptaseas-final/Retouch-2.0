@@ -5,6 +5,14 @@ enum OnboardingTrigger: Hashable {
     case zoomedIn
     case modeSelected
     case flashTapped
+    case videoEnded
+    case overallRecorded
+    case recordingOpened
+    case recordingClosed
+}
+
+enum OnboardingClipState: Equatable {
+    case empty, recorded, previewing
 }
 
 struct OnboardingAdvance: Equatable {
@@ -21,7 +29,7 @@ struct OnboardingAdvance: Equatable {
 }
 
 enum OnboardingFocus {
-    case none, picker, flash, lightColor
+    case none, picker, flash, lightColor, recording, preview
 
     var isLighting: Bool { self == .flash || self == .lightColor }
 }
@@ -41,6 +49,10 @@ enum OnboardingStep: CaseIterable {
     case tapForCool
     case tapForWhite
     case tapToTurnOff
+    case overallIntro
+    case overallCheck
+    case tapRecording
+    case reviewRecording
     case done
 
     static let pause: TimeInterval = 3.5
@@ -64,6 +76,10 @@ enum OnboardingStep: CaseIterable {
         case .tapForCool:    "Tap again to see cool light."
         case .tapForWhite:   "Tap again to go back to neutral light."
         case .tapToTurnOff:  "Tap here to turn off the light."
+        case .overallIntro:  "Move away from the camera to check your overall look."
+        case .overallCheck:  "Step back and twirl to check your 360 look."
+        case .tapRecording:  "We will automatically record your looks, tap here to check your look."
+        case .reviewRecording: "Review your look closely. Replay, save, or delete your recording anytime."
         case .done:          "Happy Retouch-ing!"
         }
     }
@@ -71,11 +87,14 @@ enum OnboardingStep: CaseIterable {
     var spokenInstruction: String? {
         switch self {
         case .swipeModes:    "Swipe up or down on Zoom target to switch modes and lock onto an area."
+        case .zoomedOnArea:  "Zoom is locked on this area. Take a look."
         case .needLight:     "Need more light? Double tap the Light button."
         case .tapForWarm:    "Double tap Light color to see warm light."
         case .tapForCool:    "Double tap Light color again to see cool light."
         case .tapForWhite:   "Double tap Light color again to go back to neutral light."
         case .tapToTurnOff:  "Double tap the Light button to turn off the light."
+        case .tapRecording:  "Double tap the video thumbnail to check your look."
+        case .reviewRecording: "Review your look. Play, save, or delete the video, or close the preview."
         default:             instruction
         }
     }
@@ -93,6 +112,10 @@ enum OnboardingStep: CaseIterable {
         case .zoomedOnArea:  .after(Self.pause)
         case .needLight, .tapForWarm, .tapForCool, .tapForWhite, .tapToTurnOff:
                              .on(.flashTapped)
+        case .overallIntro:  .on(.videoEnded)
+        case .overallCheck:  .on(.overallRecorded)
+        case .tapRecording:  .on(.recordingOpened)
+        case .reviewRecording: .on(.recordingClosed)
         case .done:          .after(Self.pause)
         }
     }
@@ -102,21 +125,35 @@ enum OnboardingStep: CaseIterable {
         case .swipeModes: .picker
         case .needLight, .tapToTurnOff: .flash
         case .tapForWarm, .tapForCool, .tapForWhite: .lightColor
+        case .tapRecording: .recording
+        case .reviewRecording: .preview
         default: .none
         }
     }
     var dimsBackdrop: Bool {
         switch self {
-        case .swipeModes, .needLight, .tapForWarm, .tapToTurnOff: true
+        case .swipeModes, .needLight, .tapForWarm, .tapToTurnOff, .overallIntro, .tapRecording: true
         default: false
         }
     }
 
     var bubblePosition: OnboardingBubblePosition {
         switch self {
-        case .placeHand, .retouchKnows, .noNeedToTap: .top
+        case .placeHand, .retouchKnows, .noNeedToTap, .overallCheck, .reviewRecording: .top
         default: .bottom
         }
+    }
+
+    var showsRecording: Bool {
+        self == .overallCheck || self == .tapRecording || self == .reviewRecording
+    }
+
+    var isOverallOnly: Bool {
+        self == .overallIntro || showsRecording
+    }
+
+    var holdsForVoiceOver: Bool {
+        advance.delay > 0 || self == .overallIntro
     }
 
     var lightModeAfterTap: LightMode? {

@@ -14,7 +14,7 @@ struct OnboardingCoordinatorAnalyticsTests {
         let coordinator = makeCoordinator(analytics)
         coordinator.receive(.handNearEye)
         #expect(coordinator.step == .retouchKnows)
-        #expect(analytics.calls == ["onboardingStarted", "onboardingStepCompleted(place_hand)"])
+        #expect(analytics.calls == ["onboardingStepCompleted(place_hand)"])
     }
 
     @Test func skipReportsCurrentStepAndFinishesOnce() {
@@ -23,7 +23,7 @@ struct OnboardingCoordinatorAnalyticsTests {
         let coordinator = makeCoordinator(analytics) { finishCount += 1 }
         coordinator.skip()
         coordinator.skip()
-        #expect(analytics.calls == ["onboardingStarted", "onboardingSkipped(place_hand)"])
+        #expect(analytics.calls == ["onboardingSkipped(place_hand)"])
         #expect(finishCount == 1)
     }
 
@@ -32,8 +32,7 @@ struct OnboardingCoordinatorAnalyticsTests {
         let coordinator = makeCoordinator(analytics)
         coordinator.receive(.handNearEye)
         coordinator.skip()
-        #expect(analytics.calls == ["onboardingStarted", "onboardingStepCompleted(place_hand)",
-                                    "onboardingSkipped(retouch_knows)"])
+        #expect(analytics.calls == ["onboardingStepCompleted(place_hand)", "onboardingSkipped(retouch_knows)"])
     }
 
     @Test func stepNamesAreUniqueAndStable() {

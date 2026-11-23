@@ -50,6 +50,7 @@ struct CameraControls: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.isLargerButtons) private var isLargerButtons
     @Environment(\.legibilityWeight) private var legibilityWeight
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var height: CGFloat { LargerButtons.controlSize(isLarger: isLargerButtons, typeSize: typeSize) }
 
@@ -80,6 +81,8 @@ struct CameraControls: View {
 
     private var slideDistance: CGFloat { height + columnSpacing * 2 }
 
+    private var slideOffset: CGFloat { isPickerMoving && !reduceMotion ? slideDistance : 0 }
+
     private var pickerFont: UIFont { PickerMetrics.font(for: effectiveTypeSize, isBold: legibilityWeight == .bold) }
 
     private var pickerExpandedHeight: CGFloat {
@@ -97,7 +100,7 @@ struct CameraControls: View {
                                     colorEmphasis: lightButtonEmphasis == .dimmed ? .normal : lightColorEmphasis)
                         .emphasis(lightButtonEmphasis)
                         .offset(lightOffset)
-                        .offset(x: isPickerMoving ? -slideDistance : 0)
+                        .offset(x: -slideOffset)
                         .opacity(isPickerMoving ? 0 : 1)
                         .transition(.identity)
                 } else {
@@ -122,7 +125,7 @@ struct CameraControls: View {
                     OverallViewButton(isOn: isOverallOn, size: height)
                         .disabled(!isOverallEnabled)
                         .opacity(isOverallEnabled ? 1 : 0.5)
-                        .offset(x: isPickerMoving ? slideDistance : 0)
+                        .offset(x: slideOffset)
                         .opacity(isPickerMoving ? 0 : 1)
                 } else {
                     Color.clear
@@ -133,7 +136,7 @@ struct CameraControls: View {
             .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
-        .animation(.snappy, value: isPickerMoving)
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy, value: isPickerMoving)
         .largerButtonsTypeSize(isLargerButtons)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
     }
