@@ -5,7 +5,7 @@ struct ClipThumbnail: View {
     let duration: TimeInterval
     let onOpen: () -> Void
     let onHoldChanged: (Bool) -> Void
-    let onDiscard: () -> Void
+    let onDiscard: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -53,7 +53,9 @@ struct ClipThumbnail: View {
             .accessibilityLabel("Video, \(seconds) seconds")
             .accessibilityHint("Opens the video.")
             .accessibilityAction { onOpen() }
-            .accessibilityAction(named: "Delete video") { onDiscard() }
+            .accessibilityActions {
+                if let onDiscard { Button("Delete video", action: onDiscard) }
+            }
             .accessibilityFocused($isFocused)
             .onChange(of: isFocused) { _, focused in onHoldChanged(focused) }
     }
@@ -65,10 +67,12 @@ struct ClipThumbnail: View {
             return onOpen()
         }
         let upward = -min(value.translation.height, value.predictedEndTranslation.height)
-        guard upward > RecordingConfig.thumbnailSwipeDistance else {
+        
+        guard let onDiscard, upward > RecordingConfig.thumbnailSwipeDistance else {
             withAnimation(reduceMotion ? .easeOut(duration: Self.snapBackDuration) : .snappy) { dragOffset = .zero }
             return
         }
+
         withAnimation(.easeOut(duration: RecordingConfig.thumbnailDiscardDuration)) {
             if !reduceMotion { dragOffset.height -= RecordingConfig.thumbnailSwipeDistance }
             isDiscarding = true

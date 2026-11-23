@@ -15,6 +15,7 @@ nonisolated protocol ZoomServicing: AnyObject, Sendable {
     func select(_ part: FacePart)
     func setReduceMotion(_ isOn: Bool)
     func setOverall(_ isOn: Bool)
+    func setOverallOnly(_ isOn: Bool)
 }
 
 nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
@@ -86,6 +87,7 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
     let deviceMotion = DeviceMotionTracker()
     var isOverallShowing = false
     var isManualOverall = false
+    var isOverallOnly = false
     var imageSize: CGSize = .zero
 
     var pinchScale: CGFloat = 1
