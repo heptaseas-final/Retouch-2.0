@@ -23,7 +23,7 @@ nonisolated struct ZoomTuning {
     static let pointTau: CGFloat = 0.1
     static let scaleTau: CGFloat = 0.65
     static let handSpeedTau: CGFloat = 0.15
-    static let fullFaceZoom: CGFloat = 1.1
+    static let fullFaceZoom: CGFloat = 1.15
     static let eyeZoomScale: CGFloat = 2.25
     static let lipsZoomScale: CGFloat = 2.12
     static let noseZoomScale: CGFloat = 1.9
@@ -232,6 +232,32 @@ nonisolated struct ZoomTuning {
     static let gripCurlKeepMax: CGFloat = 1.6
     static let gripStraightKeepMin: CGFloat = 1.85
     static let gripThumbKeepMax: CGFloat = 1.0
+
+    static let faceLockEnabled = true
+    static let faceLockDetectInterval = 1
+    static let faceLockTrackTau: TimeInterval = 0.3
+    static let faceLockSnapTau: TimeInterval = 0.05
+    static let faceLockWidthTau: TimeInterval = 0.25
+    static let faceLockMinSizeRatio: CGFloat = 0.4
+    static let faceLockMaxSizeRatio: CGFloat = 2.5
+    static let faceLockEngageTau: TimeInterval = 0.2
+    static let faceLockReleaseTau: TimeInterval = 0.3
+    static let faceLockLostHold: TimeInterval = 1.5
+    static let faceLockMaxStep: TimeInterval = 0.1
+    static let faceLockMinWeight: CGFloat = 0.001
+    static let faceLockRegionScale: CGFloat = 0.8
+    static let faceLockEngageScaleTolerance: CGFloat = 0.01
+    static let faceLockEngageOffset: CGFloat = 1
+    static let faceLockAnchorX: CGFloat = 0.5
+    static let faceLockAnchorY: CGFloat = 0.5
+    static let faceLockCenterRoomUseX: CGFloat = 0.6
+    static let faceLockCenterRoomUseY: CGFloat = 0.4
+    static let faceLockCloseDeadZone: CGFloat = 0.15
+    static let faceLockCloseRamp: CGFloat = 0.2
+    static let faceLockFillScale: CGFloat = 0.25
+    static let faceLockFillBlur: CGFloat = 0.03
+    static let faceLockFillFeather: CGFloat = 0.04
+    static let faceLockMaxPinch: CGFloat = 1.01
 
     static let trackEnabled: Bool = true
     static let trackInvertX: Bool = false

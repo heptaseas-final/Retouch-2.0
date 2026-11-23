@@ -5,6 +5,7 @@
 //  Created by Davin P on 09/11/26.
 //
 
+import CoreGraphics
 import CoreVideo
 import Foundation
 
@@ -23,6 +24,9 @@ nonisolated final class FrameMotionTracker {
     private let minCells = 3
     private let maxSpread: Float = 1.0
     private let minTexture: Float = 0.5
+    private let regionGrid = 2
+    private let minRegionCell = 10
+    private let minRegionCells = 2
 
     private var previous: [Level] = []
 
@@ -40,6 +44,19 @@ nonisolated final class FrameMotionTracker {
     }
 
     func reset() { previous = [] }
+
+    func regionShift(_ buffer: CVPixelBuffer, region: CGRect) -> SIMD2<Double>? {
+        guard let current = pyramid(of: buffer) else {
+            reset()
+            return nil
+        }
+        defer { previous = current }
+        guard let first = previous.first,
+              first.width == current[0].width, first.height == current[0].height,
+              let shift = measure(from: previous, to: current, region: region) else { return nil }
+        return SIMD2(Double(shift.x) / Double(current[0].width),
+                     Double(shift.y) / Double(current[0].height))
+    }
 
     private func pyramid(of buffer: CVPixelBuffer) -> [Level]? {
         guard CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA else { return nil }
@@ -111,6 +128,37 @@ nonisolated final class FrameMotionTracker {
         let medianY = Self.median(ys)
         let spread = max(Self.median(xs.map { abs($0 - medianX) }), Self.median(ys.map { abs($0 - medianY) }))
         return spread <= maxSpread ? SIMD2<Float>(medianX, medianY) : nil
+    }
+
+    private func measure(from old: [Level], to new: [Level], region: CGRect) -> SIMD2<Float>? {
+        let width = old[0].width
+        let height = old[0].height
+        let x0 = max(Int(region.minX * CGFloat(width)), 0)
+        let x1 = min(Int(region.maxX * CGFloat(width)), width)
+        let y0 = max(Int(region.minY * CGFloat(height)), 0)
+        let y1 = min(Int(region.maxY * CGFloat(height)), height)
+        guard x1 - x0 >= regionGrid * minRegionCell, y1 - y0 >= regionGrid * minRegionCell else { return nil }
+        var xs: [Float] = []
+        var ys: [Float] = []
+        for row in 0..<regionGrid {
+            for column in 0..<regionGrid {
+                let rect = (x0: x0 + column * (x1 - x0) / regionGrid, y0: y0 + row * (y1 - y0) / regionGrid,
+                            x1: x0 + (column + 1) * (x1 - x0) / regionGrid,
+                            y1: y0 + (row + 1) * (y1 - y0) / regionGrid)
+                guard let d = translation(old, new, rect),
+                      abs(d.x) <= maxCellShift, abs(d.y) <= maxCellShift else { continue }
+                xs.append(d.x)
+                ys.append(d.y)
+            }
+        }
+        guard xs.count >= minRegionCells else { return nil }
+        return SIMD2<Float>(Self.middle(xs), Self.middle(ys))
+    }
+
+    private static func middle(_ values: [Float]) -> Float {
+        let sorted = values.sorted()
+        let mid = sorted.count / 2
+        return sorted.count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) * 0.5 : sorted[mid]
     }
 
     private func translation(_ old: [Level], _ new: [Level],

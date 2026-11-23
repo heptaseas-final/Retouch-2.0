@@ -3,6 +3,7 @@ import AVFoundation
 nonisolated protocol ZoomServicing: AnyObject, Sendable {
     var onZoomChange: (@Sendable (ZoomState) -> Void)? { get set }
     var onTracking: (@Sendable (ZoomTracking) -> Void)? { get set }
+    var onFaceLock: (@Sendable (FaceLockSample?) -> Void)? { get set }
     func start()
     func stop()
     func setViewSize(_ size: CGSize)
@@ -23,6 +24,7 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
         set { animator.onChange = newValue }
     }
     var onTracking: (@Sendable (ZoomTracking) -> Void)?
+    var onFaceLock: (@Sendable (FaceLockSample?) -> Void)?
 
     let animator = ZoomAnimator()
     let faceDetector = FaceLandmarkDetector()

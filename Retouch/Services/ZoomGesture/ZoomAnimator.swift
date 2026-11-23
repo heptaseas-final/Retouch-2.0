@@ -20,7 +20,7 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     private let scaleLock = NSLock()
 
     private var viewSize: CGSize = .zero
-    private var goalScale: CGFloat = 1
+    private var goalScale = ZoomTuning.fullFaceZoom
     private var mode: Mode = .none
     private var lockedFocus: CGPoint?
 
@@ -31,16 +31,16 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     private var lastRawFocus: CGPoint?
     private var lastFilteredFocus: CGPoint = .zero
 
-    private var currentScale: CGFloat = 1
+    private var currentScale = ZoomTuning.fullFaceZoom
     private var scaleVelocity: CGFloat = 0
     private var easesScale = false
     private var panX: CGFloat = 0
     private var panY: CGFloat = 0
     private var velX: CGFloat = 0
     private var velY: CGFloat = 0
-    private var lastState = ZoomState()
+    private var lastState = ZoomState(scale: ZoomTuning.fullFaceZoom)
     private var link: CADisplayLink?
-    private var shownScale: CGFloat = 1
+    private var shownScale = ZoomTuning.fullFaceZoom
     private var cutGate = ZoomCutGate(stableDelay: ZoomTuning.reducedMotionStableDelay)
     private var lastGoalWasManual = false
     private var snapPending = false
@@ -48,8 +48,8 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     private var fadeStartedAt: TimeInterval = 0
 
     func reset() {
-        goalScale = 1
-        currentScale = 1
+        goalScale = ZoomTuning.fullFaceZoom
+        currentScale = ZoomTuning.fullFaceZoom
         scaleVelocity = 0
         easesScale = false
         panX = 0
@@ -65,8 +65,8 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         cutGate.reset()
         snapPending = false
         fadeOrigin = nil
-        scaleLock.lock(); shownScale = 1; scaleLock.unlock()
-        lastState = ZoomState()
+        scaleLock.lock(); shownScale = ZoomTuning.fullFaceZoom; scaleLock.unlock()
+        lastState = ZoomState(scale: ZoomTuning.fullFaceZoom)
         onChange?(lastState)
     }
 

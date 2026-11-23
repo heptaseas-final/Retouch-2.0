@@ -54,6 +54,7 @@ final class AppContainer {
         pipeline.vision.setHandler { [zoom] buffer in
             zoom.process(buffer)
         }
+        zoom.onFaceLock = { [inbox = pipeline.faceLockInbox] sample in inbox.post(sample) }
     }
 
     private func connectClipRecording() {

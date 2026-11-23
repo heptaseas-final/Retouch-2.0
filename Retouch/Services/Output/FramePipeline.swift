@@ -14,6 +14,8 @@ final class FramePipeline {
     private let fallbackColorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
     private let visionScaler = VisionDownscaler(width: 1280)
     private let stabilizer = FusedStabilizer()
+    private let faceLock = FaceLockStabilizer()
+    let faceLockInbox = FaceLockInbox()
 
     init(lighting: LightingEngine) {
         let device = MTLCreateSystemDefaultDevice()
@@ -53,9 +55,14 @@ final class FramePipeline {
             ])
         }
 
-        let stabilize = ZoomTuning.trackEnabled && zoom.scale > 1.001
+        let lockActive = ZoomTuning.faceLockEnabled && faceLockInbox.latest != nil
+        let atFullFace = abs(zoom.scale - ZoomTuning.fullFaceZoom) < ZoomTuning.faceLockEngageScaleTolerance
+            && abs(zoom.offset.width) + abs(zoom.offset.height) < ZoomTuning.faceLockEngageOffset
+            && zoom.fade == nil
+        let held = faceLock.update(scaled, time: frame.time, isActive: lockActive, canEngage: atFullFace)
+        let stabilize = ZoomTuning.trackEnabled && zoom.scale > 1.001 && !faceLock.isEngaged
         let shake = stabilizer.update(scaled, time: frame.time, scale: Double(zoom.scale), active: stabilize)
-        renderer.render(output, zoom: zoom, stabilization: shake, commandBuffer: commandBuffer)
+        renderer.render(output, zoom: zoom, stabilization: shake, faceLock: held, commandBuffer: commandBuffer)
         onOutputFrame?(output, frame.time)
     }
 }

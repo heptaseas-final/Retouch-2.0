@@ -220,6 +220,7 @@ nonisolated extension ZoomService {
     }
 
     func publish(_ target: ZoomTarget) {
+        emitFaceLock(for: target)
         if pinchScale > 1.01 {
             send(scale: pinchScale, focus: .pinch)
             return
@@ -229,7 +230,7 @@ nonisolated extension ZoomService {
             return
         }
         guard let focus = focusPoint(for: target, faceTracker.points) else {
-            send(scale: 1, focus: .center)
+            send(scale: ZoomTuning.fullFaceZoom, focus: .center)
             return
         }
         let factor = target != .fullFace ? distComp.factor : 1
@@ -272,6 +273,16 @@ nonisolated extension ZoomService {
             }
         }
         return focus
+    }
+
+    func emitFaceLock(for target: ZoomTarget) {
+        guard ZoomTuning.faceLockEnabled, !isGestureEnabled, target == .fullFace,
+              pinchScale <= ZoomTuning.faceLockMaxPinch else {
+            onFaceLock?(nil)
+            return
+        }
+        onFaceLock?(FaceLockSample(center: lastFace?.center, width: lastFace?.width ?? 0,
+                                   sequence: faceDetector.snapshot.sequence))
     }
 
     func send(scale: CGFloat, focus: ZoomAnimator.Focus) {
