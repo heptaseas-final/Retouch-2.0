@@ -26,7 +26,6 @@ struct HorizontalPicker<Item: Hashable>: View {
     @Environment(\.legibilityWeight) private var legibilityWeight
     @Environment(\.colorScheme) private var colorScheme
 
-    private let maxStepsPerSwipe = 1
     private let selectionInset: CGFloat = 4
     private let pickerDragMinimum: CGFloat = 4
     private let visibleSpread = 5
@@ -120,7 +119,7 @@ struct HorizontalPicker<Item: Hashable>: View {
         .onChange(of: swipe.release) { _, release in
             guard let release else { return }
             let landing = track.nearest(to: track.center(base) - release.predicted, around: base)
-            let target = min(max(landing, base - maxStepsPerSwipe), base + maxStepsPerSwipe)
+            let target = track.nearest(to: track.center(base) - release.predicted, around: base)
             withAnimation(.snappy) {
                 base = target
                 swipe.finish()
@@ -139,8 +138,7 @@ struct HorizontalPicker<Item: Hashable>: View {
 
     private func position(on track: PickerTrack) -> CGFloat {
         if isDraggingPicker { return track.center(base) - dragOffset }
-        let dragX = track.center(base) - (swipe.isDragging ? swipe.translation : 0)
-        return min(max(dragX, track.center(base - maxStepsPerSwipe)), track.center(base + maxStepsPerSwipe))
+        return track.center(base) - (swipe.isDragging ? swipe.translation : 0)
     }
 
     private func labels(track: PickerTrack, x: CGFloat, height: CGFloat, span: CGFloat, font: UIFont,
