@@ -5,7 +5,7 @@ if [ "$CI_XCODEBUILD_ACTION" = "test-without-building" ]; then
     exit 0
 fi
 cd "$CI_PRIMARY_REPOSITORY_PATH"
-CUSTOM_BUILD_NUMBER=$((CI_BUILD_NUMBER - 46))
+CUSTOM_BUILD_NUMBER=$((CI_BUILD_NUMBER - 48))
 
 echo "change build number from $CI_BUILD_NUMBER to $CUSTOM_BUILD_NUMBER"
 xcrun agvtool new-version -all $CUSTOM_BUILD_NUMBER
