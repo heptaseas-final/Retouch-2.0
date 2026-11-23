@@ -35,6 +35,11 @@ nonisolated enum AnalyticsShortcutGuideSource: String, Sendable {
     case prompt, settings
 }
 
+nonisolated enum AnalyticsOnboardingEntry: String, Sendable {
+    case firstLaunch = "first_launch"
+    case settings
+}
+
 nonisolated enum AnalyticsZoomMode: String, Sendable, Codable {
     case auto
     case lockRightEye = "lock_right_eye"
@@ -52,72 +57,22 @@ nonisolated enum AnalyticsThermalState: String, Sendable {
     case nominal, fair, serious, critical
 }
 
-nonisolated struct AnalyticsSessionSummary: Sendable, Equatable, Codable {
-    var startLocalHour: Int
-    var startWeekday: Int
-    var lengthSeconds: Int
-    var endReason: AnalyticsSessionEndReason
-    var lightBucket: AnalyticsLightBucket
-    var endedAt: Date
-    var eyeZooms = 0
-    var lipZooms = 0
-    var headTurnZooms = 0
-    var noseZooms = 0
-    var zoomedTimeSeconds = 0
-    var bannerShown = 0
-    var glowMaxReached = false
-    var modeChanges = 0
-    var timeInAutoSeconds = 0
-    var timeLockedSeconds = 0
-    var lockRightEyeUses = 0
-    var lockLeftEyeUses = 0
-    var lockMouthUses = 0
-    var lockNoseUses = 0
-    var lockFullFaceUses = 0
-    var likelyFalseZooms = 0
-    var modeAtEnd: AnalyticsZoomMode = .auto
-}
-
-extension AnalyticsSessionSummary {
-    var properties: [String: AnalyticsValue] {
-        let values: [String: AnalyticsValue] = [
-            "start_local_hour": .int(startLocalHour),
-            "start_weekday": .int(startWeekday),
-            "session_length_s": .int(lengthSeconds),
-            "end_reason": .string(endReason.rawValue),
-            "light_bucket": .string(lightBucket.rawValue),
-            "eye_zooms": .int(eyeZooms),
-            "lip_zooms": .int(lipZooms),
-            "head_turn_zooms": .int(headTurnZooms),
-            "nose_zooms": .int(noseZooms),
-            "zoomed_time_s": .int(zoomedTimeSeconds),
-            "banner_shown": .int(bannerShown),
-            "glow_max_reached": .bool(glowMaxReached),
-            "mode_changes": .int(modeChanges),
-            "time_in_auto_s": .int(timeInAutoSeconds),
-            "time_locked_s": .int(timeLockedSeconds),
-            "lock_right_eye_uses": .int(lockRightEyeUses),
-            "lock_left_eye_uses": .int(lockLeftEyeUses),
-            "lock_mouth_uses": .int(lockMouthUses),
-            "lock_nose_uses": .int(lockNoseUses),
-            "lock_full_face_uses": .int(lockFullFaceUses),
-            "likely_false_zooms": .int(likelyFalseZooms),
-            "mode_at_end": .string(modeAtEnd.rawValue)
-        ]
-        return values
-    }
-}
-
 nonisolated enum AnalyticsEvent: Sendable, Equatable {
-    case sessionStarted(entry: AnalyticsSessionEntry, lightBucket: AnalyticsLightBucket)
+    case appInstalled(source: String, installedAt: Date)
+    case dailyRetentionCheck(daysSinceInstall: Int, hadMirrorSessionToday: Bool, launchCountToday: Int)
+    case performanceHealth(thermalState: AnalyticsThermalState, batteryImpactLevel: Double?,
+                           sessionLengthSeconds: Int?)
+    case sessionStarted(sessionId: String, entry: AnalyticsSessionEntry, lightBucket: AnalyticsLightBucket,
+                        startedAt: Date, initialMode: AnalyticsZoomMode)
     case sessionEnded(AnalyticsSessionSummary)
     case mirrorOpened(launchMs: Int)
     case cameraPermissionResult(isGranted: Bool)
     case cameraInterrupted(recoveryMs: Int)
-    case onboardingStepCompleted(step: String)
+    case onboardingStarted(variant: String, entry: AnalyticsOnboardingEntry)
+    case onboardingStepCompleted(step: String, stepIndex: Int, secondsSinceStart: Int)
     case onboardingSkipped(step: String)
-    case onboardingCompleted
-    case replayTutorialOpened
+    case onboardingCompleted(completionTimeSeconds: Int, completedStepCount: Int)
+    case replayTutorialOpened(replayCount: Int, sessionLengthSeconds: Int)
     case autoZoomTriggered(trigger: AnalyticsZoomTrigger, eyeSide: AnalyticsEyeSide?, holdMs: Int)
     case zoomModeChanged(from: AnalyticsZoomMode, to: AnalyticsZoomMode, secondsInPreviousMode: Int,
                          secondsSinceLastAutoZoom: Int?, lastAutoTrigger: AnalyticsZoomTrigger?,
@@ -138,11 +93,15 @@ nonisolated enum AnalyticsEvent: Sendable, Equatable {
 extension AnalyticsEvent {
     var name: String {
         switch self {
+        case .appInstalled: "app_installed"
+        case .dailyRetentionCheck: "daily_retention_check"
+        case .performanceHealth: "performance_health_event"
         case .sessionStarted: "session_started"
         case .sessionEnded: "session_ended"
         case .mirrorOpened: "mirror_opened"
         case .cameraPermissionResult: "camera_permission_result"
         case .cameraInterrupted: "camera_interrupted"
+        case .onboardingStarted: "onboarding_started"
         case .onboardingStepCompleted: "onboarding_step_completed"
         case .onboardingSkipped: "onboarding_skipped"
         case .onboardingCompleted: "onboarding_completed"
@@ -170,8 +129,23 @@ extension AnalyticsEvent {
 
     var properties: [String: AnalyticsValue] {
         switch self {
-        case let .sessionStarted(entry, lightBucket):
-            return ["entry": .string(entry.rawValue), "light_bucket_at_start": .string(lightBucket.rawValue)]
+        case let .appInstalled(source, installedAt):
+            return ["source": .string(source), "install_datetime": .string(Self.iso8601(installedAt))]
+        case let .dailyRetentionCheck(daysSinceInstall, hadMirrorSessionToday, launchCountToday):
+            return ["days_since_install": .int(daysSinceInstall),
+                    "had_mirror_session_today": .bool(hadMirrorSessionToday),
+                    "launch_count_today": .int(launchCountToday)]
+        case let .performanceHealth(thermalState, batteryImpactLevel, sessionLengthSeconds):
+            var values: [String: AnalyticsValue] = ["thermal_state": .string(thermalState.rawValue)]
+            if let batteryImpactLevel { values["battery_impact_level"] = .double(batteryImpactLevel) }
+            if let sessionLengthSeconds { values["session_length_seconds"] = .int(sessionLengthSeconds) }
+            return values
+        case let .sessionStarted(sessionId, entry, lightBucket, startedAt, initialMode):
+            return ["session_id": .string(sessionId),
+                    "entry": .string(entry.rawValue),
+                    "light_bucket_at_start": .string(lightBucket.rawValue),
+                    "session_start_datetime": .string(Self.iso8601(startedAt)),
+                    "initial_mode": .string(initialMode.rawValue)]
         case let .sessionEnded(summary):
             return summary.properties
         case let .mirrorOpened(launchMs):
@@ -180,10 +154,20 @@ extension AnalyticsEvent {
             return ["result": .string(isGranted ? "granted" : "denied")]
         case let .cameraInterrupted(recoveryMs):
             return ["recovery_ms": .int(recoveryMs)]
-        case let .onboardingStepCompleted(step), let .onboardingSkipped(step):
+        case let .onboardingStarted(variant, entry):
+            return ["onboarding_variant": .string(variant), "entry_method": .string(entry.rawValue)]
+        case let .onboardingStepCompleted(step, stepIndex, secondsSinceStart):
+            return ["step": .string(step),
+                    "step_index": .int(stepIndex),
+                    "time_since_onboarding_start_seconds": .int(secondsSinceStart)]
+        case let .onboardingSkipped(step):
             return ["step": .string(step)]
-        case .onboardingCompleted, .replayTutorialOpened, .autoLightResumed, .glowLimitedByHeat,
-             .shortcutPromptShown, .shortcutPromptDismissedForever:
+        case let .onboardingCompleted(completionTimeSeconds, completedStepCount):
+            return ["completion_time_seconds": .int(completionTimeSeconds),
+                    "completed_step_count": .int(completedStepCount)]
+        case let .replayTutorialOpened(replayCount, sessionLengthSeconds):
+            return ["replay_count": .int(replayCount), "session_length_seconds": .int(sessionLengthSeconds)]
+        case .autoLightResumed, .glowLimitedByHeat, .shortcutPromptShown, .shortcutPromptDismissedForever:
             return [:]
         case let .shortcutGuideOpened(source):
             return ["source": .string(source.rawValue)]
@@ -215,5 +199,9 @@ extension AnalyticsEvent {
         case let .thermalStateChanged(state):
             return ["state": .string(state.rawValue)]
         }
+    }
+
+    static func iso8601(_ date: Date) -> String {
+        date.formatted(.iso8601)
     }
 }

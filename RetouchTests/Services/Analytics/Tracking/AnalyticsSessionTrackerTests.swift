@@ -22,6 +22,13 @@ struct AnalyticsSessionTrackerTests {
         return tracker
     }
 
+    private func start(in events: [AnalyticsEvent]) -> (AnalyticsSessionEntry, AnalyticsLightBucket)? {
+        for event in events {
+            if case let .sessionStarted(_, entry, bucket, _, _) = event { return (entry, bucket) }
+        }
+        return nil
+    }
+
     private func summary(in events: [AnalyticsEvent]) -> AnalyticsSessionSummary? {
         for event in events {
             if case let .sessionEnded(summary) = event { return summary }
@@ -33,7 +40,9 @@ struct AnalyticsSessionTrackerTests {
         var tracker = AnalyticsSessionTracker(launchStartedAt: origin)
         #expect(tracker.update(sample(), at: at(0)).isEmpty)
         #expect(tracker.update(sample(), at: at(9)).isEmpty)
-        #expect(tracker.update(sample(), at: at(10)) == [.sessionStarted(entry: .coldLaunch, lightBucket: .good)])
+        let started = start(in: tracker.update(sample(), at: at(10)))
+        #expect(started?.0 == .coldLaunch)
+        #expect(started?.1 == .good)
     }
 
     @Test func backgroundEndsSessionAndNextSessionIsForeground() {
@@ -44,7 +53,9 @@ struct AnalyticsSessionTrackerTests {
         #expect(ended?.lengthSeconds == 20)
         tracker.appForegrounded()
         _ = tracker.update(sample(), at: at(40))
-        #expect(tracker.update(sample(), at: at(50)) == [.sessionStarted(entry: .foreground, lightBucket: .good)])
+        let restarted = start(in: tracker.update(sample(), at: at(50)))
+        #expect(restarted?.0 == .foreground)
+        #expect(restarted?.1 == .good)
     }
 
     @Test func noFaceEndsSessionAtLastFaceSeen() {

@@ -1,13 +1,5 @@
 import Foundation
 
-struct AnalyticsSample {
-    var hasFace: Bool
-    var target: ZoomTarget
-    var zoomScale: Double
-    var faceLux: Double?
-    var isGlowAtMax: Bool
-}
-
 struct AnalyticsSessionTracker {
     private struct Session {
         var startedAt: Date
@@ -65,6 +57,8 @@ struct AnalyticsSessionTracker {
         var events: [AnalyticsEvent] = []
         if let lux = sample.faceLux { bucket = Self.bucket(for: lux) }
         if sample.isGlowAtMax { session?.summary.glowMaxReached = true }
+        if sample.target == .overall, lastSample?.target != .overall { session?.summary.overallChecks += 1 }
+        if sample.isNightModeEnabled, bucket == .dark || bucket == .dim { session?.summary.nightModeAvailable = true }
         updateFace(sample.hasFace, at: now, into: &events)
         updateZoom(sample, at: now, into: &events)
         updateSettle(sample, at: now, into: &events)
@@ -81,8 +75,8 @@ struct AnalyticsSessionTracker {
         pendingSettle = PendingSettle(
             from: mode,
             to: next,
-            secondsInPreviousMode: Self.seconds(now.timeIntervalSince(modeSince ?? now)),
-            secondsSinceLastAutoZoom: lastAutoZoomEnd.map { Self.seconds(now.timeIntervalSince($0)) },
+            secondsInPreviousMode: AnalyticsSessionMetrics.seconds(now.timeIntervalSince(modeSince ?? now)),
+            secondsSinceLastAutoZoom: lastAutoZoomEnd.map { AnalyticsSessionMetrics.seconds(now.timeIntervalSince($0)) },
             lastAutoTrigger: lastAutoTrigger,
             positionsPassed: Self.positions(from: old, to: new),
             targetScale: Double((new.zoomTarget ?? .fullFace).zoomScale),
@@ -98,6 +92,15 @@ struct AnalyticsSessionTracker {
         session?.summary.bannerShown += 1
     }
 
+    mutating func pinchUsed() {
+        session?.summary.pinchZooms += 1
+    }
+
+    func sessionLength(at now: Date) -> Int {
+        guard let session else { return 0 }
+        return AnalyticsSessionMetrics.seconds(now.timeIntervalSince(session.startedAt))
+    }
+
     mutating func cameraStateChanged(from old: CameraState, to new: CameraState, at now: Date) -> [AnalyticsEvent] {
         var events: [AnalyticsEvent] = []
         if old == .notDetermined, new != .notDetermined {
@@ -109,12 +112,12 @@ struct AnalyticsSessionTracker {
         guard new == .running else { return events }
         if let start = interruptedAt {
             interruptedAt = nil
-            events.append(.cameraInterrupted(recoveryMs: Self.milliseconds(now.timeIntervalSince(start))))
+            events.append(.cameraInterrupted(recoveryMs: AnalyticsSessionMetrics.milliseconds(now.timeIntervalSince(start))))
         }
         if !hasReportedOpen {
             hasReportedOpen = true
             if !sawPermissionPrompt {
-                events.append(.mirrorOpened(launchMs: Self.milliseconds(now.timeIntervalSince(launchStartedAt))))
+                events.append(.mirrorOpened(launchMs: AnalyticsSessionMetrics.milliseconds(now.timeIntervalSince(launchStartedAt))))
             }
         }
         return events
@@ -183,7 +186,7 @@ struct AnalyticsSessionTracker {
             guard sample.target == .fullFace else { return }
             awaitsAutoReset = false
         }
-        let desired = mode == .auto ? Self.zoom(for: sample.target) : nil
+        let desired = mode == .auto ? AnalyticsSessionMetrics.zoom(for: sample.target) : nil
         guard desired?.trigger != activeZoom?.trigger || desired?.eyeSide != activeZoom?.eyeSide else { return }
         events.append(contentsOf: closeActiveZoom(at: now))
         guard let desired else { return }
@@ -209,7 +212,7 @@ struct AnalyticsSessionTracker {
                                  secondsSinceLastAutoZoom: pending.secondsSinceLastAutoZoom,
                                  lastAutoTrigger: pending.lastAutoTrigger,
                                  positionsPassed: pending.positionsPassed,
-                                 settleMs: Self.milliseconds(now.timeIntervalSince(pending.since)))]
+                                 settleMs: AnalyticsSessionMetrics.milliseconds(now.timeIntervalSince(pending.since)))]
     }
 
     private mutating func closeActiveZoom(at now: Date) -> [AnalyticsEvent] {
@@ -220,7 +223,7 @@ struct AnalyticsSessionTracker {
         if session != nil { recordZoom(active.trigger, hold: hold) }
         return [.autoZoomTriggered(trigger: active.trigger,
                                    eyeSide: active.eyeSide,
-                                   holdMs: Self.milliseconds(hold))]
+                                   holdMs: AnalyticsSessionMetrics.milliseconds(hold))]
     }
 
     private mutating func recordZoom(_ trigger: AnalyticsZoomTrigger, hold: TimeInterval) {
@@ -248,27 +251,29 @@ struct AnalyticsSessionTracker {
     private mutating func startSession(at now: Date) -> AnalyticsEvent {
         let calendar = Calendar.current
         let startBucket = bucket ?? .dark
-        let summary = AnalyticsSessionSummary(startLocalHour: calendar.component(.hour, from: now),
+        var summary = AnalyticsSessionSummary(startLocalHour: calendar.component(.hour, from: now),
                                               startWeekday: calendar.component(.weekday, from: now),
                                               lengthSeconds: 0,
                                               endReason: .background,
                                               lightBucket: startBucket,
                                               endedAt: now)
+        summary.sessionId = UUID().uuidString
         session = Session(startedAt: now, summary: summary)
         let startEntry = entry
         entry = .foreground
-        return .sessionStarted(entry: startEntry, lightBucket: startBucket)
+        return .sessionStarted(sessionId: summary.sessionId, entry: startEntry, lightBucket: startBucket,
+                               startedAt: now, initialMode: mode)
     }
 
     private mutating func endSession(reason: AnalyticsSessionEndReason, endedAt: Date) -> [AnalyticsEvent] {
         var events = closeActiveZoom(at: endedAt)
         guard var finished = session else { return events }
-        finished.summary.lengthSeconds = Self.seconds(endedAt.timeIntervalSince(finished.startedAt))
+        finished.summary.lengthSeconds = AnalyticsSessionMetrics.seconds(endedAt.timeIntervalSince(finished.startedAt))
         finished.summary.endReason = reason
         finished.summary.endedAt = endedAt
-        finished.summary.zoomedTimeSeconds = Self.seconds(finished.zoomedSeconds)
-        finished.summary.timeInAutoSeconds = Self.seconds(finished.autoSeconds)
-        finished.summary.timeLockedSeconds = Self.seconds(finished.lockedSeconds)
+        finished.summary.zoomedTimeSeconds = AnalyticsSessionMetrics.seconds(finished.zoomedSeconds)
+        finished.summary.timeInAutoSeconds = AnalyticsSessionMetrics.seconds(finished.autoSeconds)
+        finished.summary.timeLockedSeconds = AnalyticsSessionMetrics.seconds(finished.lockedSeconds)
         finished.summary.lightBucket = finished.bucketSeconds.max { $0.value < $1.value }?.key
             ?? finished.summary.lightBucket
         finished.summary.modeAtEnd = mode
@@ -276,24 +281,5 @@ struct AnalyticsSessionTracker {
         faceSeenSince = nil
         events.append(.sessionEnded(finished.summary))
         return events
-    }
-
-    private static func zoom(for target: ZoomTarget) -> (trigger: AnalyticsZoomTrigger, eyeSide: AnalyticsEyeSide?)? {
-        switch target {
-        case .fullFace, .overall: return nil
-        case .leftEye: return (.eye, .left)
-        case .rightEye: return (.eye, .right)
-        case .lips: return (.lip, nil)
-        case .nose: return (.nose, nil)
-        case .faceSide, .cheek: return (.headTurn, nil)
-        }
-    }
-
-    private static func seconds(_ interval: TimeInterval) -> Int {
-        Int(max(0, interval).rounded())
-    }
-
-    private static func milliseconds(_ interval: TimeInterval) -> Int {
-        Int((max(0, interval) * AnalyticsConfig.millisecondsPerSecond).rounded())
     }
 }

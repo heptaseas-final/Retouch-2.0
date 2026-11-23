@@ -1,4 +1,8 @@
 extension OnboardingStep {
+    var analyticsIndex: Int {
+        Self.allCases.firstIndex(of: self) ?? 0
+    }
+
     var analyticsName: String {
         switch self {
         case .placeHand: "place_hand"
