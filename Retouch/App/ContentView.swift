@@ -48,11 +48,6 @@ struct ContentView: View {
         if clipReviewViewModel.isPreviewing { return .previewing }
         return clipReviewViewModel.clip == nil ? .empty : .recorded
     }
-
-    private static var forcedScheme: ColorScheme? {
-        if #available(iOS 26, *) { return .light }
-        return nil
-    }
 }
 
 #Preview {
