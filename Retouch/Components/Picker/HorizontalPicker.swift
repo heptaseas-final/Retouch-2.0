@@ -118,7 +118,7 @@ struct HorizontalPicker<Item: Hashable>: View {
         .onAppear { base = items.firstIndex(of: selection) ?? 0 }
         .onChange(of: swipe.release) { _, release in
             guard let release else { return }
-            let landing = track.nearest(to: track.center(base) - release.predicted, around: base)
+            _ = track.nearest(to: track.center(base) - release.predicted, around: base)
             let target = track.nearest(to: track.center(base) - release.predicted, around: base)
             withAnimation(.snappy) {
                 base = target
