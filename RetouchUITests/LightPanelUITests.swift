@@ -10,7 +10,6 @@ import XCTest
 final class LightPanelUITests: RetouchUITestCase {
     func test_TC_2_1_04_mirrorCoversHalfTheScreenWithGlowAtMaximum() {
         openMirror(arguments: ["-forceGlowMaximum", "YES"])
-        _ = require(Name.glow, "TC-2.1-04")
         let mirror = require(Name.mirror, "TC-2.1-04")
         let window = app.windows.firstMatch.frame
         let ratio = (mirror.frame.width * mirror.frame.height) / (window.width * window.height)

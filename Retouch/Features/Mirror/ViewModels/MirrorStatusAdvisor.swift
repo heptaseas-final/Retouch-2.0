@@ -10,6 +10,12 @@ struct MirrorStatusAdvisor {
 
     mutating func update(_ input: MirrorStatusInput, now: TimeInterval) -> MirrorStatus? {
         if current == .notEnoughLight || current == .moveCloserInLowLight { hadLowLight = true }
+        
+        if input.isOverall {
+            shownUntil[.moveCloserInLowLight] = nil
+            shownUntil[.tooFar] = nil
+        }
+        
         let conditions = conditions(for: input)
         for status in MirrorStatus.allCases {
             if conditions.contains(status) {
@@ -38,8 +44,8 @@ struct MirrorStatusAdvisor {
         if input.isCameraPaused { result.insert(.cameraPaused) }
         if input.isHeatLimited { result.insert(.phoneWarm) }
         if isLowLight, input.isLightAtLimit { result.insert(.notEnoughLight) }
-        if isLowLight, let ratio, ratio < Config.closeEnoughRatio { result.insert(.moveCloserInLowLight) }
-        if let ratio, input.zoomScale >= Config.zoomedScale, ratio < Config.tooFarRatio { result.insert(.tooFar) }
+        if isLowLight, !input.isOverall, let ratio, ratio < Config.closeEnoughRatio { result.insert(.moveCloserInLowLight) }
+        if !input.isOverall, let ratio, input.zoomScale >= Config.zoomedScale, ratio < Config.tooFarRatio { result.insert(.tooFar) }
         if let ratio, input.zoomScale < Config.fullViewScale, ratio > Config.faceTooWideRatio { result.insert(.faceTooWide) }
         if hadLowLight, let lux = input.faceLux, lux >= Config.enoughLux { result.insert(.enoughLight) }
         return result

@@ -19,10 +19,6 @@ struct ClipPreview: View {
         VStack(spacing: 16) {
             ClipPlayer(url: clip.url, isPlaying: playing)
                 .aspectRatio(RecordingConfig.clipAspectRatio, contentMode: .fit)
-                .overlay(alignment: .bottomTrailing) {
-                    ClipFileTab()
-                        .padding(.trailing, RecordingConfig.fileTabInset)
-                }
                 .clipShape(.rect(cornerRadius: RecordingConfig.previewCornerRadius))
                 .overlay {
                     RoundedRectangle(cornerRadius: RecordingConfig.previewCornerRadius)

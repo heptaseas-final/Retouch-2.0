@@ -4,9 +4,13 @@ struct ClipReviewView: View {
     @State private var viewModel: ClipReviewViewModel
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private let isGuided: Bool
+    private let thumbnailEmphasis: ControlEmphasis
 
-    init(viewModel: ClipReviewViewModel) {
+    init(viewModel: ClipReviewViewModel, isGuided: Bool = false, thumbnailEmphasis: ControlEmphasis = .normal) {
         _viewModel = State(initialValue: viewModel)
+        self.isGuided = isGuided
+        self.thumbnailEmphasis = thumbnailEmphasis
     }
 
     @ViewBuilder
@@ -22,6 +26,11 @@ struct ClipReviewView: View {
         reduceMotion ? .opacity : .move(edge: .trailing).combined(with: .opacity)
     }
 
+    private var discardAction: (() -> Void)? {
+        guard !isGuided else { return nil }
+        return viewModel.deleteWithUndo
+    }
+
     var body: some View {
         ZStack(alignment: .trailing) {
             if viewModel.isRecording {
@@ -30,7 +39,8 @@ struct ClipReviewView: View {
             } else if let clip = viewModel.clip, let thumbnail = viewModel.thumbnail, !viewModel.isPreviewing {
                 ClipThumbnail(image: thumbnail, duration: clip.duration,
                               onOpen: viewModel.openPreview, onHoldChanged: viewModel.setThumbnailHeld,
-                              onDiscard: viewModel.deleteWithUndo)
+                              onDiscard: discardAction)
+                    .emphasis(thumbnailEmphasis)
                     .transition(slotTransition)
             } else if let notice = viewModel.notice, notice != .saved, !viewModel.isPreviewing {
                 noticeLabel(notice)
@@ -42,8 +52,13 @@ struct ClipReviewView: View {
         .animation(reduceMotion ? nil : .snappy, value: viewModel.thumbnail == nil)
         .animation(reduceMotion ? nil : .snappy, value: viewModel.notice)
         .sensoryFeedback(trigger: viewModel.isRecording) { _, isOn in isOn ? .start : .stop }
-        .onAppear { viewModel.activate() }
-        .onDisappear { viewModel.deactivate() }
+        .onAppear {
+            viewModel.setKeepsThumbnail(isGuided)
+            viewModel.activate()
+        }
+        .onDisappear {
+            if !isGuided { viewModel.deactivate() }
+        }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active: viewModel.activate()

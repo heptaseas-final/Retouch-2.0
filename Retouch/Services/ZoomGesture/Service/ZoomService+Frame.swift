@@ -21,6 +21,7 @@ nonisolated extension ZoomService {
             let points = faceTracker.update(face: lastFace, covering: false, converter: converter,
                                             now: faceSnap.timestamp)
             trackMotion(face: lastFace, hand: nil, at: faceSnap.timestamp)
+            updatePose(face: lastFace)
             distComp.update(span: Double(points.scale / viewSize.width),
                             yawDegrees: Double(lastFace?.yaw ?? .nan),
                             valid: lastFace != nil,
@@ -28,7 +29,7 @@ nonisolated extension ZoomService {
             let target = isManualOverall ? ZoomTarget.overall : manualTarget
             publish(target)
             onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
-                                     isFaceVisible: lastFace != nil))
+                                     isFaceVisible: lastFace != nil, overallPose: overallRecognizer.pose))
             return
         }
 
@@ -129,6 +130,7 @@ nonisolated extension ZoomService {
 
         let autoOverall = updateOverall(face: faceSnap?.value, converter: converter)
         let target: ZoomTarget = autoOverall || isManualOverall ? .overall
+            : isOverallOnly ? .fullFace
             : resolver.resolve(hand: handTarget, lips: winner == .lips, nose: winner == .nose, head: headTarget, covering: covering, headStraight: isHeadStraight(points.layout), headQuickRelease: headPose.quickReleased, now: now)
 
         if target == .fullFace || target == .overall { distComp.clearReference() } else { distComp.latchReferenceIfNeeded() }
@@ -177,7 +179,7 @@ nonisolated extension ZoomService {
                                  toolTips: debugTools, toolBoxes: debugBoxes, toolLabels: debugLabels, lockedZone: FaceZone(target: target),
                                  zoneReach: zoneReach, lipsReach: zoneLipsReach,
                                  inputMode: toolDrives ? .tool : .finger,
-                                 overallPose: isOverallShowing ? overallRecognizer.pose : .none))
+                                 overallPose: overallRecognizer.pose))
     }
 
     func trackMotion(face: FaceObservation?, hand: CGPoint?, at now: Date, faceChecked: Bool = true) {
@@ -230,7 +232,7 @@ nonisolated extension ZoomService {
             return
         }
         guard let focus = focusPoint(for: target, faceTracker.points) else {
-            send(scale: ZoomTuning.fullFaceZoom, focus: .center)
+            send(scale: target == .fullFace ? target.zoomScale : 1, focus: .center)
             return
         }
         let factor = target != .fullFace ? distComp.factor : 1

@@ -8,7 +8,7 @@ nonisolated enum GlowFrame {
     static let fullRiseDuration = 0.8
     static let fullFallDuration = 0.5
     static let minimumRampDuration = 0.25
-    static let overallAnimation: Animation = .smooth(duration: 0.5)
+    static let overallAnimation: Animation = .smooth(duration: 0.65)
     static let shrinksCameraWithGlow = false
 
     static func lightOpacity(level: Double) -> Double {

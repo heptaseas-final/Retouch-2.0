@@ -93,4 +93,32 @@ struct MirrorStatusAdvisorTests {
         #expect(shown == .faceTooWide)
         #expect(gone == nil)
     }
+    
+    @Test func moveCloserHiddenInOverall() {
+        var advisor = MirrorStatusAdvisor()
+        var input = MirrorStatusInput(faceLux: 120, faceWidthRatio: 0.3)
+        input.isOverall = true
+        _ = advisor.update(input, now: 0)
+        let status = advisor.update(input, now: 2)
+        #expect(status == nil)
+    }
+
+    @Test func moveCloserShowsOutsideOverall() {
+        var advisor = MirrorStatusAdvisor()
+        let input = MirrorStatusInput(faceLux: 120, faceWidthRatio: 0.3)
+        _ = advisor.update(input, now: 0)
+        let status = advisor.update(input, now: 2)
+        #expect(status == .moveCloserInLowLight)
+    }
+    
+    @Test func moveCloserDisappearsAtOnceWhenOverallStarts() {
+        var advisor = MirrorStatusAdvisor()
+        var input = MirrorStatusInput(faceLux: 120, faceWidthRatio: 0.3)
+        _ = advisor.update(input, now: 0)
+        let shown = advisor.update(input, now: 1.6)
+        input.isOverall = true
+        let gone = advisor.update(input, now: 1.8)
+        #expect(shown == .moveCloserInLowLight)
+        #expect(gone == nil)
+    }
 }

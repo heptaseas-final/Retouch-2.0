@@ -10,7 +10,7 @@ struct AnalyticsSessionTrackerTests {
         origin.addingTimeInterval(seconds)
     }
 
-    private func sample(hasFace: Bool = true, target: ZoomTarget = .fullFace, scale: Double = 1.1,
+    private func sample(hasFace: Bool = true, target: ZoomTarget = .fullFace, scale: Double = Double(ZoomTuning.fullFaceZoom),
                         lux: Double? = 600, glowAtMax: Bool = false) -> AnalyticsSample {
         AnalyticsSample(hasFace: hasFace, target: target, zoomScale: scale, faceLux: lux, isGlowAtMax: glowAtMax)
     }
@@ -20,6 +20,13 @@ struct AnalyticsSessionTrackerTests {
         _ = tracker.update(sample(), at: at(0))
         _ = tracker.update(sample(), at: at(10))
         return tracker
+    }
+
+    private func start(in events: [AnalyticsEvent]) -> (AnalyticsSessionEntry, AnalyticsLightBucket)? {
+        for event in events {
+            if case let .sessionStarted(_, entry, bucket, _, _) = event { return (entry, bucket) }
+        }
+        return nil
     }
 
     private func summary(in events: [AnalyticsEvent]) -> AnalyticsSessionSummary? {
@@ -33,7 +40,9 @@ struct AnalyticsSessionTrackerTests {
         var tracker = AnalyticsSessionTracker(launchStartedAt: origin)
         #expect(tracker.update(sample(), at: at(0)).isEmpty)
         #expect(tracker.update(sample(), at: at(9)).isEmpty)
-        #expect(tracker.update(sample(), at: at(10)) == [.sessionStarted(entry: .coldLaunch, lightBucket: .good)])
+        let started = start(in: tracker.update(sample(), at: at(10)))
+        #expect(started?.0 == .coldLaunch)
+        #expect(started?.1 == .good)
     }
 
     @Test func backgroundEndsSessionAndNextSessionIsForeground() {
@@ -44,7 +53,9 @@ struct AnalyticsSessionTrackerTests {
         #expect(ended?.lengthSeconds == 20)
         tracker.appForegrounded()
         _ = tracker.update(sample(), at: at(40))
-        #expect(tracker.update(sample(), at: at(50)) == [.sessionStarted(entry: .foreground, lightBucket: .good)])
+        let restarted = start(in: tracker.update(sample(), at: at(50)))
+        #expect(restarted?.0 == .foreground)
+        #expect(restarted?.1 == .good)
     }
 
     @Test func noFaceEndsSessionAtLastFaceSeen() {

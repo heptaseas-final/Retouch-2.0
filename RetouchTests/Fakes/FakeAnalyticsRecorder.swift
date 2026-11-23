@@ -28,7 +28,9 @@ final class FakeAnalyticsRecorder: AnalyticsRecording {
 
     func shortcutPromptDismissedForever() { calls.append("shortcutPromptDismissedForever") }
 
-    func onboardingStepCompleted(step: String) { calls.append("onboardingStepCompleted(\(step))") }
+    func onboardingStarted() { calls.append("onboardingStarted") }
+
+    func onboardingStepCompleted(step: String, index: Int) { calls.append("onboardingStepCompleted(\(step))") }
 
     func onboardingSkipped(step: String) { calls.append("onboardingSkipped(\(step))") }
 

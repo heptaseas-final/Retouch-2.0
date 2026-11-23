@@ -1,4 +1,8 @@
 extension OnboardingStep {
+    var analyticsIndex: Int {
+        Self.allCases.firstIndex(of: self) ?? 0
+    }
+
     var analyticsName: String {
         switch self {
         case .placeHand: "place_hand"
@@ -11,6 +15,10 @@ extension OnboardingStep {
         case .tapForCool: "tap_for_cool"
         case .tapForWhite: "tap_for_white"
         case .tapToTurnOff: "tap_to_turn_off"
+        case .overallIntro: "overall_intro"
+        case .overallCheck: "overall_check"
+        case .tapRecording: "tap_recording"
+        case .reviewRecording: "review_recording"
         case .done: "done"
         }
     }
