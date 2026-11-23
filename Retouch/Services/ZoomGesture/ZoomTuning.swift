@@ -249,6 +249,8 @@ nonisolated struct ZoomTuning {
     static let faceLockEngageOffset: CGFloat = 1
     static let faceLockAnchorX: CGFloat = 0.5
     static let faceLockAnchorY: CGFloat = 0.5
+    static let faceLockCentersFully = true
+    static let faceLockFollowsDistance = true
     static let faceLockCenterRoomUseX: CGFloat = 0.6
     static let faceLockCenterRoomUseY: CGFloat = 0.4
     static let faceLockCloseDeadZone: CGFloat = 0.15

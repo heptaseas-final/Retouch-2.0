@@ -49,7 +49,8 @@ struct FaceLockFilterTests {
     @Test func movingFartherKeepsTheFaceSize() throws {
         var filter = engaged()
         let pose = try #require(run(&filter, frames: 60) { _ in face(width: 0.32) })
-        #expect(abs(pose.scale - zoom * 1.25) < 0.01)
+        let expected = ZoomTuning.faceLockFollowsDistance ? zoom * 1.25 : zoom
+        #expect(abs(pose.scale - expected) < 0.01)
     }
 
     @Test func slightlyCloserKeepsTheFrameFull() throws {
@@ -69,7 +70,18 @@ struct FaceLockFilterTests {
     @Test func sizeCorrectionIsLimited() throws {
         var filter = engaged()
         let pose = try #require(run(&filter, frames: 90) { _ in face(width: 0.05) })
-        #expect(abs(pose.scale - zoom * ZoomTuning.faceLockMaxSizeRatio) < 0.001)
+        let expected = ZoomTuning.faceLockFollowsDistance ? zoom * ZoomTuning.faceLockMaxSizeRatio : zoom
+        #expect(abs(pose.scale - expected) < 0.001)
+    }
+
+    @Test func fixedScaleIgnoresDistanceWhenSwitchedOff() throws {
+        var filter = engaged()
+        let closer = try #require(run(&filter, frames: 60) { _ in face(width: 0.8) })
+        let farther = try #require(run(&filter, frames: 60) { _ in face(width: 0.2) })
+        if !ZoomTuning.faceLockFollowsDistance {
+            #expect(closer.scale == zoom)
+            #expect(farther.scale == zoom)
+        }
     }
 
     @Test func leavingFullFaceReleasesTheLock() {
@@ -108,7 +120,7 @@ struct FaceLockFilterTests {
         #expect(abs(placed.total - fill * zoom * 1.3) < 0.0001)
     }
 
-    @Test func centeringOnlyUsesPartOfTheRoom() {
+    @Test func faceSittingHighIsCenteredAsConfigured() {
         let extent = CGRect(x: 0, y: 0, width: 1440, height: 1920)
         let size = CGSize(width: 1179, height: 2556)
         let fill = max(size.width / extent.width, size.height / extent.height)
@@ -116,7 +128,7 @@ struct FaceLockFilterTests {
                                 anchor: CGPoint(x: 0.5, y: 0.5), anchorScale: zoom, scale: zoom, weight: 1)
         let placed = MirrorRenderer.lockedPlacement(pose, extent: extent, fill: fill, size: size)
         let roomY = 0.5 * (1 - size.height / (extent.height * fill * zoom))
-        let target = 0.3 + roomY * ZoomTuning.faceLockCenterRoomUseY
+        let target = ZoomTuning.faceLockCentersFully ? 0.5 : 0.3 + roomY * ZoomTuning.faceLockCenterRoomUseY
         let faceY = placed.origin.y + (pose.face.y - 0.5) * extent.height * placed.total
         let expected = size.height / 2 + (target - 0.5) * extent.height * fill * zoom
         #expect(abs(faceY - expected) < 0.001)

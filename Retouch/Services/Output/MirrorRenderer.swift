@@ -118,10 +118,11 @@ final class MirrorRenderer {
         let total = fill * pose.scale
         let roomX = max(0.5 * (1 - size.width / (extent.width * anchorTotal)), 0)
         let roomY = max(0.5 * (1 - size.height / (extent.height * anchorTotal)), 0)
-        let target = CGPoint(x: pose.entry.x + limited(pose.anchor.x - pose.entry.x,
-                                                       roomX * ZoomTuning.faceLockCenterRoomUseX),
-                             y: pose.entry.y + limited(pose.anchor.y - pose.entry.y,
-                                                       roomY * ZoomTuning.faceLockCenterRoomUseY))
+        let target = ZoomTuning.faceLockCentersFully ? pose.anchor
+            : CGPoint(x: pose.entry.x + limited(pose.anchor.x - pose.entry.x,
+                                                roomX * ZoomTuning.faceLockCenterRoomUseX),
+                      y: pose.entry.y + limited(pose.anchor.y - pose.entry.y,
+                                                roomY * ZoomTuning.faceLockCenterRoomUseY))
         let anchor = CGPoint(x: size.width / 2 + (target.x - 0.5) * extent.width * anchorTotal,
                              y: size.height / 2 + (target.y - 0.5) * extent.height * anchorTotal)
         let origin = CGPoint(x: anchor.x - (pose.face.x - 0.5) * extent.width * total,

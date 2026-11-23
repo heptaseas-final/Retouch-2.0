@@ -61,7 +61,9 @@ nonisolated struct FaceLockFilter {
 
         weight += (1 - weight) * CGFloat(1 - exp(-step / ZoomTuning.faceLockEngageTau))
         let raw = Self.softenedCloser(anchorWidth / max(width, 0.0001))
-        let ratio = min(max(raw, ZoomTuning.faceLockMinSizeRatio), ZoomTuning.faceLockMaxSizeRatio)
+        let ratio = ZoomTuning.faceLockFollowsDistance
+            ? min(max(raw, ZoomTuning.faceLockMinSizeRatio), ZoomTuning.faceLockMaxSizeRatio)
+            : 1
         let locked = FaceLockPose(face: current, entry: entry, anchor: anchor, anchorScale: anchorScale,
                                   scale: anchorScale * ratio, weight: weight)
         pose = locked
