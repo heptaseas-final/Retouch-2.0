@@ -48,8 +48,8 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
     private var fadeStartedAt: TimeInterval = 0
 
     func reset() {
-        goalScale = 1
-        currentScale = 1
+        goalScale = ZoomTuning.fullFaceZoom
+        currentScale = ZoomTuning.fullFaceZoom
         scaleVelocity = 0
         easesScale = false
         panX = 0
@@ -65,8 +65,8 @@ nonisolated final class ZoomAnimator: NSObject, @unchecked Sendable {
         cutGate.reset()
         snapPending = false
         fadeOrigin = nil
-        scaleLock.lock(); shownScale = 1; scaleLock.unlock()
-        lastState = ZoomState()
+        scaleLock.lock(); shownScale = ZoomTuning.fullFaceZoom; scaleLock.unlock()
+        lastState = ZoomState(scale: ZoomTuning.fullFaceZoom)
         onChange?(lastState)
     }
 
