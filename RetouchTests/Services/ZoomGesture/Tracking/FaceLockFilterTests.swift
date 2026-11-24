@@ -24,8 +24,8 @@ struct FaceLockFilterTests {
     @Test func lockCentersTheFaceAtFullFaceZoom() throws {
         var filter = FaceLockFilter()
         let offCenter = CGPoint(x: 0.62, y: 0.41)
-        let pose = try #require(filter.update(active: true, detection: face(at: offCenter), flow: nil,
-                                              canEngage: true, dt: step))
+        let result = filter.update(active: true, detection: face(at: offCenter), flow: nil, canEngage: true, dt: step)
+        let pose = try #require(result)
         #expect(pose.face == offCenter && pose.entry == offCenter)
         #expect(pose.anchor == CGPoint(x: ZoomTuning.faceLockAnchorX, y: ZoomTuning.faceLockAnchorY))
         #expect(pose.scale == ZoomTuning.fullFaceZoom && pose.anchorScale == ZoomTuning.fullFaceZoom)
@@ -41,8 +41,8 @@ struct FaceLockFilterTests {
 
     @Test func flowCarriesTheFaceBetweenDetections() throws {
         var filter = engaged()
-        let pose = try #require(filter.update(active: true, detection: nil, flow: CGVector(dx: 0.03, dy: -0.01),
-                                              canEngage: true, dt: step))
+        let result = filter.update(active: true, detection: nil, flow: CGVector(dx: 0.03, dy: -0.01), canEngage: true, dt: step)
+        let pose = try #require(result)
         #expect(abs(pose.face.x - 0.53) < 0.0001 && abs(pose.face.y - 0.49) < 0.0001)
     }
 
