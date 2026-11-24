@@ -23,7 +23,7 @@ nonisolated struct ZoomTuning {
     static let pointTau: CGFloat = 0.1
     static let scaleTau: CGFloat = 0.65
     static let handSpeedTau: CGFloat = 0.15
-    static let fullFaceZoom: CGFloat = 1.15
+    static let fullFaceZoom: CGFloat = 1.25
     static let eyeZoomScale: CGFloat = 2.25
     static let lipsZoomScale: CGFloat = 2.12
     static let noseZoomScale: CGFloat = 1.9
