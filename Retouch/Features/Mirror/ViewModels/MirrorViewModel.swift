@@ -29,6 +29,7 @@ final class MirrorViewModel {
     @ObservationIgnored private var faceSeenSince: TimeInterval?
     @ObservationIgnored private var isGuidePending = false
     @ObservationIgnored private var controlStateTask: Task<Void, Never>?
+    @ObservationIgnored private var wasOverallShowing = false
 
     init(camera: CameraServicing, lighting: LightingServicing, zoom: ZoomServicing,
          zoomStore: ZoomStore, renderer: MirrorRenderer, settings: MirrorSettingsStoring,
@@ -44,6 +45,17 @@ final class MirrorViewModel {
         isLargerButtons = settings.isLargerButtons
         lightPlacement = settings.lightPlacement
         isAnalyticsEnabled = analytics.isAnalyticsEnabled
+        zoomStore.addTrackingListener { [weak self] tracking, _ in
+            self?.syncOverallButton(with: tracking.target)
+        }
+    }
+
+    private func syncOverallButton(with target: ZoomTarget) {
+        let isShowing = target == .overall
+        guard isShowing != wasOverallShowing else { return }
+        wasOverallShowing = isShowing
+        guard selectedPart == .face else { return }
+        isOverallOn = isShowing
     }
 
     var zoomState: ZoomState { zoomStore.zoomState }

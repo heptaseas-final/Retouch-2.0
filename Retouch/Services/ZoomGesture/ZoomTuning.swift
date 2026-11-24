@@ -39,6 +39,8 @@ nonisolated struct ZoomTuning {
     static let placedExitWidth = 0.25
     static let placedStillDwell: TimeInterval = 0.6
     static let placedMoveGrace: TimeInterval = 0.3
+    static let recordEnterWidth = 0.13
+    static let recordEnterDwell: TimeInterval = 0.6
     static let highTiltEnter = 15.0
     static let highTiltMax = 80.0
     static let highTiltExit = 8.0

@@ -301,7 +301,7 @@ nonisolated final class ZoomService: ZoomServicing, @unchecked Sendable {
 
     func setOverall(_ isOn: Bool) {
         stateQueue.async { [self] in
-            isManualOverall = isOn
+            applyManualOverall(isOn)
             pinchScale = 1
             pinchBase = 1
             pinchActive = false

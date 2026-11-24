@@ -56,7 +56,7 @@ nonisolated final class ClipRecordingService: ClipRecordingServicing, @unchecked
         let canStart = ProcessInfo.processInfo.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue
         let action = lock.withLock { () -> ClipTrigger.Action in
             guard isEnabled else { return .none }
-            return trigger.update(pose: tracking.overallPose, canStart: canStart)
+            return trigger.update(pose: tracking.overallPose, isRecordFar: tracking.isRecordFar, canStart: canStart)
         }
         switch action {
         case .none:

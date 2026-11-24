@@ -6,18 +6,19 @@ nonisolated struct ClipTrigger {
     }
 
     private(set) var isRecording = false
-    private var wasPlaced = false
+    private var waitsForComeBack = false
 
-    mutating func update(pose: OverallPose, canStart: Bool) -> Action {
-        let isPlaced = pose == .placedFar
-        defer { wasPlaced = isPlaced }
+    mutating func update(pose: OverallPose, isRecordFar: Bool, canStart: Bool) -> Action {
+        let isFar = pose == .placedFar && isRecordFar
+        if !isFar { waitsForComeBack = false }
         if isRecording {
-            guard !isPlaced else { return .none }
+            guard !isFar else { return .none }
             isRecording = false
             return .stop
         }
-        guard isPlaced, !wasPlaced, canStart else { return .none }
+        guard isFar, !waitsForComeBack, canStart else { return .none }
         isRecording = true
+        waitsForComeBack = true
         return .start
     }
 
