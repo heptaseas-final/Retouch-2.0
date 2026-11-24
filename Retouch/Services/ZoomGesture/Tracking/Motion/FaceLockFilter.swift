@@ -25,12 +25,18 @@ nonisolated struct FaceLockFilter {
     private var roll: CGFloat = 0
     private var lostFor: TimeInterval = 0
     private var pose: FaceLockPose?
+    private var clock: TimeInterval = 0
+    private var centerXSmoother = FaceLockFilter.smoother(ZoomTuning.faceLockCenterMinCutoff, ZoomTuning.faceLockCenterBeta)
+    private var centerYSmoother = FaceLockFilter.smoother(ZoomTuning.faceLockCenterMinCutoff, ZoomTuning.faceLockCenterBeta)
+    private var widthSmoother = FaceLockFilter.smoother(ZoomTuning.faceLockWidthMinCutoff, ZoomTuning.faceLockWidthBeta)
+    private var rollSmoother = FaceLockFilter.smoother(ZoomTuning.faceLockRollMinCutoff, ZoomTuning.faceLockRollBeta)
 
     var isEngaged: Bool { weight > ZoomTuning.faceLockMinWeight }
 
     mutating func update(active: Bool, detection: Detection?, flow: CGVector?, canEngage: Bool,
                          dt: TimeInterval) -> FaceLockPose? {
         let step = min(max(dt, 0), ZoomTuning.faceLockMaxStep)
+        clock += step
         guard active else { return release(step: step) }
         if position == nil {
             guard canEngage, let detection, detection.width > 0 else { return release(step: step) }
@@ -49,7 +55,8 @@ nonisolated struct FaceLockFilter {
             current.x += flow.dx
             current.y += flow.dy
         }
-        if let detection, detection.width > 0 {
+        if let found = detection, found.width > 0 {
+            let detection = smoothed(found)
             lostFor = 0
             let tau = flow == nil ? ZoomTuning.faceLockSnapTau : ZoomTuning.faceLockTrackTau
             let gain = CGFloat(1 - exp(-step / tau))
@@ -67,7 +74,7 @@ nonisolated struct FaceLockFilter {
         guard lostFor < ZoomTuning.faceLockLostHold else { return release(step: step) }
 
         weight += (1 - weight) * CGFloat(1 - exp(-step / ZoomTuning.faceLockEngageTau))
-        let raw = Self.softenedCloser(anchorWidth / max(width, 0.0001))
+        let raw = Self.softenedRatio(anchorWidth / max(width, 0.0001))
         let ratio = ZoomTuning.faceLockFollowsDistance
             ? min(max(raw, ZoomTuning.faceLockMinSizeRatio), ZoomTuning.faceLockMaxSizeRatio)
             : 1
@@ -88,20 +95,44 @@ nonisolated struct FaceLockFilter {
         roll = 0
         lostFor = 0
         pose = nil
+        centerXSmoother.reset()
+        centerYSmoother.reset()
+        widthSmoother.reset()
+        rollSmoother.reset()
     }
 
     static func limitedRoll(_ value: CGFloat) -> CGFloat {
         min(max(value, -ZoomTuning.faceLockMaxRoll), ZoomTuning.faceLockMaxRoll)
     }
 
-    static func softenedCloser(_ ratio: CGFloat) -> CGFloat {
-        let closer = 1 - ratio
-        let deadZone = ZoomTuning.faceLockCloseDeadZone
-        let ramp = ZoomTuning.faceLockCloseRamp
-        guard closer > deadZone else { return max(ratio, 1) }
-        let over = closer - deadZone
-        let shrink = over < ramp ? over * over / (2 * ramp) : over - ramp / 2
-        return 1 - shrink
+    static func softenedRatio(_ ratio: CGFloat) -> CGFloat {
+        if ratio >= 1 {
+            return 1 + softenedChange(ratio - 1, deadZone: ZoomTuning.faceLockFarDeadZone,
+                                      ramp: ZoomTuning.faceLockFarRamp)
+        }
+        return 1 - softenedChange(1 - ratio, deadZone: ZoomTuning.faceLockCloseDeadZone,
+                                  ramp: ZoomTuning.faceLockCloseRamp)
+    }
+
+    private static func softenedChange(_ change: CGFloat, deadZone: CGFloat, ramp: CGFloat) -> CGFloat {
+        guard change > deadZone else { return 0 }
+        let over = change - deadZone
+        return over < ramp ? over * over / (2 * ramp) : over - ramp / 2
+    }
+
+    private mutating func smoothed(_ found: Detection) -> Detection {
+        let center = CGPoint(x: centerXSmoother.filter(Double(found.center.x), t: clock),
+                             y: centerYSmoother.filter(Double(found.center.y), t: clock))
+        let width = CGFloat(widthSmoother.filter(Double(found.width), t: clock))
+        let roll = found.roll.map { CGFloat(rollSmoother.filter(Double($0), t: clock)) }
+        return Detection(center: center, width: width, roll: roll)
+    }
+
+    private static func smoother(_ minCutoff: Double, _ beta: Double) -> OneEuroFilter {
+        var filter = OneEuroFilter()
+        filter.minCutoff = minCutoff
+        filter.beta = beta
+        return filter
     }
 
     private mutating func release(step: TimeInterval) -> FaceLockPose? {

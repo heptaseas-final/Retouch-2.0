@@ -49,8 +49,20 @@ struct FaceLockFilterTests {
     @Test func movingFartherKeepsTheFaceSize() throws {
         var filter = engaged()
         let pose = try #require(run(&filter, frames: 60) { _ in face(width: 0.32) })
-        let expected = ZoomTuning.faceLockFollowsDistance ? zoom * 1.25 : zoom
+        let expected = ZoomTuning.faceLockFollowsDistance ? zoom * FaceLockFilter.softenedRatio(1.25) : zoom
         #expect(abs(pose.scale - expected) < 0.01)
+        if ZoomTuning.faceLockFollowsDistance { #expect(pose.scale > zoom * 1.1) }
+    }
+
+    @Test func detectionNoiseDoesNotPulseTheFaceSize() throws {
+        var filter = engaged()
+        let widths: [CGFloat] = [0.4, 0.388, 0.412, 0.39, 0.41, 0.392]
+        for frame in 0..<90 {
+            let result = filter.update(active: true, detection: face(width: widths[frame % widths.count]),
+                                       flow: nil, canEngage: true, dt: step)
+            let pose = try #require(result)
+            #expect(pose.scale == zoom)
+        }
     }
 
     @Test func slightlyCloserKeepsTheFrameFull() throws {
@@ -60,11 +72,20 @@ struct FaceLockFilterTests {
     }
 
     @Test func closerOnlyShrinksPastTheDeadZone() {
-        #expect(FaceLockFilter.softenedCloser(1.3) == 1.3)
-        #expect(FaceLockFilter.softenedCloser(1) == 1)
-        #expect(FaceLockFilter.softenedCloser(1 - ZoomTuning.faceLockCloseDeadZone) == 1)
-        #expect(abs(FaceLockFilter.softenedCloser(0.6) - 0.85) < 0.0001)
-        #expect(FaceLockFilter.softenedCloser(0.5) < FaceLockFilter.softenedCloser(0.6))
+        #expect(FaceLockFilter.softenedRatio(1) == 1)
+        #expect(FaceLockFilter.softenedRatio(1 - ZoomTuning.faceLockCloseDeadZone) == 1)
+        #expect(abs(FaceLockFilter.softenedRatio(0.6) - 0.85) < 0.0001)
+        #expect(FaceLockFilter.softenedRatio(0.5) < FaceLockFilter.softenedRatio(0.6))
+    }
+
+    @Test func fartherOnlyGrowsPastTheDeadZone() {
+        let deadZone = ZoomTuning.faceLockFarDeadZone
+        let ramp = ZoomTuning.faceLockFarRamp
+        #expect(FaceLockFilter.softenedRatio(1 + deadZone) == 1)
+        #expect(FaceLockFilter.softenedRatio(1.03) == 1)
+        #expect(abs(FaceLockFilter.softenedRatio(1 + deadZone + ramp) - (1 + ramp / 2)) < 0.0001)
+        #expect(abs(FaceLockFilter.softenedRatio(1.5) - (1.5 - deadZone - ramp / 2)) < 0.0001)
+        #expect(FaceLockFilter.softenedRatio(1.4) > FaceLockFilter.softenedRatio(1.3))
     }
 
     @Test func sizeCorrectionIsLimited() throws {
@@ -152,8 +173,41 @@ struct FaceLockFilterTests {
 
     @Test func rollFollowsTheHead() throws {
         var filter = engaged()
-        let pose = try #require(run(&filter, frames: 30) { _ in tilted(0.3) })
+        let pose = try #require(run(&filter, frames: 90) { _ in tilted(0.3) })
         #expect(abs(pose.roll - 0.3) < 0.001)
+    }
+
+    @Test func rollCatchesUpWithoutLag() throws {
+        var filter = FaceLockFilter()
+        _ = filter.update(active: true, detection: tilted(0), flow: nil, canEngage: true, dt: step)
+        let pose = try #require(run(&filter, frames: 15) { _ in tilted(0.3) })
+        #expect(abs(pose.roll - 0.3) < 0.01)
+    }
+
+    @Test func faceSizeStaysStillAfterMovingFarther() throws {
+        var filter = engaged()
+        _ = run(&filter, frames: 60) { _ in face(width: 0.3) }
+        let noise: [CGFloat] = [0.3, 0.294, 0.306, 0.296, 0.304, 0.298]
+        _ = run(&filter, frames: 30) { frame in face(width: noise[frame % noise.count]) }
+        var scales: [CGFloat] = []
+        for frame in 0..<60 {
+            let result = filter.update(active: true, detection: face(width: noise[frame % noise.count]),
+                                       flow: nil, canEngage: true, dt: step)
+            scales.append(try #require(result).scale)
+        }
+        let spread = (scales.max() ?? 0) - (scales.min() ?? 0)
+        #expect(spread < 0.002)
+    }
+
+    @Test func tiltJitterIsDamped() throws {
+        var filter = FaceLockFilter()
+        _ = filter.update(active: true, detection: tilted(0), flow: nil, canEngage: true, dt: step)
+        for frame in 0..<90 {
+            let result = filter.update(active: true, detection: tilted(frame % 2 == 0 ? 0.03 : -0.03),
+                                       flow: nil, canEngage: true, dt: step)
+            let pose = try #require(result)
+            #expect(abs(pose.roll) < 0.004)
+        }
     }
 
     @Test func rollIsLimited() throws {
