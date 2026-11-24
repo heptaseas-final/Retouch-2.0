@@ -12,6 +12,7 @@ nonisolated struct FaceLockFilter {
     struct Detection: Equatable {
         var center: CGPoint
         var width: CGFloat
+        var roll: CGFloat? = nil
     }
 
     private(set) var position: CGPoint?
@@ -21,6 +22,7 @@ nonisolated struct FaceLockFilter {
     private var entry: CGPoint = .zero
     private var anchorWidth: CGFloat = 0
     private var anchorScale: CGFloat = 1
+    private var roll: CGFloat = 0
     private var lostFor: TimeInterval = 0
     private var pose: FaceLockPose?
 
@@ -38,6 +40,7 @@ nonisolated struct FaceLockFilter {
             entry = detection.center
             anchorWidth = detection.width
             anchorScale = ZoomTuning.fullFaceZoom
+            roll = Self.limitedRoll(detection.roll ?? 0)
             lostFor = 0
         }
         guard var current = position else { return release(step: step) }
@@ -53,6 +56,10 @@ nonisolated struct FaceLockFilter {
             current.x += (detection.center.x - current.x) * gain
             current.y += (detection.center.y - current.y) * gain
             width += (detection.width - width) * CGFloat(1 - exp(-step / ZoomTuning.faceLockWidthTau))
+            if let tilt = detection.roll {
+                let turn = atan2(sin(tilt - roll), cos(tilt - roll))
+                roll = Self.limitedRoll(roll + turn * CGFloat(1 - exp(-step / ZoomTuning.faceLockRollTau)))
+            }
         } else {
             lostFor += step
         }
@@ -65,7 +72,7 @@ nonisolated struct FaceLockFilter {
             ? min(max(raw, ZoomTuning.faceLockMinSizeRatio), ZoomTuning.faceLockMaxSizeRatio)
             : 1
         let locked = FaceLockPose(face: current, entry: entry, anchor: anchor, anchorScale: anchorScale,
-                                  scale: anchorScale * ratio, weight: weight)
+                                  scale: anchorScale * ratio, weight: weight, roll: roll)
         pose = locked
         return locked
     }
@@ -78,8 +85,13 @@ nonisolated struct FaceLockFilter {
         entry = .zero
         anchorWidth = 0
         anchorScale = 1
+        roll = 0
         lostFor = 0
         pose = nil
+    }
+
+    static func limitedRoll(_ value: CGFloat) -> CGFloat {
+        min(max(value, -ZoomTuning.faceLockMaxRoll), ZoomTuning.faceLockMaxRoll)
     }
 
     static func softenedCloser(_ ratio: CGFloat) -> CGFloat {

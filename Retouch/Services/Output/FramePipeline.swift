@@ -15,7 +15,7 @@ final class FramePipeline {
     private let visionScaler = VisionDownscaler(width: 1280)
     private let stabilizer = FusedStabilizer()
     private let faceLock = FaceLockStabilizer()
-    let faceLockInbox = FaceLockInbox()
+    let faceLockInbox = FaceLockInbox() 
 
     init(lighting: LightingEngine) {
         let device = MTLCreateSystemDefaultDevice()

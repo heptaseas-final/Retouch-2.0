@@ -134,7 +134,65 @@ struct FaceLockFilterTests {
         #expect(abs(faceY - expected) < 0.001)
     }
 
-    @Test func regionCoversTheFaceInBufferSpace() {
+    @Test func lateDetectionIsShiftedByTheMotionSinceItsFrame() {
+        let found = FaceLockFilter.Detection(center: CGPoint(x: 0.6, y: 0.5), width: 0.4)
+        let shifted = FaceLockStabilizer.compensated(found, then: CGPoint(x: 0.55, y: 0.48),
+                                                     now: CGPoint(x: 0.58, y: 0.47))
+        #expect(abs(shifted.center.x - 0.63) < 0.0001)
+        #expect(abs(shifted.center.y - 0.49) < 0.0001)
+        #expect(shifted.width == 0.4)
+    }
+
+    @Test func rollStartsFromTheCurrentTilt() throws {
+        var filter = FaceLockFilter()
+        let pose = try #require(filter.update(active: true, detection: tilted(0.2), flow: nil,
+                                              canEngage: true, dt: step))
+        #expect(abs(pose.roll - 0.2) < 0.0001)
+    }
+
+    @Test func rollFollowsTheHead() throws {
+        var filter = engaged()
+        let pose = try #require(run(&filter, frames: 30) { _ in tilted(0.3) })
+        #expect(abs(pose.roll - 0.3) < 0.001)
+    }
+
+    @Test func rollIsLimited() throws {
+        var filter = engaged()
+        let pose = try #require(run(&filter, frames: 30) { _ in tilted(1.4) })
+        #expect(pose.roll <= ZoomTuning.faceLockMaxRoll + 0.0001)
+    }
+
+    @Test func lockedTransformKeepsTheEyesLevel() {
+        let extent = CGRect(x: 0, y: 0, width: 1440, height: 1920)
+        let size = CGSize(width: 1179, height: 2556)
+        let fill = max(size.width / extent.width, size.height / extent.height)
+        let pose = FaceLockPose(face: CGPoint(x: 0.6, y: 0.45), entry: CGPoint(x: 0.6, y: 0.45),
+                                anchor: CGPoint(x: 0.5, y: 0.5), anchorScale: zoom, scale: zoom,
+                                weight: 1, roll: 0.25)
+        let placement = MirrorRenderer.lockedTransform(pose, extent: extent, fill: fill, size: size,
+                                                       normalOrigin: CGPoint(x: size.width / 2, y: size.height / 2),
+                                                       normalTotal: fill * zoom)
+        let face = CGPoint(x: 0.6 * extent.width, y: 0.45 * extent.height)
+        let eye = CGPoint(x: face.x + 100 * cos(0.25), y: face.y + 100 * sin(0.25))
+        let a = face.applying(placement.transform)
+        let b = eye.applying(placement.transform)
+        let anchor = MirrorRenderer.lockedPlacement(pose, extent: extent, fill: fill, size: size)
+        let expected = CGPoint(x: anchor.origin.x + 0.1 * extent.width * anchor.total,
+                               y: anchor.origin.y - 0.05 * extent.height * anchor.total)
+        #expect(abs(b.y - a.y) < 0.001)
+        #expect(abs(a.x - expected.x) < 0.001 && abs(a.y - expected.y) < 0.001)
+    }
+
+    @Test func eyeLineAngleIgnoresEyeOrder() {
+        let left = [CGPoint(x: 100, y: 100), CGPoint(x: 110, y: 102)]
+        let right = [CGPoint(x: 200, y: 120), CGPoint(x: 210, y: 122)]
+        let forward = FaceLockDetector.eyeRoll(left, right)
+        let backward = FaceLockDetector.eyeRoll(right, left)
+        #expect(forward != nil && forward == backward)
+        #expect(abs((forward ?? 0) - atan2(20, 100)) < 0.0001)
+    }
+
+        @Test func regionCoversTheFaceInBufferSpace() {
         let region = FaceLockStabilizer.region(around: CGPoint(x: 0.5, y: 0.8), width: 0.4,
                                                bufferWidth: 1280, bufferHeight: 960)
         #expect(abs(region.midX - 0.2) < 0.0001)
@@ -146,6 +204,10 @@ struct FaceLockFilterTests {
         var filter = FaceLockFilter()
         _ = filter.update(active: true, detection: face(), flow: nil, canEngage: true, dt: step)
         return filter
+    }
+
+    private func tilted(_ roll: CGFloat) -> FaceLockFilter.Detection {
+        FaceLockFilter.Detection(center: CGPoint(x: 0.5, y: 0.5), width: 0.4, roll: roll)
     }
 
     private func face(at point: CGPoint = CGPoint(x: 0.5, y: 0.5), width: CGFloat = 0.4) -> FaceLockFilter.Detection {

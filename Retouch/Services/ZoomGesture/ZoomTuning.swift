@@ -233,7 +233,7 @@ nonisolated struct ZoomTuning {
     static let gripThumbKeepMax: CGFloat = 1.0
 
     static let faceLockEnabled = true
-    static let faceLockDetectInterval = 1
+    static let faceLockHistoryFrames = 30
     static let faceLockTrackTau: TimeInterval = 0.3
     static let faceLockSnapTau: TimeInterval = 0.05
     static let faceLockWidthTau: TimeInterval = 0.25
@@ -251,6 +251,9 @@ nonisolated struct ZoomTuning {
     static let faceLockAnchorY: CGFloat = 0.5
     static let faceLockCentersFully = true
     static let faceLockFollowsDistance = true
+    static let faceLockFollowsRoll = true
+    static let faceLockRollTau: TimeInterval = 0.08
+    static let faceLockMaxRoll: CGFloat = 0.7
     static let faceLockCenterRoomUseX: CGFloat = 0.6
     static let faceLockCenterRoomUseY: CGFloat = 0.4
     static let faceLockCloseDeadZone: CGFloat = 0.15

@@ -14,4 +14,5 @@ nonisolated struct FaceLockPose: Equatable, Sendable {
     var anchorScale: CGFloat
     var scale: CGFloat
     var weight: CGFloat
+    var roll: CGFloat = 0
 }

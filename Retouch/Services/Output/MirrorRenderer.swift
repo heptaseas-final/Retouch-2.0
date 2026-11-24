@@ -147,19 +147,17 @@ final class MirrorRenderer {
         let empty = CIImage(color: Self.emptyColor).cropped(to: outputRect)
 
         let fill = max(size.width / extent.width, size.height / extent.height)
-        var total = fill * max(zoom.scale, 0.01)
+        let total = fill * max(zoom.scale, 0.01)
 
         let fast = CGSize(width: stabilization.width * extent.width * total,
                           height: stabilization.height * extent.height * total)
         let wanted = CGPoint(x: size.width / 2 + zoom.offset.width * pointScale + fast.width,
                              y: size.height / 2 - zoom.offset.height * pointScale - fast.height)
-        var origin = Self.keptInsideFrame(wanted, extent: extent, total: total, size: size)
+        let origin = Self.keptInsideFrame(wanted, extent: extent, total: total, size: size)
         if let faceLock, faceLock.weight > 0 {
-            let locked = Self.lockedPlacement(faceLock, extent: extent, fill: fill, size: size)
-            let w = min(faceLock.weight, 1)
-            total += (locked.total - total) * w
-            origin = CGPoint(x: origin.x + (locked.origin.x - origin.x) * w,
-                             y: origin.y + (locked.origin.y - origin.y) * w)
+            let placement = Self.lockedTransform(faceLock, extent: extent, fill: fill, size: size,
+                                                 normalOrigin: origin, normalTotal: total)
+            return Self.composeLocked(frame, placement: placement, size: size, empty: empty)
         }
 
         let center = CGPoint(x: extent.midX, y: extent.midY)
@@ -183,37 +181,73 @@ final class MirrorRenderer {
 
         let placed = CGPoint(x: (source.minX - center.x) * total + origin.x,
                              y: (source.minY - center.y) * total + origin.y)
-        let front = image.transformed(by: CGAffineTransform(translationX: placed.x, y: placed.y))
-        let frontRect = CGRect(x: origin.x - extent.width * total / 2, y: origin.y - extent.height * total / 2,
-                               width: extent.width * total, height: extent.height * total)
-        guard faceLock != nil, Self.needsFill(frontRect, size: size) else {
+        return image.transformed(by: CGAffineTransform(translationX: placed.x, y: placed.y))
+            .composited(over: empty)
+            .cropped(to: outputRect)
+    }
+
+    static func lockedTransform(_ pose: FaceLockPose, extent: CGRect, fill: CGFloat, size: CGSize,
+                                normalOrigin: CGPoint, normalTotal: CGFloat)
+        -> (transform: CGAffineTransform, scale: CGFloat) {
+        let w = min(max(pose.weight, 0), 1)
+        let locked = lockedPlacement(pose, extent: extent, fill: fill, size: size)
+        let face = CGPoint(x: extent.minX + pose.face.x * extent.width, y: extent.minY + pose.face.y * extent.height)
+        let center = CGPoint(x: extent.midX, y: extent.midY)
+        let normal = CGPoint(x: (face.x - center.x) * normalTotal + normalOrigin.x,
+                             y: (face.y - center.y) * normalTotal + normalOrigin.y)
+        let held = CGPoint(x: (face.x - center.x) * locked.total + locked.origin.x,
+                           y: (face.y - center.y) * locked.total + locked.origin.y)
+        let at = CGPoint(x: normal.x + (held.x - normal.x) * w, y: normal.y + (held.y - normal.y) * w)
+        let scale = normalTotal + (locked.total - normalTotal) * w
+        let angle = ZoomTuning.faceLockFollowsRoll ? -pose.roll * w : 0
+        let transform = CGAffineTransform(translationX: -face.x, y: -face.y)
+            .concatenating(CGAffineTransform(scaleX: scale, y: scale))
+            .concatenating(CGAffineTransform(rotationAngle: angle))
+            .concatenating(CGAffineTransform(translationX: at.x, y: at.y))
+        return (transform, scale)
+    }
+
+    static func needsFill(_ transform: CGAffineTransform, extent: CGRect, scale: CGFloat, size: CGSize) -> Bool {
+        let feather = size.width * ZoomTuning.faceLockFillFeather / max(scale, 0.0001)
+        let inner = extent.insetBy(dx: feather, dy: feather)
+        let inverse = transform.inverted()
+        let corners = [CGPoint.zero, CGPoint(x: size.width, y: 0),
+                       CGPoint(x: 0, y: size.height), CGPoint(x: size.width, y: size.height)]
+        return !corners.allSatisfy { inner.contains($0.applying(inverse)) }
+    }
+
+    private static func composeLocked(_ frame: CIImage, placement: (transform: CGAffineTransform, scale: CGFloat),
+                                      size: CGSize, empty: CIImage) -> CIImage {
+        let outputRect = CGRect(origin: .zero, size: size)
+        let front = frame.transformed(by: placement.transform)
+        guard needsFill(placement.transform, extent: frame.extent, scale: placement.scale, size: size) else {
             return front.composited(over: empty).cropped(to: outputRect)
         }
-        return Self.seamless(front, frontRect: frontRect, size: size)
+        return seamless(frame, front: front, placement: placement, size: size)
     }
 
     private static func limited(_ value: CGFloat, _ limit: CGFloat) -> CGFloat {
         min(max(value, -limit), limit)
     }
 
-    static func needsFill(_ frontRect: CGRect, size: CGSize) -> Bool {
-        let feather = size.width * ZoomTuning.faceLockFillFeather
-        return !frontRect.insetBy(dx: feather, dy: feather).contains(CGRect(origin: .zero, size: size))
-    }
-
-    private static func seamless(_ front: CIImage, frontRect: CGRect, size: CGSize) -> CIImage {
+    private static func seamless(_ frame: CIImage, front: CIImage,
+                                 placement: (transform: CGAffineTransform, scale: CGFloat), size: CGSize) -> CIImage {
         let outputRect = CGRect(origin: .zero, size: size)
         let shrink = ZoomTuning.faceLockFillScale
         let down = CGAffineTransform(scaleX: shrink, y: shrink)
         let up = CGAffineTransform(scaleX: 1 / shrink, y: 1 / shrink)
         let feather = size.width * ZoomTuning.faceLockFillFeather
-        let backdrop = front.clampedToExtent()
+        let inset = feather / max(placement.scale, 0.0001)
+        let backdrop = frame.clampedToExtent()
+            .transformed(by: placement.transform)
             .transformed(by: down)
             .applyingGaussianBlur(sigma: Double(size.width * ZoomTuning.faceLockFillBlur * shrink))
             .transformed(by: up)
             .cropped(to: outputRect)
         let mask = CIImage(color: .white)
-            .cropped(to: frontRect.insetBy(dx: feather, dy: feather).applying(down))
+            .cropped(to: frame.extent.insetBy(dx: inset, dy: inset))
+            .transformed(by: placement.transform)
+            .transformed(by: down)
             .applyingGaussianBlur(sigma: Double(feather * shrink / 2))
             .transformed(by: up)
             .cropped(to: outputRect)

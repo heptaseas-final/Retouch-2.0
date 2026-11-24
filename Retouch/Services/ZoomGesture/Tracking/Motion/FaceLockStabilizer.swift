@@ -8,14 +8,13 @@
 import CoreGraphics
 import CoreVideo
 import Foundation
-import Vision
 
 nonisolated final class FaceLockStabilizer {
     private let tracker = FrameMotionTracker()
-    private let request = VNDetectFaceRectanglesRequest()
+    private let detector = FaceLockDetector()
     private var filter = FaceLockFilter()
     private var lastTime: Double?
-    private var frameCount = 0
+    private var history: [(time: Double, position: CGPoint)] = []
 
     var isEngaged: Bool { filter.isEngaged }
 
@@ -26,26 +25,40 @@ nonisolated final class FaceLockStabilizer {
         var detection: FaceLockFilter.Detection?
         var flow: CGVector?
         if active {
-            frameCount += 1
-            if frameCount % max(ZoomTuning.faceLockDetectInterval, 1) == 0 { detection = detect(buffer) }
+            detector.submit(buffer, time: time)
             flow = measureFlow(buffer)
+            if let result = detector.take(), let found = result.detection {
+                detection = latest(found, detectedAt: result.time, flow: flow)
+            }
         } else {
             tracker.reset()
-            frameCount = 0
+            detector.reset()
+            history.removeAll()
         }
         let pose = filter.update(active: active, detection: detection, flow: flow, canEngage: canEngage, dt: dt)
+        if let position = filter.position {
+            history.append((time, position))
+            if history.count > ZoomTuning.faceLockHistoryFrames { history.removeFirst() }
+        } else {
+            history.removeAll()
+        }
         lastTime = active || filter.isEngaged ? time : nil
         return pose
     }
 
-    private func detect(_ buffer: CVPixelBuffer) -> FaceLockFilter.Detection? {
-        let handler = VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .leftMirrored)
-        try? handler.perform([request])
-        guard let face = request.results?.max(by: { $0.boundingBox.height < $1.boundingBox.height }) else {
-            return nil
-        }
-        let box = face.boundingBox
-        return FaceLockFilter.Detection(center: CGPoint(x: box.midX, y: box.midY), width: box.width)
+    static func compensated(_ found: FaceLockFilter.Detection, then: CGPoint,
+                            now: CGPoint) -> FaceLockFilter.Detection {
+        FaceLockFilter.Detection(center: CGPoint(x: now.x + found.center.x - then.x,
+                                                 y: now.y + found.center.y - then.y),
+                                 width: found.width, roll: found.roll)
+    }
+
+    private func latest(_ found: FaceLockFilter.Detection, detectedAt time: Double,
+                        flow: CGVector?) -> FaceLockFilter.Detection {
+        guard let current = filter.position,
+              let then = history.last(where: { $0.time <= time })?.position else { return found }
+        let now = CGPoint(x: current.x + (flow?.dx ?? 0), y: current.y + (flow?.dy ?? 0))
+        return Self.compensated(found, then: then, now: now)
     }
 
     private func measureFlow(_ buffer: CVPixelBuffer) -> CGVector? {
