@@ -166,8 +166,8 @@ struct FaceLockFilterTests {
 
     @Test func rollStartsFromTheCurrentTilt() throws {
         var filter = FaceLockFilter()
-        let pose = try #require(filter.update(active: true, detection: tilted(0.2), flow: nil,
-                                              canEngage: true, dt: step))
+        let result = filter.update(active: true, detection: tilted(0.2), flow: nil, canEngage: true, dt: step)
+        let pose = try #require(result)
         #expect(abs(pose.roll - 0.2) < 0.0001)
     }
 
