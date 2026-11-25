@@ -30,7 +30,7 @@ nonisolated extension ZoomService {
             publish(target)
             onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
                                      isFaceVisible: lastFace != nil, overallPose: overallRecognizer.pose,
-                                     isRecordFar: (isManualOverall || manualTarget != .fullFace)
+                                     isRecordFar: isManualOverall && manualTarget == .fullFace
                                         && overallRecognizer.isRecordFar))
             return
         }
