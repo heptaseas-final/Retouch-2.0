@@ -9,10 +9,11 @@ struct MirrorViewModelTests {
     let settings = FakeMirrorSettingsStore()
     let analytics = FakeAnalyticsRecorder()
     let shortcutPrompt = FakeShortcutPromptService()
+    let zoomStore = ZoomStore()
 
     func makeViewModel() -> MirrorViewModel {
         MirrorViewModel(camera: camera, lighting: lighting, zoom: zoom,
-                        zoomStore: ZoomStore(), renderer: MirrorRenderer(device: nil), settings: settings, analytics: analytics,
+                        zoomStore: zoomStore, renderer: MirrorRenderer(device: nil), settings: settings, analytics: analytics,
                         shortcutPrompt: shortcutPrompt)
     }
 
@@ -235,6 +236,35 @@ struct MirrorViewModelTests {
         viewModel.select(.mouth)
         #expect(!viewModel.isOverallOn)
         #expect(zoom.overallValues == [true, false])
+    }
+
+    @Test func autoZoomOutLightsTheOverallButton() {
+        let viewModel = makeViewModel()
+        zoomStore.update(ZoomTracking(target: .overall))
+        #expect(viewModel.isOverallOn)
+        #expect(zoom.overallValues.isEmpty)
+        zoomStore.update(ZoomTracking(target: .fullFace))
+        #expect(!viewModel.isOverallOn)
+        #expect(zoom.overallValues.isEmpty)
+    }
+
+    @Test func turningTheButtonOffReleasesAutoZoomOut() {
+        let viewModel = makeViewModel()
+        zoomStore.update(ZoomTracking(target: .overall))
+        viewModel.setOverall(false)
+        #expect(!viewModel.isOverallOn)
+        #expect(zoom.overallValues == [false])
+        zoomStore.update(ZoomTracking(target: .overall))
+        #expect(!viewModel.isOverallOn)
+        zoomStore.update(ZoomTracking(target: .fullFace))
+        #expect(!viewModel.isOverallOn)
+    }
+
+    @Test func otherModesDoNotFollowZoomOut() {
+        let viewModel = makeViewModel()
+        viewModel.select(.smile)
+        zoomStore.update(ZoomTracking(target: .overall))
+        #expect(!viewModel.isOverallOn)
     }
 
     @Test func pausingStopsOnlyTheCamera() {

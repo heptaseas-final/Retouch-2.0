@@ -3,8 +3,11 @@ import Foundation
 
 nonisolated struct OverallPoseRecognizer {
     private(set) var pose: OverallPose = .none
+    private(set) var isRecordFar = false
+    private(set) var isDismissed = false
     private var width: Double?
     private var highSince: TimeInterval?
+    private var recordFarSince: TimeInterval?
 
     mutating func update(face: FaceObservation?, motion: DeviceMotionSample?, now: TimeInterval) -> OverallPose {
         if let face, face.width > 0 {
@@ -16,6 +19,8 @@ nonisolated struct OverallPoseRecognizer {
             return pose
         }
         releaseIfNeeded(motion)
+        if pose == .none { isDismissed = false }
+        updateRecordDistance(now: now)
         guard pose == .none, let width else { return pose }
 
         if motion.stillFor >= ZoomTuning.placedStillDwell, width <= ZoomTuning.placedEnterWidth {
@@ -42,6 +47,38 @@ nonisolated struct OverallPoseRecognizer {
         pose = .none
         width = nil
         highSince = nil
+        isRecordFar = false
+        recordFarSince = nil
+        isDismissed = false
+    }
+
+    mutating func dismiss() {
+        guard pose != .none else { return }
+        isDismissed = true
+        isRecordFar = false
+        recordFarSince = nil
+    }
+
+    private mutating func updateRecordDistance(now: TimeInterval) {
+        guard pose == .placedFar, !isDismissed, let width else {
+            isRecordFar = false
+            recordFarSince = nil
+            return
+        }
+        if isRecordFar {
+            if width > ZoomTuning.placedEnterWidth {
+                isRecordFar = false
+                recordFarSince = nil
+            }
+            return
+        }
+        guard width <= ZoomTuning.recordEnterWidth else {
+            recordFarSince = nil
+            return
+        }
+        let since = recordFarSince ?? now
+        recordFarSince = since
+        isRecordFar = now - since >= ZoomTuning.recordEnterDwell
     }
 
     private mutating func releaseIfNeeded(_ motion: DeviceMotionSample) {
