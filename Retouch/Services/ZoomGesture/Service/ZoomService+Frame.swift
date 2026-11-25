@@ -29,7 +29,9 @@ nonisolated extension ZoomService {
             let target = isManualOverall ? ZoomTarget.overall : manualTarget
             publish(target)
             onTracking?(ZoomTracking(target: target, face: points, viewSize: viewSize,
-                                     isFaceVisible: lastFace != nil, overallPose: overallRecognizer.pose))
+                                     isFaceVisible: lastFace != nil, overallPose: overallRecognizer.pose,
+                                     isRecordFar: (isManualOverall || manualTarget != .fullFace)
+                                        && overallRecognizer.isRecordFar))
             return
         }
 
@@ -179,7 +181,8 @@ nonisolated extension ZoomService {
                                  toolTips: debugTools, toolBoxes: debugBoxes, toolLabels: debugLabels, lockedZone: FaceZone(target: target),
                                  zoneReach: zoneReach, lipsReach: zoneLipsReach,
                                  inputMode: toolDrives ? .tool : .finger,
-                                 overallPose: overallRecognizer.pose))
+                                 overallPose: overallRecognizer.pose,
+                                 isRecordFar: overallRecognizer.isRecordFar))
     }
 
     func trackMotion(face: FaceObservation?, hand: CGPoint?, at now: Date, faceChecked: Bool = true) {
@@ -222,6 +225,7 @@ nonisolated extension ZoomService {
     }
 
     func publish(_ target: ZoomTarget) {
+        emitFaceLock(for: target)
         if pinchScale > 1.01 {
             send(scale: pinchScale, focus: .pinch)
             return
@@ -274,6 +278,16 @@ nonisolated extension ZoomService {
             }
         }
         return focus
+    }
+
+    func emitFaceLock(for target: ZoomTarget) {
+        guard ZoomTuning.faceLockEnabled, !isGestureEnabled, target == .fullFace,
+              pinchScale <= ZoomTuning.faceLockMaxPinch else {
+            onFaceLock?(nil)
+            return
+        }
+        onFaceLock?(FaceLockSample(center: lastFace?.center, width: lastFace?.width ?? 0,
+                                   sequence: faceDetector.snapshot.sequence))
     }
 
     func send(scale: CGFloat, focus: ZoomAnimator.Focus) {

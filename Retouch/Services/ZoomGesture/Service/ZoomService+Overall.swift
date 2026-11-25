@@ -10,12 +10,18 @@ nonisolated extension ZoomService {
     func updateOverall(face: FaceObservation?, converter: CoordinateConverter) -> Bool {
         let wasShowing = isOverallShowing
         updatePose(face: face)
-        isOverallShowing = overallRecognizer.pose != .none && (isOverallShowing || resolver.target == .fullFace)
+        isOverallShowing = overallRecognizer.pose != .none && !overallRecognizer.isDismissed
+            && (isOverallShowing || resolver.target == .fullFace)
         if wasShowing, !isOverallShowing, let face {
             faceTracker.reseedSize(face: face, converter: converter)
             distComp = DistanceCompensator()
         }
         return isOverallShowing
+    }
+
+    func applyManualOverall(_ isOn: Bool) {
+        if !isOn, isOverallShowing { overallRecognizer.dismiss() }
+        isManualOverall = isOn
     }
 
     func setOverallOnly(_ isOn: Bool) {

@@ -106,4 +106,86 @@ struct OverallPoseRecognizerTests {
         var recognizer = OverallPoseRecognizer()
         #expect(recognizer.update(face: face(width: 0.1), motion: nil, now: 0) == .none)
     }
+
+    @Test func zoomOutDistanceIsNotRecordDistance() {
+        var recognizer = OverallPoseRecognizer()
+        let zoomOutOnly = face(width: CGFloat((ZoomTuning.placedEnterWidth + ZoomTuning.recordEnterWidth) / 2))
+        _ = recognizer.update(face: zoomOutOnly, motion: motion(stillFor: still), now: 0)
+        #expect(recognizer.update(face: zoomOutOnly, motion: motion(stillFor: still), now: 5) == .placedFar)
+        #expect(!recognizer.isRecordFar)
+    }
+
+    @Test func recordDistanceNeedsDwell() {
+        var recognizer = OverallPoseRecognizer()
+        let farther = face(width: CGFloat(ZoomTuning.recordEnterWidth - 0.02))
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 0)
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 1)
+        #expect(!recognizer.isRecordFar)
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still),
+                              now: 1 + ZoomTuning.recordEnterDwell - 0.05)
+        #expect(!recognizer.isRecordFar)
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still),
+                              now: 1 + ZoomTuning.recordEnterDwell + 0.05)
+        #expect(recognizer.isRecordFar)
+    }
+
+    @Test func recordDistanceHoldsUntilZoomOutDistance() {
+        var recognizer = OverallPoseRecognizer()
+        let farther = face(width: CGFloat(ZoomTuning.recordEnterWidth - 0.02))
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 0)
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 1)
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 2)
+        #expect(recognizer.isRecordFar)
+        let between = face(width: CGFloat((ZoomTuning.placedEnterWidth + ZoomTuning.recordEnterWidth) / 2))
+        _ = recognizer.update(face: between, motion: motion(stillFor: still), now: 3)
+        #expect(recognizer.isRecordFar)
+        let zoomOutDistance = face(width: CGFloat(ZoomTuning.placedEnterWidth + 0.01))
+        #expect(recognizer.update(face: zoomOutDistance, motion: motion(stillFor: still), now: 4) == .placedFar)
+        #expect(!recognizer.isRecordFar)
+    }
+
+    @Test func dismissHoldsUntilZoomOutPoseEnds() {
+        var recognizer = OverallPoseRecognizer()
+        let farther = face(width: CGFloat(ZoomTuning.recordEnterWidth - 0.02))
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 0)
+        recognizer.dismiss()
+        #expect(recognizer.isDismissed)
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 1)
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 2)
+        #expect(recognizer.pose == .placedFar)
+        #expect(recognizer.isDismissed)
+        #expect(!recognizer.isRecordFar)
+        let close = face(width: CGFloat(ZoomTuning.placedExitWidth + 0.05))
+        #expect(recognizer.update(face: close, motion: motion(stillFor: still), now: 3) == .none)
+        #expect(!recognizer.isDismissed)
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 4)
+        #expect(recognizer.pose == .placedFar)
+        #expect(!recognizer.isDismissed)
+    }
+
+    @Test func dismissStopsRecordDistance() {
+        var recognizer = OverallPoseRecognizer()
+        let farther = face(width: CGFloat(ZoomTuning.recordEnterWidth - 0.02))
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 0)
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 1)
+        _ = recognizer.update(face: farther, motion: motion(stillFor: still), now: 2)
+        #expect(recognizer.isRecordFar)
+        recognizer.dismiss()
+        #expect(!recognizer.isRecordFar)
+    }
+
+    @Test func dismissWithoutZoomOutDoesNothing() {
+        var recognizer = OverallPoseRecognizer()
+        recognizer.dismiss()
+        #expect(!recognizer.isDismissed)
+    }
+
+    @Test func heldHighNeverReachesRecordDistance() {
+        var recognizer = OverallPoseRecognizer()
+        let farther = face(width: CGFloat(ZoomTuning.recordEnterWidth - 0.02))
+        _ = recognizer.update(face: farther, motion: motion(tilt: 30), now: 0)
+        _ = recognizer.update(face: farther, motion: motion(tilt: 30), now: 1)
+        #expect(recognizer.update(face: farther, motion: motion(tilt: 30), now: 2) == .heldHigh)
+        #expect(!recognizer.isRecordFar)
+    }
 }

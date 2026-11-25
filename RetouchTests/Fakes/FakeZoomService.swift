@@ -5,6 +5,7 @@ import CoreVideo
 final class FakeZoomService: ZoomServicing, @unchecked Sendable {
     var onZoomChange: (@Sendable (ZoomState) -> Void)?
     var onTracking: (@Sendable (ZoomTracking) -> Void)?
+    var onFaceLock: (@Sendable (FaceLockSample?) -> Void)?
     private(set) var selectedParts: [FacePart] = []
     private(set) var resetCount = 0
     private(set) var stopCount = 0
