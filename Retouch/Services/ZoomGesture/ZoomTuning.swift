@@ -272,6 +272,7 @@ nonisolated struct ZoomTuning {
     static let faceLockFillBlur: CGFloat = 0.03
     static let faceLockFillFeather: CGFloat = 0.04
     static let faceLockMaxPinch: CGFloat = 1.01
+    static let faceLockMatchRadius: CGFloat = 0.75
 
     static let trackEnabled: Bool = true
     static let trackInvertX: Bool = false
