@@ -25,7 +25,8 @@ nonisolated final class FaceLockStabilizer {
         var detection: FaceLockFilter.Detection?
         var flow: CGVector?
         if active {
-            detector.submit(buffer, time: time)
+            let target = filter.position.map { FaceLockFilter.Detection(center: $0, width: filter.width) }
+            detector.submit(buffer, time: time, target: target)
             flow = measureFlow(buffer)
             if let result = detector.take(), let found = result.detection {
                 detection = latest(found, detectedAt: result.time, flow: flow)

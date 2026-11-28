@@ -23,7 +23,7 @@ nonisolated final class FaceLockDetector: @unchecked Sendable {
     private var generation = 0
     private var pending: Result?
 
-    func submit(_ buffer: CVPixelBuffer, time: Double) {
+    func submit(_ buffer: CVPixelBuffer, time: Double, target: FaceLockFilter.Detection?) {
         let ticket: Int? = lock.withLock {
             guard !isBusy else { return nil }
             isBusy = true
@@ -31,12 +31,37 @@ nonisolated final class FaceLockDetector: @unchecked Sendable {
         }
         guard let ticket else { return }
         queue.async { [self] in
-            let detection = detect(buffer)
+            let detection = detect(buffer, following: target)
             lock.withLock {
                 isBusy = false
                 if ticket == generation { pending = Result(detection: detection, time: time) }
             }
         }
+    }
+
+    private func detect(_ buffer: CVPixelBuffer, following target: FaceLockFilter.Detection?) -> FaceLockFilter.Detection? {
+        let handler = VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .leftMirrored)
+        try? handler.perform([request])
+        let size = CGSize(width: CVPixelBufferGetHeight(buffer), height: CVPixelBufferGetWidth(buffer))
+        let faces = (request.results ?? []).map { face -> FaceLockFilter.Detection in
+            let box = face.boundingBox
+            let left = face.landmarks?.leftEye?.pointsInImage(imageSize: size) ?? []
+            let right = face.landmarks?.rightEye?.pointsInImage(imageSize: size) ?? []
+            let roll = Self.eyeRoll(left, right) ?? face.roll.map { CGFloat($0.doubleValue) }
+            return FaceLockFilter.Detection(center: CGPoint(x: box.midX, y: box.midY), width: box.width, roll: roll)
+        }
+        return Self.choose(faces, following: target)
+    }
+
+    static func choose(_ faces: [FaceLockFilter.Detection],
+                       following target: FaceLockFilter.Detection?) -> FaceLockFilter.Detection? {
+        guard let target else { return faces.max { $0.width < $1.width } }
+        let reach = target.width * ZoomTuning.faceLockMatchRadius
+        return faces
+            .map { (face: $0, gap: hypot($0.center.x - target.center.x, $0.center.y - target.center.y)) }
+            .filter { $0.gap <= reach }
+            .min { $0.gap < $1.gap }?
+            .face
     }
 
     func take() -> Result? {
@@ -51,20 +76,6 @@ nonisolated final class FaceLockDetector: @unchecked Sendable {
             generation += 1
             pending = nil
         }
-    }
-
-    private func detect(_ buffer: CVPixelBuffer) -> FaceLockFilter.Detection? {
-        let handler = VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .leftMirrored)
-        try? handler.perform([request])
-        guard let face = request.results?.max(by: { $0.boundingBox.height < $1.boundingBox.height }) else {
-            return nil
-        }
-        let box = face.boundingBox
-        let size = CGSize(width: CVPixelBufferGetHeight(buffer), height: CVPixelBufferGetWidth(buffer))
-        let left = face.landmarks?.leftEye?.pointsInImage(imageSize: size) ?? []
-        let right = face.landmarks?.rightEye?.pointsInImage(imageSize: size) ?? []
-        let roll = Self.eyeRoll(left, right) ?? face.roll.map { CGFloat($0.doubleValue) }
-        return FaceLockFilter.Detection(center: CGPoint(x: box.midX, y: box.midY), width: box.width, roll: roll)
     }
 
     static func eyeRoll(_ first: [CGPoint], _ second: [CGPoint]) -> CGFloat? {
